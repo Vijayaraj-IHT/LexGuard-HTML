@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="alternate icon" href="favicon.ico">
+  <title>Saved Bookmarks · LexGuard</title>
+
+  <!-- Google Fonts & CDN CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- LexGuard Styles -->
+  <link rel="stylesheet" href="css/lexguard.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body data-active-page="bookmarks">
+
+  <!-- Shared Top Navbar & Left Sidebar slots -->
+  <div id="navbar-slot"></div>
+  <div id="sidebar-slot"></div>
+
+  <!-- Main Content -->
+  <main class="lg-main">
+    <div class="container-fluid px-0" style="max-width: 1000px;">
+
+      <!-- Page Header -->
+      <div class="lg-page-header">
+        <div>
+          <h1 class="lg-page-title">
+            <i class="bi bi-bookmarks text-warning"></i>
+            <span>Saved Research &amp; Bookmarks</span>
+          </h1>
+          <p class="lg-page-subtitle">
+            Curated precedents and judicial authorities saved for ongoing petitions and research briefs.
+          </p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge bg-secondary" id="bookmarks-count-badge">0 Cases Saved</span>
+          <button type="button" class="btn btn-sm btn-judicial-outline" id="export-citations-btn">
+            <i class="bi bi-file-earmark-arrow-down me-1 text-warning"></i>Export Bibliography
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading Spinner -->
+      <div id="bookmarks-loading" class="text-center py-5">
+        <div class="spinner-border text-warning" role="status"></div>
+        <p class="text-secondary small mt-2">Loading your saved research bookmarks...</p>
+      </div>
+
+      <!-- Bookmarks List Container -->
+      <div id="bookmarks-container" class="d-none"></div>
+
+      <!-- Empty State -->
+      <div id="bookmarks-empty" class="card card-judicial text-center p-5 d-none">
+        <i class="bi bi-bookmark-plus text-secondary display-6 mb-3"></i>
+        <h2 class="h5 text-light">No Bookmarks Saved Yet</h2>
+        <p class="text-secondary small mb-4" style="max-width: 420px; margin: 0 auto;">
+          When exploring judgments in <strong>Hybrid Search</strong> or <strong>Case Viewer</strong>, click the bookmark icon to save cases for quick reference.
+        </p>
+        <div>
+          <a href="search.html" class="btn btn-gold">
+            <i class="bi bi-search me-1"></i>Explore Judicial Cases
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- CDN JS Dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+
+  <!-- LexGuard Core & Page Scripts -->
+  <script src="js/lexguard-core.js"></script>
+  <script src="js/lexguard-auth.js"></script>
+  <script src="js/lexguard-toast.js"></script>
+  <script src="js/lexguard-api.js"></script>
+  <script src="js/lexguard-nav.js"></script>
+  <script src="js/pages/bookmarks.js"></script>
+</body>
+</html>

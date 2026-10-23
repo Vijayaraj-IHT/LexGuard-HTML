@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="alternate icon" href="favicon.ico">
+  <title>AI Draft Assistant &amp; Precedent Audit · LexGuard</title>
+
+  <!-- Google Fonts & CDN CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- LexGuard Styles -->
+  <link rel="stylesheet" href="css/lexguard.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body data-active-page="draft">
+
+  <!-- Shared Top Navbar & Left Sidebar slots -->
+  <div id="navbar-slot"></div>
+  <div id="sidebar-slot"></div>
+
+  <!-- Main Content -->
+  <main class="lg-main">
+    <div class="container-fluid px-0">
+
+      <!-- Page Header -->
+      <div class="lg-page-header">
+        <div>
+          <h1 class="lg-page-title">
+            <i class="bi bi-pen text-warning"></i>
+            <span>AI Petition Draft Assistant &amp; Precedent Audit</span>
+          </h1>
+          <p class="lg-page-subtitle">
+            Split-screen petition editor with draggable resizer, session persistence, automated gap analysis, and precision statutory precedent audits.
+          </p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <!-- Session Management Buttons -->
+          <button type="button" class="btn btn-sm btn-judicial-outline" id="load-sessions-btn">
+            <i class="bi bi-folder2-open me-1"></i>Saved Sessions
+          </button>
+          <button type="button" class="btn btn-sm btn-judicial-outline text-success" id="save-session-btn">
+            <i class="bi bi-save me-1"></i>Save Session
+          </button>
+        </div>
+      </div>
+
+      <!-- Split Screen Container with Draggable Resizer -->
+      <div class="lg-split-container" id="draft-split-container" style="min-height: calc(100vh - var(--lg-navbar-h) - 6rem);">
+
+        <!-- LEFT PANE: Petition Editor -->
+        <div class="lg-split-pane shadow" id="editor-left-pane" style="flex: 1 1 50%;">
+          <div class="lg-split-header">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-file-earmark-text text-warning fs-5"></i>
+              <input type="text" class="form-control form-control-sm bg-transparent border-0 text-light fw-bold px-1" id="draft-title-input" value="Untitled Petition Draft" style="max-width: 250px;">
+            </div>
+
+            <!-- Templates & Action -->
+            <div class="d-flex align-items-center gap-2">
+              <select class="form-select form-select-sm" id="template-select" style="max-width: 200px;">
+                <option value="">Load Template...</option>
+                <option value="quash">Sec. 482 CrPC Quashing FIR</option>
+                <option value="bail">Anticipatory Bail Application</option>
+                <option value="writ">Article 226 Mandamus Writ</option>
+              </select>
+              <button type="button" class="btn btn-sm btn-gold d-flex align-items-center gap-1" id="run-analyze-btn">
+                <i class="bi bi-lightning-charge-fill"></i>
+                <span>Analyze Gap</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="lg-split-body d-flex flex-column p-0">
+            <textarea id="petition-editor" class="form-control font-serif fs-6 border-0 rounded-0 flex-grow-1 p-3 text-light" style="background-color: #ffffff; color: #0f172a; resize: none; min-height: 520px; line-height: 1.7;" placeholder="Draft or paste your petition text here..."></textarea>
+
+            <!-- Editor Stats Footer -->
+            <div class="p-2 px-3 bg-dark border-top border-secondary border-opacity-15 d-flex align-items-center justify-content-between small text-secondary">
+              <div class="d-flex gap-3">
+                <span>Words: <strong class="text-light" id="word-count">0</strong></span>
+                <span>Characters: <strong class="text-light" id="char-count">0</strong></span>
+              </div>
+              <div>
+                <span class="text-success"><i class="bi bi-shield-check me-1"></i>Client Confidentiality Protected</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DRAGGABLE DIVIDER -->
+        <div class="lg-resizer-gutter" id="draft-resizer-gutter" title="Drag to adjust split-pane ratio"></div>
+
+        <!-- RIGHT PANE: AI Workbench (Gap Analysis & Precedent Benchmark) -->
+        <div class="lg-split-pane shadow" id="analysis-right-pane" style="flex: 1 1 50%;">
+          <div class="lg-split-header">
+            <!-- Mode Switch Tabs -->
+            <ul class="nav nav-pills gap-1" id="analysisModeTabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active py-1 px-3 small fw-semibold" id="mode-gap-btn" data-bs-toggle="pill" data-bs-target="#mode-gap" type="button" role="tab">
+                  <i class="bi bi-magic me-1"></i>AI Gap Analysis
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link py-1 px-3 small fw-semibold" id="mode-benchmark-btn" data-bs-toggle="pill" data-bs-target="#mode-benchmark" type="button" role="tab">
+                  <i class="bi bi-shield-check me-1"></i>Precedent Precision Audit
+                </button>
+              </li>
+            </ul>
+
+            <span class="badge bg-secondary small" id="analysis-status-badge">Awaiting Draft</span>
+          </div>
+
+          <div class="lg-split-body p-3" id="analysis-body">
+
+            <div class="tab-content" id="analysisTabContent">
+
+              <!-- MODE A: General AI Gap Analysis -->
+              <div class="tab-pane fade show active" id="mode-gap" role="tabpanel">
+
+                <!-- Empty State -->
+                <div id="analysis-empty-state" class="text-center py-5">
+                  <i class="bi bi-journal-check text-secondary display-6 mb-3"></i>
+                  <h5 class="text-light">No Analysis Run Yet</h5>
+                  <p class="text-secondary small mb-3" style="max-width: 400px; margin: 0 auto;">
+                    Draft your petition on the left pane and click <strong>Analyze Gap</strong> to detect missing arguments and receive grounded citations.
+                  </p>
+                  <button type="button" class="btn btn-sm btn-judicial-outline" id="load-sample-btn">
+                    <i class="bi bi-file-earmark-arrow-down me-1"></i>Load Sample Section 482 Petition
+                  </button>
+                </div>
+
+                <!-- Loading -->
+                <div id="analysis-loading" class="text-center py-5 d-none">
+                  <div class="spinner-border text-warning mb-2" role="status"></div>
+                  <p class="text-secondary small mb-0">Evaluating factual matrix &amp; comparing against Madras HC &amp; SC precedents...</p>
+                </div>
+
+                <!-- Results -->
+                <div id="analysis-results" class="d-none">
+                  <!-- Identified Grounds -->
+                  <div class="card card-judicial p-3 mb-3 border-success border-opacity-30">
+                    <h3 class="h6 fw-bold text-success mb-2 d-flex align-items-center gap-2">
+                      <i class="bi bi-check-circle-fill"></i>
+                      <span>Identified Grounds &amp; Submissions</span>
+                    </h3>
+                    <ul class="mb-0 small text-light ps-3" id="identified-grounds-list"></ul>
+                  </div>
+
+                  <!-- Missing Arguments with Severity Badges -->
+                  <div class="card card-judicial p-3 mb-3 border-warning border-opacity-40">
+                    <h3 class="h6 fw-bold text-warning mb-2 d-flex align-items-center gap-2">
+                      <i class="bi bi-exclamation-triangle-fill"></i>
+                      <span>Missing Arguments &amp; Recommended Omissions</span>
+                    </h3>
+                    <ul class="mb-0 small text-light ps-3" id="missing-arguments-list"></ul>
+                  </div>
+
+                  <!-- Suggested Sections -->
+                  <div class="card card-judicial p-3 mb-3">
+                    <h3 class="h6 fw-bold text-light mb-2 d-flex align-items-center gap-2">
+                      <i class="bi bi-bookmark-plus text-info"></i>
+                      <span>Suggested Statutory Sections</span>
+                    </h3>
+                    <div class="d-flex flex-wrap gap-1" id="suggested-sections-box"></div>
+                  </div>
+
+                  <!-- Grounded Citations -->
+                  <div class="card card-judicial p-3 mb-3">
+                    <h3 class="h6 fw-bold text-light mb-3 d-flex align-items-center gap-2">
+                      <i class="bi bi-quote text-warning"></i>
+                      <span>Grounded Precedent Citations</span>
+                    </h3>
+                    <div id="citations-list" class="d-flex flex-column gap-2"></div>
+                  </div>
+
+                  <!-- Disclaimer -->
+                  <div class="alert alert-dark small border border-secondary border-opacity-25 text-secondary mb-0">
+                    <i class="bi bi-shield-check text-success me-1"></i>
+                    <span id="analysis-disclaimer">Every citation links directly to a verified repository judgment with zero hallucination.</span>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- MODE B: Precision Precedent Audit -->
+              <div class="tab-pane fade" id="mode-benchmark" role="tabpanel">
+                <div class="card card-judicial p-3 mb-3">
+                  <h3 class="h6 fw-bold text-light mb-2">Select Benchmark Landmark Precedent</h3>
+                  <div class="input-group input-group-sm mb-2">
+                    <select class="form-select" id="benchmark-precedent-select">
+                      <option value="">Choose landmark precedent to audit against...</option>
+                    </select>
+                    <button type="button" class="btn btn-gold" id="run-benchmark-btn">
+                      <i class="bi bi-speedometer2 me-1"></i>Run Audit
+                    </button>
+                  </div>
+                  <div class="small text-secondary">
+                    Tests your petition against the exact legal prerequisites laid down in this binding precedent.
+                  </div>
+                </div>
+
+                <!-- Benchmark Loading -->
+                <div id="benchmark-loading" class="text-center py-4 d-none">
+                  <div class="spinner-border text-warning" role="status"></div>
+                  <p class="text-secondary small mt-2">Executing statutory test audit against precedent...</p>
+                </div>
+
+                <!-- Benchmark Results -->
+                <div id="benchmark-results" class="d-none">
+                  <!-- Compliance Score Card -->
+                  <div class="card card-judicial p-3 mb-3 border-info border-opacity-30">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                      <div>
+                        <span class="badge bg-info text-dark mb-1">Precedent Compliance</span>
+                        <h4 class="h6 fw-bold text-light mb-0" id="bm-case-title">—</h4>
+                        <div class="small text-secondary" id="bm-case-citation">—</div>
+                      </div>
+                      <div class="text-end">
+                        <div class="h4 fw-bold text-warning mb-0" id="bm-compliance-percent">0%</div>
+                        <div class="small text-secondary">Compliance</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Statutory Test Audit Checklist -->
+                  <div class="card card-judicial p-3 mb-3">
+                    <h3 class="h6 fw-bold text-light mb-3">
+                      <i class="bi bi-list-check text-warning me-2"></i>Statutory Test Audit Checklist
+                    </h3>
+                    <div id="bm-audit-checklist" class="d-flex flex-column gap-2"></div>
+                  </div>
+
+                  <!-- Boilerplate Suggestions -->
+                  <div class="card card-judicial p-3" id="bm-boilerplate-card">
+                    <h3 class="h6 fw-bold text-light mb-2">Recommended Boilerplate Legal Clauses</h3>
+                    <div id="bm-boilerplate-list" class="d-flex flex-column gap-2"></div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Saved Draft Sessions Modal -->
+  <div class="modal fade" id="sessionsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content bg-dark text-light border border-secondary border-opacity-50">
+        <div class="modal-header border-bottom border-secondary border-opacity-25">
+          <h5 class="modal-title font-serif fw-bold text-warning">
+            <i class="bi bi-folder2-open me-2"></i>Saved Draft Sessions
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div id="sessions-list" class="d-flex flex-column gap-2">
+            <div class="text-center py-4 text-secondary">Loading sessions...</div>
+          </div>
+        </div>
+        <div class="modal-footer border-top border-secondary border-opacity-25">
+          <button type="button" class="btn btn-sm btn-judicial-outline" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CDN JS Dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+
+  <!-- LexGuard Core & Page Scripts -->
+  <script src="js/lexguard-core.js"></script>
+  <script src="js/lexguard-auth.js"></script>
+  <script src="js/lexguard-toast.js"></script>
+  <script src="js/lexguard-api.js"></script>
+  <script src="js/lexguard-nav.js"></script>
+  <script src="js/pages/draft-assistant.js"></script>
+</body>
+</html>

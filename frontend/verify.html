@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="alternate icon" href="favicon.ico">
+  <title>Public Cryptographic Verifier · LexGuard</title>
+
+  <!-- Google Fonts & CDN CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- LexGuard Styles -->
+  <link rel="stylesheet" href="css/lexguard.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body data-active-page="verify">
+
+  <!-- Shared Top Navbar & Left Sidebar slots -->
+  <div id="navbar-slot"></div>
+  <div id="sidebar-slot"></div>
+
+  <!-- Main Content -->
+  <main class="lg-main">
+    <div class="container-fluid px-0" style="max-width: 960px;">
+
+      <!-- Page Header -->
+      <div class="lg-page-header">
+        <div>
+          <h1 class="lg-page-title">
+            <i class="bi bi-shield-check text-warning"></i>
+            <span>Zero-Knowledge Document Verifier</span>
+          </h1>
+          <p class="lg-page-subtitle">
+            Cryptographic SHA-256 integrity verification. Hashing is performed 100% locally in your browser — zero bytes of your document are uploaded to our servers.
+          </p>
+        </div>
+        <div>
+          <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 fs-7 px-3 py-2">
+            <i class="bi bi-lock-fill me-1"></i>0-Byte Client-Side Web Crypto
+          </span>
+        </div>
+      </div>
+
+      <!-- File Dropzone Card -->
+      <div class="card card-judicial p-4 mb-4 shadow">
+        <div class="lg-dropzone" id="file-dropzone">
+          <i class="bi bi-file-earmark-lock lg-dropzone-icon"></i>
+          <h2 class="h5 fw-bold text-light mb-1">Drag &amp; Drop Judgment PDF Here</h2>
+          <p class="text-secondary small mb-3">Or click to select an official court PDF from your device</p>
+          <input type="file" id="file-input" class="d-none" accept=".pdf">
+          <button type="button" class="btn btn-sm btn-gold px-4" id="select-file-btn">
+            <i class="bi bi-folder2-open me-1"></i>Browse Files
+          </button>
+        </div>
+
+        <!-- Hashing Progress Bar -->
+        <div id="hashing-progress-box" class="mt-3 d-none">
+          <div class="d-flex justify-content-between small text-secondary mb-1">
+            <span><i class="bi bi-cpu me-1 text-warning"></i>Computing Web Crypto SHA-256 Digest...</span>
+            <span id="hashing-percent" class="fw-bold text-warning">0%</span>
+          </div>
+          <div class="progress" style="height: 6px; background-color: #f1f5f9;">
+            <div id="hashing-bar" class="progress-bar bg-warning" role="progressbar" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <!-- Divider with OR -->
+        <div class="position-relative my-4 text-center">
+          <hr class="border-secondary border-opacity-25 my-0">
+          <span class="position-absolute top-50 start-50 translate-middle bg-dark px-3 text-secondary small fw-semibold">
+            OR VERIFY BY SHA-256 HASH
+          </span>
+        </div>
+
+        <!-- Manual Hash Input Form -->
+        <form id="hash-form">
+          <label for="hash-input" class="form-label text-secondary small fw-semibold">64-Character SHA-256 Hex Digest</label>
+          <div class="input-group">
+            <span class="input-group-text bg-dark border-secondary border-opacity-25 text-secondary">
+              <i class="bi bi-hash"></i>
+            </span>
+            <input type="text" class="form-control font-mono small" id="hash-input" placeholder="e.g. 374028548b8920c2963588894515f3f2fc330b134181216e4b296d28fdc11030" maxlength="64" autocomplete="off">
+            <button class="btn btn-gold px-4" type="submit" id="hash-verify-btn">
+              <span>Verify Digest</span>
+              <i class="bi bi-shield-check ms-1"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Verification Result Container (Initially Hidden) -->
+      <div id="verification-result-box" class="d-none">
+
+        <!-- Authentic Match Banner -->
+        <div id="result-authentic" class="card card-judicial p-4 mb-4 border-success border-opacity-50 shadow-lg d-none" style="background: linear-gradient(145deg, rgba(16, 185, 129, 0.08) 0%, #ffffff 100%);">
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="rounded-circle bg-success bg-opacity-25 p-3 text-success d-inline-flex">
+              <i class="bi bi-patch-check-fill fs-1"></i>
+            </div>
+            <div>
+              <div class="badge bg-success mb-1">VERIFIED AUTHENTIC</div>
+              <h2 class="h4 fw-bold text-light mb-0" id="matched-case-title">State of Maharashtra v. Sandeep</h2>
+              <p class="text-secondary small mb-0" id="matched-case-court">Madras High Court (Principal Seat)</p>
+            </div>
+          </div>
+
+          <!-- Digest Breakdown Card -->
+          <div class="p-3 bg-dark rounded border border-success border-opacity-25 font-mono small mb-3">
+            <div class="text-secondary small mb-1">COMPUTED DOCUMENT HASH:</div>
+            <div class="text-success fw-bold text-break" id="matched-hash-display"></div>
+          </div>
+
+          <!-- Case Detail Grid -->
+          <div class="row g-2 small mb-3">
+            <div class="col-md-3">
+              <div class="p-2 bg-dark rounded border border-secondary border-opacity-15">
+                <span class="text-secondary d-block">Case Number:</span>
+                <span class="text-light fw-semibold" id="matched-caseno">—</span>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="p-2 bg-dark rounded border border-secondary border-opacity-15">
+                <span class="text-secondary d-block">Decision Date:</span>
+                <span class="text-light fw-semibold" id="matched-date">—</span>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="p-2 bg-dark rounded border border-secondary border-opacity-15">
+                <span class="text-secondary d-block">Judicial Coram:</span>
+                <span class="text-light fw-semibold" id="matched-bench">—</span>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="p-2 bg-dark rounded border border-secondary border-opacity-15">
+                <span class="text-secondary d-block">Repository Status:</span>
+                <span class="text-success fw-semibold"><i class="bi bi-check-circle-fill me-1"></i>Published &amp; Sealed</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- View Action Link -->
+          <div class="d-flex justify-content-end gap-2">
+            <a href="#" class="btn btn-sm btn-gold" id="matched-view-btn">
+              <i class="bi bi-book-half me-1"></i>Open Official Judgment Record
+            </a>
+          </div>
+        </div>
+
+        <!-- Unregistered / Tampered Banner -->
+        <div id="result-unregistered" class="card card-judicial p-4 mb-4 border-danger border-opacity-50 shadow-lg d-none" style="background: linear-gradient(145deg, rgba(239, 68, 68, 0.08) 0%, #ffffff 100%);">
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="rounded-circle bg-danger bg-opacity-25 p-3 text-danger d-inline-flex">
+              <i class="bi bi-shield-x fs-1"></i>
+            </div>
+            <div>
+              <div class="badge bg-danger mb-1">NO REGISTERED MATCH</div>
+              <h2 class="h4 fw-bold text-light mb-0">Unverified or Modified Document</h2>
+              <p class="text-secondary small mb-0">This file does not match any sealed judgment published by the Madras High Court or Supreme Court.</p>
+            </div>
+          </div>
+
+          <div class="p-3 bg-dark rounded border border-danger border-opacity-25 font-mono small mb-3">
+            <div class="text-secondary small mb-1">QUERY DIGEST:</div>
+            <div class="text-danger fw-bold text-break" id="unregistered-hash-display"></div>
+          </div>
+
+          <div class="alert alert-dark small mb-0 border border-secondary border-opacity-25">
+            <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+            <strong>Caution:</strong> If this file was presented as an official certified judgment copy, it may have been altered, truncated, or tampered with after initial issuance.
+          </div>
+        </div>
+
+        <!-- Merkle Audit Trail -->
+        <div class="card card-judicial p-4" id="audit-trail-card">
+          <h3 class="h6 fw-bold text-light mb-3">
+            <i class="bi bi-clock-history text-warning me-1"></i>Immutable Audit Trail Verification
+          </h3>
+          <div class="table-responsive">
+            <table class="table table-dark table-striped small border border-secondary border-opacity-25">
+              <thead>
+                <tr class="text-secondary">
+                  <th>Timestamp</th>
+                  <th>Action</th>
+                  <th>Details</th>
+                  <th>Integrity Seal</th>
+                </tr>
+              </thead>
+              <tbody id="audit-table-body">
+                <tr><td colspan="4" class="text-secondary text-center">Loading audit log...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- CDN JS Dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+
+  <!-- LexGuard Core & Page Scripts -->
+  <script src="js/lexguard-core.js"></script>
+  <script src="js/lexguard-auth.js"></script>
+  <script src="js/lexguard-toast.js"></script>
+  <script src="js/lexguard-crypto.js"></script>
+  <script src="js/lexguard-api.js"></script>
+  <script src="js/lexguard-nav.js"></script>
+  <script src="js/pages/verify.js"></script>
+</body>
+</html>

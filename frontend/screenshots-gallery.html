@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="alternate icon" href="favicon.ico">
+  <title>LexGuard — Visual Audit & Task Execution Showcase</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="css/lexguard.css" rel="stylesheet">
+  <link href="css/components.css" rel="stylesheet">
+  <style>
+    body { background-color: #f8fafc; color: #0f172a; }
+    .gallery-card {
+      background: #ffffff;
+      border: 1px solid rgba(185, 28, 28, 0.15);
+      box-shadow: 0 2px 8px rgba(153, 27, 27, 0.04);
+      border-radius: 8px;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    }
+    .gallery-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(153, 27, 27, 0.12);
+      border-color: #991b1b;
+    }
+    .gallery-img {
+      width: 100%;
+      height: 220px;
+      object-fit: cover;
+      object-position: top;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(185, 28, 28, 0.1);
+      background-color: #f8fafc;
+    }
+    .badge-phase1 { background-color: #1e3a8a; color: #fff; }
+    .badge-phase2 { background-color: #991b1b; color: #fff; }
+    .status-pill {
+      font-size: 0.72rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 9999px;
+      font-weight: 600;
+    }
+    .filter-btn {
+      font-size: 0.8rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      border-color: rgba(185, 28, 28, 0.3);
+      color: #7f1d1d;
+      background: #ffffff;
+      transition: all 0.15s ease;
+    }
+    .filter-btn:hover {
+      background: #fef2f2;
+      border-color: #991b1b;
+      color: #991b1b;
+    }
+    .filter-btn.active {
+      background-color: #991b1b !important;
+      border-color: #991b1b !important;
+      color: #ffffff !important;
+      font-weight: 600;
+      box-shadow: 0 2px 6px rgba(153, 27, 27, 0.25);
+    }
+  </style>
+</head>
+<body data-active-page="gallery">
+
+  <!-- Top Navigation -->
+  <nav class="navbar navbar-expand-lg bg-white border-bottom border-danger border-opacity-15 sticky-top shadow-xs">
+    <div class="container-fluid px-4">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+        <div class="brand-emblem"><i class="bi bi-shield-shaded"></i></div>
+        <div class="d-flex flex-column">
+          <span class="fw-bold font-serif text-dark fs-5 tracking-tight">LEX<span class="text-danger">GUARD</span></span>
+          <span class="text-secondary small font-mono" style="font-size: 0.65rem; margin-top: -3px;">VISUAL AUDIT SHOWCASE</span>
+        </div>
+      </a>
+      <div class="d-flex align-items-center gap-2">
+        <a href="index.html" class="btn btn-sm btn-outline-danger"><i class="bi bi-house-door me-1"></i>Portal Home</a>
+        <a href="search.html" class="btn btn-sm btn-outline-danger"><i class="bi bi-search me-1"></i>Precedents</a>
+        <a href="admin.html?auth_role=staff" class="btn btn-sm btn-gold"><i class="bi bi-speedometer2 me-1"></i>Staff Admin</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container-fluid px-4 py-4">
+    <!-- Header Banner -->
+    <div class="card bg-white border-danger border-opacity-20 p-4 mb-4 shadow-xs">
+      <div class="row align-items-center">
+        <div class="col-lg-8">
+          <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill mb-2" style="background: rgba(185, 28, 28, 0.08); border: 1px solid rgba(185, 28, 28, 0.25);">
+            <i class="bi bi-shield-shaded text-danger"></i>
+            <span class="text-danger fw-bold font-mono" style="font-size: 0.75rem;">HIGH COURT COURT RED &amp; WHITE DESIGN SYSTEM</span>
+          </div>
+          <h2 class="fw-bold text-dark mb-2 font-serif"><i class="bi bi-camera-fill text-danger me-2"></i>Comprehensive Project Visual Audit</h2>
+          <p class="text-secondary mb-0">
+            Automated visual execution outputs captured across all actions, workflows, and task states for both 
+            <strong class="text-primary">Phase 1 (React 18 / Vite SPA)</strong> and <strong class="text-danger">Phase 2 (HTML5 / Bootstrap 5 / jQuery)</strong>,
+            actively connected to the live <strong>FastAPI Backend</strong> and <strong>PostgreSQL 17 Database</strong>.
+          </p>
+        </div>
+        <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+          <div class="d-inline-flex flex-column gap-1 text-start bg-light p-3 rounded border border-danger border-opacity-15 shadow-xs">
+            <div class="small text-secondary"><i class="bi bi-check-circle-fill text-success me-1"></i><strong>Database:</strong> PostgreSQL 17 (208 Cases)</div>
+            <div class="small text-secondary"><i class="bi bi-check-circle-fill text-success me-1"></i><strong>Port 8000:</strong> FastAPI v1 API Live</div>
+            <div class="small text-secondary"><i class="bi bi-check-circle-fill text-success me-1"></i><strong>Port 8888:</strong> HTML5 Client (Court Red &amp; White)</div>
+            <div class="small text-secondary"><i class="bi bi-check-circle-fill text-success me-1"></i><strong>Port 5173:</strong> React Client Connected</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter Buttons -->
+    <div class="d-flex flex-wrap gap-2 mb-4">
+      <button class="btn filter-btn active" data-filter="all">All Outputs (31)</button>
+      <button class="btn filter-btn" data-filter="phase2">Phase 2: HTML5 Suite (17)</button>
+      <button class="btn filter-btn" data-filter="phase1">Phase 1: React SPA (14)</button>
+      <button class="btn filter-btn" data-filter="auth">Authentication &amp; Roles</button>
+      <button class="btn filter-btn" data-filter="search">Search &amp; Discovery</button>
+      <button class="btn filter-btn" data-filter="review">Staff CIS Workstation</button>
+      <button class="btn filter-btn" data-filter="compare">Precedent &amp; Concordance</button>
+      <button class="btn filter-btn" data-filter="statutory">Statutory Acts</button>
+      <button class="btn filter-btn" data-filter="crypto">Cryptographic Verification</button>
+      <button class="btn filter-btn" data-filter="errors">404 Error Recovery</button>
+    </div>
+
+    <!-- Gallery Grid -->
+    <div class="row g-4" id="gallery-container">
+      <!-- Cards rendered dynamically -->
+    </div>
+  </div>
+
+  <!-- Zoom Modal -->
+  <div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+      <div class="modal-content bg-white border-danger border-opacity-25 shadow-lg">
+        <div class="modal-header border-danger border-opacity-15">
+          <h5 class="modal-title text-dark font-serif" id="modalTitle">Screenshot Preview</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-0 text-center bg-light">
+          <img id="modalImg" src="" alt="Zoomed Screenshot" class="img-fluid" style="max-height: 85vh; width: 100%; object-fit: contain;">
+        </div>
+        <div class="modal-footer border-danger border-opacity-15 justify-content-between">
+          <span class="text-secondary small" id="modalDesc"></span>
+          <a id="modalDownload" href="" download class="btn btn-sm btn-gold"><i class="bi bi-download me-1"></i>Download Full PNG</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script>
+    const items = [
+      // Phase 2 (HTML5 - Court Red & White Theme)
+      { id: "html_00", phase: "phase2", tags: ["search", "auth"], title: "High Court Portal & 10-Service Grid", filename: "html_00_landing.png", desc: "Official Madras High Court e-Courts portal with CNR search hero, trust statistics, and 10 judicial service tiles in Court Red & White theme." },
+      { id: "html_01", phase: "phase2", tags: ["auth"], title: "Multi-Role Quick Access Login", filename: "html_01_login.png", desc: "Zero-build Bootstrap 5 login with instant one-click test credentials for Staff, Advocate, Scholar, and Public." },
+      { id: "html_02", phase: "phase2", tags: ["auth"], title: "Citizen & Bar Registration", filename: "html_02_register.png", desc: "Pure HTML5/Bootstrap registration form with client-side validation, clean white panels, and crimson accents." },
+      { id: "html_03", phase: "phase2", tags: ["search"], title: "Hybrid Precedent Search & Live DB", filename: "html_03_search_results.png", desc: "Precedent search querying live PostgreSQL database (208 cases) with match confidence percentage and citation copy." },
+      { id: "html_04", phase: "phase2", tags: ["review"], title: "Staff Analytics & Approval Queue", filename: "html_04_dashboard_admin.png", desc: "Live Chart.js doughnut & bar charts in crimson palette with one-click verification queue actions on PostgreSQL." },
+      { id: "html_05", phase: "phase2", tags: ["search"], title: "Advanced PDF.js Viewer & Dossier", filename: "html_05_case_viewer_pdf.png", desc: "Split-view PDF reader with selectable text layer, thumbnail navigation drawer, keyword search stepper, and print." },
+      { id: "html_06", phase: "phase2", tags: ["review"], title: "Split-Screen Staff CIS Review", filename: "html_06_case_review_split.png", desc: "Draggable split-screen reviewer with PDF on the left and live editable CIS fields (FIR, Police Station, Acts) on the right." },
+      { id: "html_07", phase: "phase2", tags: ["compare"], title: "3-Precedent Tray & Concordance", filename: "html_07_case_compare_tray.png", desc: "Multi-case comparison tray supporting up to 3 precedents alongside CrPC 1973 ↔ BNSS 2023 concordance matrix." },
+      { id: "html_08", phase: "phase2", tags: ["compare"], title: "AI Judgment Draft Assistant Studio", filename: "html_08_draft_assistant.png", desc: "Interactive draft studio with draggable split resizer, saved draft sessions modal, and precision statutory audit." },
+      { id: "html_09", phase: "phase2", tags: ["statutory"], title: "Major Indian Acts Catalog", filename: "html_09_acts_explorer.png", desc: "Categorized statutory directory covering IPC, CrPC, Evidence Act, BNS, BNSS, and BSA with instant section search." },
+      { id: "html_10", phase: "phase2", tags: ["crypto"], title: "SHA-256 Tamper Verification Engine", filename: "html_10_verify_tamper.png", desc: "Web Crypto API SHA-256 client hashing and backend database ledger lookup for tamper detection." },
+      { id: "html_11", phase: "phase2", tags: ["search"], title: "Madras HC Daily Cause List Tracker", filename: "html_11_cause_list.png", desc: "Principal Seat & Madurai Bench court board tracker with live courtroom status and case serial listing." },
+      { id: "html_12", phase: "phase2", tags: ["crypto"], title: "Cryptographic Merkle Audit Ledger", filename: "html_12_audit_ledger.png", desc: "Dedicated Merkle hash-chained ledger viewer with live SHA-256 block hash inspector and chain verification against PostgreSQL." },
+      { id: "html_13", phase: "phase2", tags: ["search"], title: "Upgraded Case Reader & Keyword Finder", filename: "html_13_case_viewer_upgraded.png", desc: "Binary PDF.js stream reader with integrated in-document keyword extraction, page pills, and official judicial brief export." },
+      { id: "html_14", phase: "phase2", tags: ["errors"], title: "Judicial 404 Not Found Portal", filename: "html_14_404_page.png", desc: "Light judicial 404 error page with live case search input, direct links to statutory explorer and staff portal, and route diagnostics." },
+      { id: "html_15", phase: "phase2", tags: ["search"], title: "Live Daily Cause List & Court Board", filename: "html_15_cause_list_live.png", desc: "Principal Seat & Madurai Bench court board tracker querying live PostgreSQL cases with status pills and dossier shortcuts." },
+      { id: "html_16", phase: "phase2", tags: ["errors"], title: "Graceful 404 Docket Handler in Viewer", filename: "html_16_case_viewer_404.png", desc: "In-line judicial empty state when an invalid or sealed case identifier is requested, preventing hanging spinners." },
+
+      // Phase 1 (React)
+      { id: "react_01", phase: "phase1", tags: ["auth"], title: "Landing Page & e-Courts Grid", filename: "react_01_landing.png", desc: "React Landing page featuring e-Courts service grid, Madras High Court bench quick links, and system architecture metrics." },
+      { id: "react_02", phase: "phase1", tags: ["auth"], title: "Staff & Advocate Sign In", filename: "react_02_login.png", desc: "React Auth page with dual credentials, quick demo persona chips (Registrar, Advocate, Scholar), and JWT session issuance." },
+      { id: "react_03", phase: "phase1", tags: ["auth"], title: "User & Bar Registration", filename: "react_03_register.png", desc: "Role-based registration with bar council enrollment verification and academic institution validation." },
+      { id: "react_04", phase: "phase1", tags: ["search"], title: "Precedent Hybrid Search", filename: "react_04_search_public.png", desc: "InLegalBERT semantic and BM25 full-text hybrid search interface with RRF ranking across Madras High Court cases." },
+      { id: "react_05", phase: "phase1", tags: ["statutory"], title: "Statutory Acts & BNS Concordance", filename: "react_05_acts_explorer.png", desc: "Interactive statutory explorer mapping Indian Penal Code to Bharatiya Nyaya Sanhita (BNS) 2023 with section search." },
+      { id: "react_06", phase: "phase1", tags: ["crypto"], title: "SHA-256 Tamper Verification", filename: "react_06_verify_public.png", desc: "Cryptographic hash verification portal for calculating file digests and auditing tamper-evident digital seals." },
+      { id: "react_07", phase: "phase1", tags: ["review"], title: "Staff Executive Dashboard", filename: "react_07_dashboard_staff.png", desc: "Registrar executive dashboard with KPI metrics, ingest velocity, pending approval count, and distribution charts." },
+      { id: "react_08", phase: "phase1", tags: ["search"], title: "Authenticated Case Search", filename: "react_08_search_auth.png", desc: "Advocate research workspace with citation bookmarking, judgment export, and court filters." },
+      { id: "react_09", phase: "phase1", tags: ["search"], title: "Judicial Case Reader & Dossier", filename: "react_09_case_viewer.png", desc: "Comprehensive case dossier with Coram details, decision dates, disposition badges, and SHA-256 integrity seal." },
+      { id: "react_10", phase: "phase1", tags: ["review"], title: "Human-in-the-Loop CIS Review", filename: "react_10_case_review.png", desc: "Court Staff moderation desk verifying extracted CIS docket fields, police station, FIR, and statutory sections." },
+      { id: "react_11", phase: "phase1", tags: ["compare"], title: "Multi-Case Comparative Matrix", filename: "react_11_case_compare.png", desc: "Comparative precedent workbench analyzing holding divergence, ratio decidendi, and legal issue concordance." },
+      { id: "react_12", phase: "phase1", tags: ["crypto"], title: "Cryptographic Merkle Audit Ledger", filename: "react_12_audit_ledger.png", desc: "Immutable SHA-256 chained audit logs tracking all case modifications, verifications, and approvals." },
+      { id: "react_13", phase: "phase1", tags: ["review"], title: "Case Ingestion & CIS Extraction", filename: "react_13_case_upload.png", desc: "PDF upload pipeline with automated InLegalBERT NER extraction and cryptographic hashing." },
+      { id: "react_14", phase: "phase1", tags: ["errors"], title: "Tailwind & Lucide 404 Recovery Screen", filename: "react_14_404_page.png", desc: "User-friendly React 404 page with route diagnostics, in-card precedent search, and fast navigation links." }
+    ];
+
+    function renderGallery(filter) {
+      const $container = $('#gallery-container');
+      $container.empty();
+
+      const filtered = items.filter(item => {
+        if (filter === 'all') return true;
+        if (filter === 'phase1') return item.phase === 'phase1';
+        if (filter === 'phase2') return item.phase === 'phase2';
+        return item.tags.includes(filter);
+      });
+
+      filtered.forEach(item => {
+        const phaseBadge = item.phase === 'phase1' 
+          ? '<span class="status-pill badge-phase1"><i class="bi bi-code-slash me-1"></i>Phase 1 (React)</span>'
+          : '<span class="status-pill badge-phase2"><i class="bi bi-filetype-html me-1"></i>Phase 2 (HTML5)</span>';
+
+        const cardHtml = `
+          <div class="col-md-6 col-lg-4 col-xl-3">
+            <div class="gallery-card h-100 d-flex flex-column">
+              <img src="screenshots/${item.filename}" alt="${item.title}" class="gallery-img" data-title="${item.title}" data-desc="${item.desc}" data-src="screenshots/${item.filename}" onerror="this.src='screenshots/html_03_search_results.png'">
+              <div class="p-3 d-flex flex-column flex-grow-1">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  ${phaseBadge}
+                  <span class="badge bg-light text-danger border border-danger border-opacity-25">${item.tags[0]}</span>
+                </div>
+                <h6 class="fw-bold text-dark mb-1 font-serif">${item.title}</h6>
+                <p class="small text-secondary flex-grow-1 mb-3">${item.desc}</p>
+                <div class="d-flex align-items-center justify-content-between pt-2 border-top border-danger border-opacity-10">
+                  <span class="small text-muted font-monospace" style="font-size: 0.7rem;">${item.filename}</span>
+                  <button class="btn btn-sm btn-outline-danger view-btn" data-title="${item.title}" data-desc="${item.desc}" data-src="screenshots/${item.filename}">
+                    <i class="bi bi-arrows-fullscreen"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        $container.append(cardHtml);
+      });
+
+      // Bind modal triggers
+      $('.gallery-img, .view-btn').on('click', function() {
+        const title = $(this).data('title');
+        const desc = $(this).data('desc');
+        const src = $(this).data('src');
+
+        $('#modalTitle').text(title);
+        $('#modalDesc').text(desc);
+        $('#modalImg').attr('src', src);
+        $('#modalDownload').attr('href', src).attr('download', src.split('/').pop());
+
+        const modal = new bootstrap.Modal(document.getElementById('imageModal'));
+        modal.show();
+      });
+    }
+
+    $(document).ready(function() {
+      renderGallery('all');
+
+      $('.filter-btn').on('click', function() {
+        $('.filter-btn').removeClass('active');
+        $(this).addClass('active');
+        const f = $(this).data('filter');
+        renderGallery(f);
+      });
+    });
+  </script>
+</body>
+</html>

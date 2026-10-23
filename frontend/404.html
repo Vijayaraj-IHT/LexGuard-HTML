@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="alternate icon" href="favicon.ico">
+  <title>404 — Judicial Record Not Found · LexGuard</title>
+
+  <!-- Google Fonts & CDN CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- LexGuard Styles -->
+  <link rel="stylesheet" href="css/lexguard.css">
+  <link rel="stylesheet" href="css/components.css">
+  <style>
+    .error-card {
+      background: #ffffff;
+      border: 1px solid rgba(185, 28, 28, 0.15);
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(153, 27, 27, 0.06);
+    }
+    .dest-card {
+      background: #ffffff;
+      border: 1px solid rgba(185, 28, 28, 0.12);
+      border-radius: 8px;
+      padding: 1rem;
+      text-decoration: none;
+      color: #0f172a;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .dest-card:hover {
+      background: #fef2f2;
+      border-color: #991b1b;
+      color: #7f1d1d;
+      transform: translateY(-2px);
+    }
+    .dest-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: rgba(185, 28, 28, 0.1);
+      color: #991b1b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body class="lg-auth-layout">
+
+  <div class="lg-main py-5">
+    <div class="container" style="max-width: 680px;">
+      
+      <!-- Center Emblem -->
+      <div class="text-center mb-4">
+        <div class="d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px; border-radius: 24px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); box-shadow: 0 8px 24px rgba(245, 158, 11, 0.15);">
+          <i class="bi bi-file-earmark-x fs-1 text-danger"></i>
+        </div>
+        <div class="badge bg-danger text-white px-3 py-1 mb-2 fw-semibold">HTTP 404 · NOT FOUND</div>
+        <h1 class="h2 font-serif fw-bold text-light mb-2">Judicial Record or Docket Not Found</h1>
+        <p class="text-secondary max-w-lg mx-auto mb-4">
+          The requested judgment docket, statutory section, or application route could not be located in the repository. It may have been archived, reclassified, or the URL might contain a typographical discrepancy.
+        </p>
+      </div>
+
+      <!-- Quick Search Bar -->
+      <div class="card error-card p-4 mb-4">
+        <label for="error-search-input" class="form-label text-light small fw-semibold mb-2">
+          <i class="bi bi-search text-danger me-1"></i>Search All 208 Precedents &amp; Acts
+        </label>
+        <form id="error-search-form" class="input-group">
+          <input type="text" id="error-search-input" class="form-control bg-dark border-secondary border-opacity-50 text-light" placeholder="e.g. Anand v. State, Section 420 IPC, Madurai Bench, Bail..." required>
+          <button type="submit" class="btn btn-gold px-4">
+            <i class="bi bi-arrow-right me-1"></i>Search
+          </button>
+        </form>
+      </div>
+
+      <!-- Quick Destinations Grid -->
+      <div class="row g-3 mb-4">
+        <div class="col-sm-6">
+          <a href="search.html" class="dest-card">
+            <div class="dest-icon"><i class="bi bi-search"></i></div>
+            <div>
+              <div class="fw-semibold text-light small">Hybrid Precedent Search</div>
+              <div class="text-secondary" style="font-size: 0.75rem;">Dense vector &amp; BM25 full text</div>
+            </div>
+          </a>
+        </div>
+        <div class="col-sm-6">
+          <a href="acts-explorer.html" class="dest-card">
+            <div class="dest-icon"><i class="bi bi-book-half"></i></div>
+            <div>
+              <div class="fw-semibold text-light small">Statutory Acts Explorer</div>
+              <div class="text-secondary" style="font-size: 0.75rem;">IPC &harr; BNS 2023 concordance</div>
+            </div>
+          </a>
+        </div>
+        <div class="col-sm-6">
+          <a href="case-compare.html" class="dest-card">
+            <div class="dest-icon"><i class="bi bi-columns-gap"></i></div>
+            <div>
+              <div class="fw-semibold text-light small">Precedent Comparator</div>
+              <div class="text-secondary" style="font-size: 0.75rem;">Side-by-side legal ratio analysis</div>
+            </div>
+          </a>
+        </div>
+        <div class="col-sm-6">
+          <a href="verify.html" class="dest-card">
+            <div class="dest-icon"><i class="bi bi-shield-check"></i></div>
+            <div>
+              <div class="fw-semibold text-light small">Document Verifier</div>
+              <div class="text-secondary" style="font-size: 0.75rem;">Zero-byte SHA-256 seal audit</div>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <!-- Diagnostics Box -->
+      <div class="card error-card p-3 mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="text-secondary small"><i class="bi bi-terminal me-1"></i>Attempted Request:</span>
+          <code class="text-danger small font-monospace" id="req-path">/</code>
+        </div>
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <span class="text-secondary small"><i class="bi bi-database-check me-1"></i>PostgreSQL Repository:</span>
+          <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25">208 Verified Cases Online</span>
+        </div>
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-secondary small"><i class="bi bi-clock-history me-1"></i>Timestamp:</span>
+          <span class="text-light small font-monospace" id="diag-time"></span>
+        </div>
+      </div>
+
+      <!-- Back Action -->
+      <div class="text-center">
+        <a href="search.html" class="btn btn-outline-secondary btn-sm me-2">
+          <i class="bi bi-arrow-left me-1"></i>Return to Precedent Search
+        </a>
+        <a href="admin.html?auth_role=staff" class="btn btn-judicial-outline btn-sm">
+          <i class="bi bi-speedometer2 me-1"></i>Staff Workstation
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+  <script src="js/lexguard-core.js"></script>
+  <script>
+    $(document).ready(function () {
+      $('#req-path').text(window.location.pathname + window.location.search);
+      $('#diag-time').text(new Date().toUTCString());
+
+      $('#error-search-form').on('submit', function (e) {
+        e.preventDefault();
+        const q = $('#error-search-input').val().trim();
+        if (q) {
+          window.location.href = 'search.html?q=' + encodeURIComponent(q);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

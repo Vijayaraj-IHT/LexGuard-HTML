@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="alternate icon" href="favicon.ico">
+  <title>Statutory &amp; Acts Explorer · LexGuard</title>
+
+  <!-- Google Fonts & CDN CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- LexGuard Styles -->
+  <link rel="stylesheet" href="css/lexguard.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body data-active-page="acts">
+
+  <!-- Shared Top Navbar & Left Sidebar slots -->
+  <div id="navbar-slot"></div>
+  <div id="sidebar-slot"></div>
+
+  <!-- Main Content -->
+  <main class="lg-main">
+    <div class="container-fluid px-0" style="max-width: 1200px;">
+
+      <!-- Page Header -->
+      <div class="lg-page-header">
+        <div>
+          <h1 class="lg-page-title">
+            <i class="bi bi-book-half text-warning"></i>
+            <span>Statutory &amp; Provision Explorer</span>
+          </h1>
+          <p class="lg-page-subtitle">
+            Browse judicial precedents categorized by Indian Penal/Procedural Codes, the Constitution of India, and Commercial Special Acts.
+          </p>
+        </div>
+        <div>
+          <span class="badge bg-secondary">CrPC / BNSS · IPC / BNS · Constitution</span>
+        </div>
+      </div>
+
+      <!-- Search & Filter Card -->
+      <div class="card card-judicial p-3 mb-4 shadow">
+        <div class="input-group input-group-lg">
+          <span class="input-group-text bg-dark border-secondary border-opacity-25 text-warning">
+            <i class="bi bi-search"></i>
+          </span>
+          <input type="text" class="form-control font-sans" id="acts-search-input" placeholder="Filter by Act, statutory section (e.g. 482, 138, 34), or legal subject...">
+        </div>
+      </div>
+
+      <!-- Acts Catalog Container -->
+      <div id="acts-catalog-container" class="d-flex flex-column gap-4">
+        <!-- Dynamically rendered Act Categories -->
+      </div>
+
+    </div>
+  </main>
+
+  <!-- CDN JS Dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+
+  <!-- LexGuard Core & Page Scripts -->
+  <script src="js/lexguard-core.js"></script>
+  <script src="js/lexguard-auth.js"></script>
+  <script src="js/lexguard-toast.js"></script>
+  <script src="js/lexguard-api.js"></script>
+  <script src="js/lexguard-nav.js"></script>
+  <script src="js/pages/acts-explorer.js"></script>
+</body>
+</html>

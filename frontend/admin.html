@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="alternate icon" href="favicon.ico">
+  <title>Staff Workstation &amp; Administration · LexGuard</title>
+
+  <!-- Google Fonts & CDN CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- LexGuard Styles -->
+  <link rel="stylesheet" href="css/lexguard.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body data-active-page="admin">
+
+  <!-- Shared Top Navbar & Left Sidebar slots -->
+  <div id="navbar-slot"></div>
+  <div id="sidebar-slot"></div>
+
+  <!-- Main Content -->
+  <main class="lg-main">
+    <div class="container-fluid px-0" style="max-width: 1240px;">
+
+      <!-- Page Header -->
+      <div class="lg-page-header">
+        <div>
+          <h1 class="lg-page-title">
+            <i class="bi bi-shield-lock-fill text-warning"></i>
+            <span>Court Staff Administration Workstation</span>
+          </h1>
+          <p class="lg-page-subtitle">
+            Judicial registry oversight, pending case ingestion review, composite seal verification, and immutable Merkle audit ledger.
+          </p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge badge-gold fs-7 px-3 py-2">
+            <i class="bi bi-person-badge-fill me-1"></i>Registrar Privilege
+          </span>
+          <button type="button" class="btn btn-sm btn-judicial-outline" id="refresh-admin-btn">
+            <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+          </button>
+        </div>
+      </div>
+
+      <!-- 4 KPI Metric Stat Cards -->
+      <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+          <div class="lg-metric-card shadow">
+            <div class="lg-metric-icon bg-primary bg-opacity-25 text-primary">
+              <i class="bi bi-journal-bookmark-fill"></i>
+            </div>
+            <div>
+              <div class="lg-metric-value" id="kpi-total-cases">176</div>
+              <div class="lg-metric-label">Total Judgments</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-3">
+          <div class="lg-metric-card shadow">
+            <div class="lg-metric-icon bg-success bg-opacity-25 text-success">
+              <i class="bi bi-shield-fill-check"></i>
+            </div>
+            <div>
+              <div class="lg-metric-value" id="kpi-published-cases">173</div>
+              <div class="lg-metric-label">Sealed &amp; Published</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-3">
+          <div class="lg-metric-card shadow">
+            <div class="lg-metric-icon bg-warning bg-opacity-25 text-warning">
+              <i class="bi bi-hourglass-split"></i>
+            </div>
+            <div>
+              <div class="lg-metric-value" id="kpi-pending-cases">0</div>
+              <div class="lg-metric-label">Pending Approval</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-3">
+          <div class="lg-metric-card shadow">
+            <div class="lg-metric-icon bg-info bg-opacity-25 text-info">
+              <i class="bi bi-link-45deg"></i>
+            </div>
+            <div>
+              <div class="lg-metric-value" id="kpi-total-audit">0</div>
+              <div class="lg-metric-label">Merkle Audit Records</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Admin Tabs Navigation -->
+      <ul class="nav nav-tabs border-secondary border-opacity-25 mb-4" id="adminTab" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active text-light fw-semibold" id="tab-overview-btn" data-bs-toggle="tab" data-bs-target="#tab-admin-overview" type="button" role="tab">
+            <i class="bi bi-graph-up me-1 text-primary"></i>Repository Analytics
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link text-light fw-semibold" id="tab-queue-btn" data-bs-toggle="tab" data-bs-target="#tab-admin-queue" type="button" role="tab">
+            <i class="bi bi-card-checklist me-1 text-warning"></i>Approval Queue <span class="badge bg-warning text-dark ms-1" id="queue-badge-count">0</span>
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link text-light fw-semibold" id="tab-audit-btn" data-bs-toggle="tab" data-bs-target="#tab-admin-audit" type="button" role="tab">
+            <i class="bi bi-clock-history me-1 text-success"></i>Merkle Audit Ledger
+          </button>
+        </li>
+      </ul>
+
+      <!-- Tab Content Area -->
+      <div class="tab-content" id="adminTabContent">
+
+        <!-- TAB 1: Repository Analytics & Charts -->
+        <div class="tab-pane fade show active" id="tab-admin-overview" role="tabpanel">
+          <div class="row g-4 mb-4">
+            <!-- Case Distribution Chart -->
+            <div class="col-lg-6">
+              <div class="card card-judicial p-4 h-100 shadow">
+                <h3 class="h6 fw-bold text-light mb-3">
+                  <i class="bi bi-pie-chart-fill text-warning me-2"></i>Case Publication &amp; Integrity Breakdown
+                </h3>
+                <div style="height: 280px; position: relative;">
+                  <canvas id="cases-doughnut-chart"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <!-- User Role Distribution Chart -->
+            <div class="col-lg-6">
+              <div class="card card-judicial p-4 h-100 shadow">
+                <h3 class="h6 fw-bold text-light mb-3">
+                  <i class="bi bi-bar-chart-fill text-info me-2"></i>Active Registered Users by Role
+                </h3>
+                <div style="height: 280px; position: relative;">
+                  <canvas id="users-bar-chart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Security System Health Panel -->
+          <div class="card card-judicial p-4 shadow">
+            <h3 class="h6 fw-bold text-light mb-3">
+              <i class="bi bi-shield-check text-success me-2"></i>Cryptographic &amp; Security Verification Posture
+            </h3>
+            <div class="row g-3 small">
+              <div class="col-md-3">
+                <div class="p-3 bg-dark rounded border border-secondary border-opacity-25">
+                  <div class="text-secondary mb-1">Audit Trail Integrity:</div>
+                  <div class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i>Merkle Hash Chained</div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="p-3 bg-dark rounded border border-secondary border-opacity-25">
+                  <div class="text-secondary mb-1">Composite Seal:</div>
+                  <div class="text-success fw-bold font-mono">Phi_case Enabled</div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="p-3 bg-dark rounded border border-secondary border-opacity-25">
+                  <div class="text-secondary mb-1">OWASP A07 Defense:</div>
+                  <div class="text-success fw-bold"><i class="bi bi-lock-fill me-1"></i>HttpOnly + Strict CSRF</div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="p-3 bg-dark rounded border border-secondary border-opacity-25">
+                  <div class="text-secondary mb-1">InLegalBERT Embeddings:</div>
+                  <div class="text-success fw-bold"><i class="bi bi-cpu-fill me-1"></i>100% Dense Vectors</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: Approval Queue -->
+        <div class="tab-pane fade" id="tab-admin-queue" role="tabpanel">
+          <div class="card card-judicial p-4 shadow">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <div>
+                <h3 class="h5 fw-bold text-light mb-0">Pending Case Verification Queue</h3>
+                <p class="text-secondary small mb-0">Review CIS metadata and affix official composite judicial seal.</p>
+              </div>
+              <a href="case-upload.html" class="btn btn-sm btn-gold">
+                <i class="bi bi-cloud-arrow-up me-1"></i>Ingest New Judgment
+              </a>
+            </div>
+
+            <!-- Queue Table -->
+            <div class="table-responsive">
+              <table class="table table-dark table-hover small border border-secondary border-opacity-25 align-middle mb-0">
+                <thead>
+                  <tr class="text-secondary border-bottom border-secondary border-opacity-50">
+                    <th>Case Title &amp; Details</th>
+                    <th>Jurisdiction</th>
+                    <th>Year</th>
+                    <th>Submitted By</th>
+                    <th>SHA-256 Digest</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="queue-table-body">
+                  <tr>
+                    <td colspan="6" class="text-center py-4 text-secondary">
+                      <div class="spinner-border spinner-border-sm text-warning me-2"></div>
+                      Loading pending approval queue...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: Merkle Audit Ledger -->
+        <div class="tab-pane fade" id="tab-admin-audit" role="tabpanel">
+          <div class="card card-judicial p-4 shadow">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+              <div>
+                <h3 class="h5 fw-bold text-light mb-0">Cryptographic Merkle Audit Ledger</h3>
+                <p class="text-secondary small mb-0">Chained chronological records proving tamper-proof immutability.</p>
+              </div>
+
+              <!-- Real-Time Audit Chain Verifier Button -->
+              <button type="button" class="btn btn-sm btn-gold" id="verify-chain-btn">
+                <i class="bi bi-shield-check me-1"></i>Verify Entire Hash Chain
+              </button>
+            </div>
+
+            <!-- Chain Status Banner -->
+            <div id="chain-status-banner" class="alert alert-dark small mb-3 border border-secondary border-opacity-25 d-none">
+              <!-- Dynamically populated verification status -->
+            </div>
+
+            <!-- Audit Logs Table -->
+            <div class="table-responsive">
+              <table class="table table-dark table-hover small border border-secondary border-opacity-25 align-middle mb-0">
+                <thead>
+                  <tr class="text-secondary border-bottom border-secondary border-opacity-50">
+                    <th style="width: 17%;">Timestamp</th>
+                    <th style="width: 13%;">Action</th>
+                    <th style="width: 35%;">Event Details</th>
+                    <th style="width: 17%;">Current Hash (H_curr)</th>
+                    <th style="width: 18%;">Previous Hash (H_prev)</th>
+                  </tr>
+                </thead>
+                <tbody id="audit-logs-table-body">
+                  <tr>
+                    <td colspan="5" class="text-center py-4 text-secondary">
+                      <div class="spinner-border spinner-border-sm text-warning me-2"></div>
+                      Loading audit records...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Review / Approve Modal -->
+  <div class="modal fade" id="reviewModal" tabindex="-1" aria-labelledby="reviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content bg-dark text-light border border-secondary border-opacity-50">
+        <div class="modal-header border-bottom border-secondary border-opacity-25">
+          <h5 class="modal-title font-serif fw-bold text-warning" id="reviewModalLabel">
+            <i class="bi bi-shield-check me-2"></i>Affix Composite Judicial Seal (Phi_case)
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <input type="hidden" id="modal-case-id">
+          <div class="mb-3">
+            <h6 class="fw-bold text-light mb-1" id="modal-case-title">—</h6>
+            <div class="small text-secondary" id="modal-case-court">—</div>
+          </div>
+
+          <div class="mb-3">
+            <label for="modal-review-note" class="form-label text-secondary small fw-semibold">Registrar Review Note</label>
+            <textarea class="form-control" id="modal-review-note" rows="3" placeholder="Verified against certified copy from Madras High Court Registry..."></textarea>
+          </div>
+
+          <div class="p-3 bg-black rounded border border-warning border-opacity-25 small font-mono text-warning">
+            <i class="bi bi-info-circle me-1"></i>
+            Approval will compute: Phi_case = SHA-256(H_doc || H_meta || H_text || T_approved) and stamp this judgment permanently in the repository.
+          </div>
+        </div>
+        <div class="modal-footer border-top border-secondary border-opacity-25">
+          <button type="button" class="btn btn-sm btn-judicial-outline" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-sm btn-danger" id="modal-reject-btn">Reject Submission</button>
+          <button type="button" class="btn btn-sm btn-gold" id="modal-approve-btn">
+            <i class="bi bi-patch-check-fill me-1"></i>Approve &amp; Affix Seal
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CDN JS Dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+  <!-- LexGuard Core & Page Scripts -->
+  <script src="js/lexguard-core.js"></script>
+  <script src="js/lexguard-auth.js"></script>
+  <script src="js/lexguard-toast.js"></script>
+  <script src="js/lexguard-api.js"></script>
+  <script src="js/lexguard-nav.js"></script>
+  <script src="js/pages/admin.js"></script>
+</body>
+</html>

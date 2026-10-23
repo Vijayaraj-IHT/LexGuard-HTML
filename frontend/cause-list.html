@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="alternate icon" href="favicon.ico">
+  <title>Daily Cause List &amp; Board Tracker · LexGuard</title>
+
+  <!-- Google Fonts & CDN CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- LexGuard Styles -->
+  <link rel="stylesheet" href="css/lexguard.css">
+  <link rel="stylesheet" href="css/components.css">
+  <style>
+    .court-status-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 0.35rem 0.65rem;
+      border-radius: 9999px;
+    }
+    .status-in-session {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    .status-passed-over {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .status-next {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    .status-disposed {
+      background: rgba(148, 163, 184, 0.15);
+      color: #cbd5e1;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+    }
+    .cause-row {
+      transition: background 0.15s ease;
+    }
+    .cause-row:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+  </style>
+</head>
+<body data-active-page="causelist">
+
+  <!-- Shared Top Navbar & Left Sidebar slots -->
+  <div id="navbar-slot"></div>
+  <div id="sidebar-slot"></div>
+
+  <!-- Main Content -->
+  <main class="lg-main">
+    <div class="container-fluid px-0" style="max-width: 1240px;">
+
+      <!-- Header Banner -->
+      <div class="card card-judicial p-4 mb-3 shadow">
+        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+          <div>
+            <div class="badge badge-court-red px-3 py-1 mb-2 fw-semibold">
+              <i class="bi bi-clock-history me-1"></i>e-Courts Daily Roster
+            </div>
+            <h1 class="h3 font-serif fw-bold text-light mb-1">Madras High Court · Daily Cause List &amp; Live Board</h1>
+            <p class="text-secondary small mb-0">
+              Real-time courtroom proceedings, serial listing, and case dossier access across Principal Seat (Chennai) and Madurai Bench.
+            </p>
+          </div>
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <button class="btn btn-sm btn-gold" id="btn-refresh-board">
+              <i class="bi bi-arrow-clockwise me-1"></i>Refresh Board
+            </button>
+            <a href="search.html" class="btn btn-sm btn-judicial-outline">
+              <i class="bi bi-search me-1"></i>Search Archives
+            </a>
+          </div>
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="row g-2 mt-3 pt-3 border-top border-secondary border-opacity-15">
+          <div class="col-md-4 col-sm-6">
+            <label class="form-label text-secondary small mb-1">Bench &amp; Court Hall</label>
+            <select class="form-select form-select-sm " id="filter-bench">
+              <option value="all">All Benches &amp; Halls</option>
+              <option value="principal-ch1">Principal Seat · Court Hall 1 (Chief Justice Bench)</option>
+              <option value="principal-ch2">Principal Seat · Court Hall 2 (Writ Jurisdiction)</option>
+              <option value="principal-ch5">Principal Seat · Court Hall 5 (Criminal Appellate)</option>
+              <option value="madurai-ch1">Madurai Bench · Court Hall 1 (Division Bench)</option>
+              <option value="madurai-ch3">Madurai Bench · Court Hall 3 (Single Bench)</option>
+            </select>
+          </div>
+          <div class="col-md-3 col-sm-6">
+            <label class="form-label text-secondary small mb-1">Sitting Date</label>
+            <input type="date" class="form-control form-control-sm  font-mono" id="filter-date" value="2026-10-23">
+          </div>
+          <div class="col-md-5">
+            <label class="form-label text-secondary small mb-1">Live Filter (Party, Case No, Advocate, CNR)</label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-dark border-secondary border-opacity-50 text-secondary"><i class="bi bi-filter"></i></span>
+              <input type="text" class="form-control " id="filter-search" placeholder="Filter current board serials...">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Court Hall Status Cards -->
+      <div class="row g-3 mb-3" id="hall-metrics-row">
+        <div class="col-6 col-md-3">
+          <div class="card card-judicial p-3 text-center">
+            <div class="small text-secondary mb-1">Active Halls</div>
+            <div class="h4 fw-bold text-success mb-0 font-monospace">5 Halls</div>
+            <div class="text-secondary" style="font-size: 0.72rem;">Live in Session</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card card-judicial p-3 text-center">
+            <div class="small text-secondary mb-1">Listed Serials</div>
+            <div class="h4 fw-bold text-warning mb-0 font-monospace" id="total-serials-count">--</div>
+            <div class="text-secondary" style="font-size: 0.72rem;">Today's Board Items</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card card-judicial p-3 text-center">
+            <div class="small text-secondary mb-1">Pronounced / Disposed</div>
+            <div class="h4 fw-bold text-info mb-0 font-monospace" id="disposed-count">--</div>
+            <div class="text-secondary" style="font-size: 0.72rem;">Orders Uploaded</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card card-judicial p-3 text-center">
+            <div class="small text-secondary mb-1">Pending Next</div>
+            <div class="h4 fw-bold text-light mb-0 font-monospace" id="pending-count">--</div>
+            <div class="text-secondary" style="font-size: 0.72rem;">In Queue</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cause List Table -->
+      <div class="card card-judicial overflow-hidden shadow">
+        <div class="table-responsive">
+          <table class="table table-dark table-hover mb-0 align-middle" id="cause-list-table">
+            <thead>
+              <tr class="text-secondary small border-bottom border-secondary border-opacity-25" style="background: rgba(0,0,0,0.25);">
+                <th class="ps-3" style="width: 70px;">Item #</th>
+                <th style="width: 140px;">Court Hall</th>
+                <th>Case Number &amp; Parties</th>
+                <th style="width: 160px;">Bench / Coram</th>
+                <th style="width: 140px;">Stage / Purpose</th>
+                <th style="width: 130px;">Status</th>
+                <th class="text-end pe-3" style="width: 110px;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="cause-list-tbody">
+              <tr>
+                <td colspan="7" class="text-center py-5 text-secondary">
+                  <div class="spinner-border spinner-border-sm text-warning me-2" role="status"></div>
+                  Fetching live Madras High Court cause board from PostgreSQL repository...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+  <script src="js/lexguard-core.js"></script>
+  <script src="js/lexguard-auth.js"></script>
+  <script src="js/lexguard-api.js"></script>
+  <script src="js/lexguard-nav.js"></script>
+  <script src="js/pages/cause-list.js"></script>
+</body>
+</html>

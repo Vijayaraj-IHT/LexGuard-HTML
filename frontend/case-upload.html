@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="alternate icon" href="favicon.ico">
+  <title>Case Ingestion &amp; CIS Extraction · LexGuard</title>
+
+  <!-- Google Fonts & CDN CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- LexGuard Styles -->
+  <link rel="stylesheet" href="css/lexguard.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body data-active-page="upload">
+
+  <!-- Shared Top Navbar & Left Sidebar slots -->
+  <div id="navbar-slot"></div>
+  <div id="sidebar-slot"></div>
+
+  <!-- Main Content -->
+  <main class="lg-main">
+    <div class="container-fluid px-0" style="max-width: 980px;">
+
+      <!-- Page Header -->
+      <div class="lg-page-header">
+        <div>
+          <h1 class="lg-page-title">
+            <i class="bi bi-cloud-arrow-up text-warning"></i>
+            <span>Judicial Case Ingestion &amp; CIS Extraction</span>
+          </h1>
+          <p class="lg-page-subtitle">
+            Upload certified court orders or petitions. Automatic text extraction, InLegalBERT tagging, and SHA-256 fingerprinting.
+          </p>
+        </div>
+        <div>
+          <span class="badge badge-gold fs-7 px-3 py-2">
+            <i class="bi bi-shield-check me-1"></i>Staff Authorization Required
+          </span>
+        </div>
+      </div>
+
+      <!-- Ingestion Mode Selector Tabs -->
+      <ul class="nav nav-pills mb-4 gap-2" id="uploadModeTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active bg-dark border border-secondary border-opacity-25 text-light fw-semibold" id="tab-auto-btn" data-bs-toggle="pill" data-bs-target="#tab-auto" type="button" role="tab">
+            <i class="bi bi-magic text-warning me-1"></i>Automated CIS Extraction (Recommended)
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link bg-dark border border-secondary border-opacity-25 text-light fw-semibold" id="tab-manual-btn" data-bs-toggle="pill" data-bs-target="#tab-manual" type="button" role="tab">
+            <i class="bi bi-pencil-square text-info me-1"></i>Manual Case Entry
+          </button>
+        </li>
+      </ul>
+
+      <div class="tab-content" id="uploadModeTabsContent">
+
+        <!-- TAB 1: Auto CIS Ingestion -->
+        <div class="tab-pane fade show active" id="tab-auto" role="tabpanel">
+          <div class="card card-judicial p-4 mb-4 shadow">
+            <h2 class="h5 fw-bold text-light mb-1">One-Click PDF Ingestion</h2>
+            <p class="text-secondary small mb-4">
+              Select or drop an official court PDF. LexGuard will automatically parse CNR, parties, bench, statutory tags, and ratio decidendi.
+            </p>
+
+            <form id="auto-upload-form">
+              <div class="lg-dropzone mb-3" id="auto-dropzone">
+                <i class="bi bi-file-earmark-arrow-up lg-dropzone-icon"></i>
+                <h3 class="h5 fw-bold text-light mb-1" id="auto-file-label">Choose or Drop Judgment PDF</h3>
+                <p class="text-secondary small mb-3">Accepts PDF files up to 20MB</p>
+                <input type="file" id="auto-file-input" class="d-none" accept=".pdf">
+                <button type="button" class="btn btn-sm btn-gold" id="auto-browse-btn">
+                  <i class="bi bi-folder2-open me-1"></i>Select PDF
+                </button>
+              </div>
+
+              <!-- Uploading / Processing Progress -->
+              <div id="auto-upload-progress" class="mb-3 d-none">
+                <div class="d-flex justify-content-between small text-secondary mb-1">
+                  <span><i class="bi bi-cpu text-warning me-1"></i>Running OCR, CIS Extraction, &amp; InLegalBERT Tagging...</span>
+                  <span class="text-warning fw-bold">Processing</span>
+                </div>
+                <div class="progress" style="height: 6px; background-color: #f1f5f9;">
+                  <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width: 100%;"></div>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-gold w-100 py-2 d-flex align-items-center justify-content-center gap-2" id="auto-submit-btn" disabled>
+                <i class="bi bi-cloud-arrow-up-fill"></i>
+                <span>Ingest &amp; Extract Document</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- Auto-Extract Review Workstation Card (Displayed after successful extraction) -->
+          <div class="card card-judicial p-4 mb-4 shadow border-warning border-opacity-30 d-none" id="auto-review-card">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 pb-3 border-bottom border-secondary border-opacity-25">
+              <div>
+                <span class="badge bg-warning text-dark fw-bold mb-1"><i class="bi bi-cpu-fill me-1"></i>Automated Extraction Completed</span>
+                <h3 class="h5 fw-bold text-white mb-0" id="review-display-title">Extracted CIS Docket</h3>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-success fs-7" id="review-confidence-badge"><i class="bi bi-check-circle-fill me-1"></i>94% Confidence</span>
+                <span class="font-mono text-secondary small" id="review-sha-seal"></span>
+              </div>
+            </div>
+
+            <form id="auto-review-form">
+              <input type="hidden" id="review-case-id">
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <label class="form-label text-secondary small fw-semibold">Case Registration Number</label>
+                  <input type="text" class="form-control" id="review-caseno" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label text-secondary small fw-semibold">Court / Jurisdiction</label>
+                  <select class="form-select" id="review-court">
+                    <option value="Madras High Court (Principal Seat, Chennai)">Madras High Court (Principal Seat, Chennai)</option>
+                    <option value="Madras High Court (Madurai Bench)">Madras High Court (Madurai Bench)</option>
+                    <option value="Supreme Court of India">Supreme Court of India</option>
+                  </select>
+                </div>
+                <div class="col-md-12">
+                  <label class="form-label text-secondary small fw-semibold">Case Title</label>
+                  <input type="text" class="form-control" id="review-title" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label text-secondary small fw-semibold">Bench / Coram Judge</label>
+                  <input type="text" class="form-control" id="review-judge">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label text-secondary small fw-semibold">Parties / Counsel</label>
+                  <input type="text" class="form-control" id="review-parties">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label text-secondary small fw-semibold">Acts Cited (comma separated)</label>
+                  <input type="text" class="form-control" id="review-acts" placeholder="Indian Penal Code, CrPC">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label text-secondary small fw-semibold">Sections (comma separated)</label>
+                  <input type="text" class="form-control" id="review-sections" placeholder="Section 302, Section 438">
+                </div>
+                <div class="col-12">
+                  <label class="form-label text-secondary small fw-semibold">Ratio Decidendi</label>
+                  <textarea class="form-control font-serif" id="review-ratio" rows="3"></textarea>
+                </div>
+                <div class="col-12">
+                  <label class="form-label text-secondary small fw-semibold">Summary &amp; Facts</label>
+                  <textarea class="form-control small" id="review-summary" rows="3"></textarea>
+                </div>
+              </div>
+
+              <!-- Moderation Action Buttons -->
+              <div class="d-flex align-items-center justify-content-between pt-3 border-top border-secondary border-opacity-25 flex-wrap gap-2">
+                <a href="#" class="btn btn-sm btn-judicial-outline" id="review-split-btn">
+                  <i class="bi bi-layout-split me-1"></i>Open Split-Screen Reviewer
+                </a>
+                <div class="d-flex align-items-center gap-2">
+                  <a href="#" class="btn btn-sm btn-outline-secondary" id="review-dossier-btn">
+                    <i class="bi bi-book-half me-1"></i>View Case Dossier
+                  </a>
+                  <button type="button" class="btn btn-sm btn-gold" id="review-approve-btn">
+                    <i class="bi bi-shield-check me-1"></i>Approve &amp; Seal Case
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- TAB 2: Manual Ingestion -->
+        <div class="tab-pane fade" id="tab-manual" role="tabpanel">
+          <div class="card card-judicial p-4 mb-4 shadow">
+            <h2 class="h5 fw-bold text-light mb-1">Manual Case Registration</h2>
+            <p class="text-secondary small mb-4">Specify case parameters and upload the accompanying judgment copy.</p>
+
+            <form id="manual-upload-form">
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <label for="man-title" class="form-label text-secondary small fw-semibold">Case Title / Cause Title</label>
+                  <input type="text" class="form-control" id="man-title" placeholder="K. Senthil v. State of Tamil Nadu" required>
+                </div>
+                <div class="col-md-6">
+                  <label for="man-caseno" class="form-label text-secondary small fw-semibold">Case Number / CNR</label>
+                  <input type="text" class="form-control" id="man-caseno" placeholder="Crl.O.P. No. 1284/2026" required>
+                </div>
+              </div>
+
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <label for="man-court" class="form-label text-secondary small fw-semibold">Court / Jurisdiction</label>
+                  <select class="form-select" id="man-court" required>
+                    <option value="Madras High Court (Principal Seat)">Madras High Court (Principal Seat)</option>
+                    <option value="Madras High Court (Madurai Bench)">Madras High Court (Madurai Bench)</option>
+                    <option value="Supreme Court of India">Supreme Court of India</option>
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <label for="man-year" class="form-label text-secondary small fw-semibold">Year</label>
+                  <input type="number" class="form-control" id="man-year" value="2026" min="1950" max="2026" required>
+                </div>
+                <div class="col-md-3">
+                  <label for="man-outcome" class="form-label text-secondary small fw-semibold">Outcome</label>
+                  <select class="form-select" id="man-outcome">
+                    <option value="Allowed">Allowed</option>
+                    <option value="Dismissed">Dismissed</option>
+                    <option value="Disposed">Disposed</option>
+                    <option value="Quashed">Quashed</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="man-judge" class="form-label text-secondary small fw-semibold">Judicial Bench / Coram</label>
+                <input type="text" class="form-control" id="man-judge" placeholder="Hon'ble Mr. Justice R. Suresh Kumar">
+              </div>
+
+              <div class="mb-3">
+                <label for="man-acts" class="form-label text-secondary small fw-semibold">Statutory Sections &amp; Acts (comma-separated)</label>
+                <input type="text" class="form-control" id="man-acts" placeholder="Section 482 CrPC, Article 21, Section 420 IPC">
+              </div>
+
+              <div class="mb-3">
+                <label for="man-summary" class="form-label text-secondary small fw-semibold">Summary &amp; Ratio Decidendi</label>
+                <textarea class="form-control font-serif" id="man-summary" rows="3" placeholder="Core holding and ratio decidendi affirmed..."></textarea>
+              </div>
+
+              <div class="mb-4">
+                <label for="man-file" class="form-label text-secondary small fw-semibold">Judgment Document (PDF / DOCX)</label>
+                <input type="file" class="form-control" id="man-file" accept=".pdf,.docx" required>
+              </div>
+
+              <button type="submit" class="btn btn-gold w-100 py-2 d-flex align-items-center justify-content-center gap-2" id="man-submit-btn">
+                <i class="bi bi-cloud-arrow-up-fill"></i>
+                <span>Submit for Registrar Review</span>
+              </button>
+            </form>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Ingestion Success Modal -->
+      <div class="modal fade" id="uploadSuccessModal" tabindex="-1" aria-labelledby="uploadSuccessModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content bg-dark text-light border border-success border-opacity-50">
+            <div class="modal-header border-bottom border-secondary border-opacity-25">
+              <h5 class="modal-title font-serif fw-bold text-success" id="uploadSuccessModalLabel">
+                <i class="bi bi-check-circle-fill me-2"></i>Case Ingested Successfully!
+              </h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+              <p class="text-secondary small mb-3">
+                The document has been securely stored and submitted to the administrative verification queue.
+              </p>
+              <div class="p-3 bg-black rounded border border-secondary border-opacity-25 small mb-3">
+                <div class="text-secondary mb-1">Assigned Case ID:</div>
+                <div class="font-mono text-warning text-break" id="success-case-id">—</div>
+                <div class="text-secondary mt-2 mb-1">Computed SHA-256 Digest:</div>
+                <div class="font-mono text-success text-break" id="success-file-hash">—</div>
+              </div>
+            </div>
+            <div class="modal-footer border-top border-secondary border-opacity-25">
+              <button type="button" class="btn btn-sm btn-judicial-outline" data-bs-dismiss="modal">Ingest Another</button>
+              <a href="#" class="btn btn-sm btn-gold" id="success-view-case-btn">
+                <i class="bi bi-book-half me-1"></i>View Ingested Case
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- CDN JS Dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+
+  <!-- LexGuard Core & Page Scripts -->
+  <script src="js/lexguard-core.js"></script>
+  <script src="js/lexguard-auth.js"></script>
+  <script src="js/lexguard-toast.js"></script>
+  <script src="js/lexguard-api.js"></script>
+  <script src="js/lexguard-nav.js"></script>
+  <script src="js/pages/case-upload.js"></script>
+</body>
+</html>

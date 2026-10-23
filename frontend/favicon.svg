@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="courtRedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#b91c1c"/>
+      <stop offset="100%" stop-color="#7f1d1d"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Outer Judicial Shield in Deep Court Crimson -->
+  <path d="M32 4 L56 14 V32 C56 46 45 56 32 60 C19 56 8 46 8 32 V14 Z" 
+        fill="url(#courtRedGrad)" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>
+
+  <!-- Inner Scale Pillar in Pristine White -->
+  <line x1="32" y1="18" x2="32" y2="46" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <!-- Base -->
+  <path d="M22 46 L42 46" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="32" cy="18" r="3" fill="#ffffff"/>
+  <!-- Crossbeam -->
+  <line x1="16" y1="24" x2="48" y2="24" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
+  
+  <!-- Left Pan strings and Pan -->
+  <line x1="18" y1="25" x2="13" y2="34" stroke="#fee2e2" stroke-width="1.2"/>
+  <line x1="22" y1="25" x2="27" y2="34" stroke="#fee2e2" stroke-width="1.2"/>
+  <path d="M12 34 Q20 40 28 34 Z" fill="#ffffff"/>
+
+  <!-- Right Pan strings and Pan -->
+  <line x1="42" y1="25" x2="37" y2="34" stroke="#fee2e2" stroke-width="1.2"/>
+  <line x1="46" y1="25" x2="51" y2="34" stroke="#fee2e2" stroke-width="1.2"/>
+  <path d="M36 34 Q44 40 52 34 Z" fill="#ffffff"/>
+
+  <!-- Center Integrity Point -->
+  <circle cx="32" cy="30" r="2" fill="#fef2f2"/>
+</svg>

@@ -1,0 +1,145 @@
+/**
+ * LexGuard — Saved Bookmarks Controller (bookmarks.js)
+ * Semester 5 Project · LexGuard Judicial Repository & Verification Platform
+ */
+
+$(document).ready(function () {
+  'use strict';
+
+  // Requires user authentication
+  if (!LG.requireAuth()) {
+    return;
+  }
+
+  const $container = $('#bookmarks-container');
+  const $loading = $('#bookmarks-loading');
+  const $empty = $('#bookmarks-empty');
+  const $badgeCount = $('#bookmarks-count-badge');
+
+  /**
+   * Load user's saved bookmarks.
+   */
+  function loadBookmarks() {
+    $loading.removeClass('d-none');
+    $container.addClass('d-none').empty();
+    $empty.addClass('d-none');
+
+    LG.api.bookmarks.list()
+      .done(function (bookmarks) {
+        if (!Array.isArray(bookmarks) || bookmarks.length === 0) {
+          $empty.removeClass('d-none');
+          $badgeCount.text('0 Cases Saved');
+          return;
+        }
+
+        $badgeCount.text(`${bookmarks.length} Case${bookmarks.length > 1 ? 's' : ''} Saved`);
+
+        const html = bookmarks.map(function (b) {
+          const c = b.case || {};
+          const courtBadge = LG.utils.courtBadgeClass(c.court);
+          const citation = `${c.title || 'Case'}, (${c.year || ''}) ${c.court || ''}`;
+
+          return `
+            <div class="lg-case-card mb-3" id="bookmark-card-${b.id}">
+              <div class="d-flex align-items-start justify-content-between gap-3 mb-2">
+                <div>
+                  <a href="case-viewer.html?id=${encodeURIComponent(c.id || b.case_id)}" class="case-title">
+                    ${LG.utils.escapeHtml(c.title || 'Untitled Judgment')}
+                  </a>
+                  <div class="d-flex flex-wrap align-items-center gap-2 mt-1">
+                    <span class="${courtBadge}">${LG.utils.escapeHtml(c.court || 'Court')}</span>
+                    <span class="badge bg-secondary">${c.year || '—'}</span>
+                    ${c.outcome ? `<span class="badge badge-gold">${LG.utils.escapeHtml(c.outcome)}</span>` : ''}
+                    ${c.judge ? `<span class="small text-secondary"><i class="bi bi-person-fill me-1"></i>${LG.utils.escapeHtml(c.judge)}</span>` : ''}
+                  </div>
+                </div>
+
+                <div class="text-end">
+                  <button type="button" class="btn btn-sm btn-judicial-outline text-danger delete-bookmark-btn" data-id="${encodeURIComponent(b.id)}" title="Remove Bookmark">
+                    <i class="bi bi-trash3 me-1"></i>Remove
+                  </button>
+                </div>
+              </div>
+
+              ${b.notes ? `
+                <div class="p-2 px-3 rounded bg-dark border border-secondary border-opacity-15 small text-secondary my-2">
+                  <strong class="text-warning"><i class="bi bi-sticky me-1"></i>Research Note:</strong>
+                  <span>${LG.utils.escapeHtml(b.notes)}</span>
+                </div>
+              ` : ''}
+
+              <!-- Actions Bar -->
+              <div class="d-flex align-items-center justify-content-between pt-2 border-top border-secondary border-opacity-15 flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                  <a href="case-viewer.html?id=${encodeURIComponent(c.id || b.case_id)}" class="btn btn-sm btn-gold">
+                    <i class="bi bi-book-half me-1"></i>Read Judgment
+                  </a>
+                  <a href="case-compare.html?case1=${encodeURIComponent(c.id || b.case_id)}" class="btn btn-sm btn-judicial-outline">
+                    <i class="bi bi-columns-gap me-1"></i>Compare
+                  </a>
+                </div>
+
+                <div class="small text-secondary">
+                  Saved on ${LG.utils.formatDate(b.created_at)}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        $container.html(html).removeClass('d-none');
+
+        // Attach Delete Handler
+        $('.delete-bookmark-btn').on('click', function () {
+          const bid = $(this).data('id');
+          LG.api.bookmarks.remove(bid)
+            .done(function () {
+              LG.toast('Bookmark removed.', 'info');
+              $(`#bookmark-card-${bid}`).fadeOut(300, function () {
+                $(this).remove();
+                if ($container.children().length === 0) {
+                  $container.addClass('d-none');
+                  $empty.removeClass('d-none');
+                  $badgeCount.text('0 Cases Saved');
+                }
+              });
+            })
+            .fail(function () {
+              LG.toast('Failed to remove bookmark.', 'danger');
+            });
+        });
+
+        // Attach Export Bibliography Handler
+        $('#export-citations-btn').off('click').on('click', function () {
+          if (!bookmarks || bookmarks.length === 0) {
+            LG.toast('No bookmarks to export.', 'warning');
+            return;
+          }
+          let bib = `# RESEARCH BIBLIOGRAPHY & CITATOR INDEX\n*Generated by LexGuard Judicial Platform · ${new Date().toLocaleDateString()}*\n\n`;
+          bookmarks.forEach(function (b, idx) {
+            const c = b.case || {};
+            bib += `${idx + 1}. **${c.title || 'Case'}**, (${c.year || ''}) ${c.court || ''}\n`;
+            if (c.case_no) bib += `   *Case No:* ${c.case_no}  |  *CNR:* ${c.cnr || 'N/A'}\n`;
+            if (c.ratio_decidendi) bib += `   *Ratio:* ${c.ratio_decidendi.substring(0, 160)}...\n`;
+            if (b.notes) bib += `   *Research Memo:* ${b.notes}\n`;
+            bib += `\n`;
+          });
+          LG.utils.copyToClipboard(bib, 'Bibliography citations copied to clipboard!');
+        });
+      })
+      .fail(function (xhr) {
+        let msg = 'Failed to load bookmarks.';
+        if (xhr.responseJSON && xhr.responseJSON.detail) {
+          msg = typeof xhr.responseJSON.detail === 'string'
+            ? xhr.responseJSON.detail
+            : JSON.stringify(xhr.responseJSON.detail);
+        }
+        LG.toast(msg, 'danger');
+      })
+      .always(function () {
+        $loading.addClass('d-none');
+      });
+  }
+
+  loadBookmarks();
+});

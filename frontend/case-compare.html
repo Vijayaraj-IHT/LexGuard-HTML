@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="alternate icon" href="favicon.ico">
+  <title>Precedent Multi-Comparator &amp; Dimensional Matrix · LexGuard</title>
+
+  <!-- Google Fonts & CDN CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- LexGuard Styles -->
+  <link rel="stylesheet" href="css/lexguard.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body data-active-page="compare">
+
+  <!-- Shared Top Navbar & Left Sidebar slots -->
+  <div id="navbar-slot"></div>
+  <div id="sidebar-slot"></div>
+
+  <!-- Main Content -->
+  <main class="lg-main">
+    <div class="container-fluid px-0" style="max-width: 1240px;">
+
+      <!-- Page Header -->
+      <div class="lg-page-header">
+        <div>
+          <h1 class="lg-page-title">
+            <i class="bi bi-columns-gap text-warning"></i>
+            <span>Precedent Multi-Comparator</span>
+          </h1>
+          <p class="lg-page-subtitle">
+            Compare target petitions against 1 to 3 published landmark precedents simultaneously. Deterministic scoring, dimensional matrix, &amp; CrPC/BNSS divergence.
+          </p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge bg-secondary">Multi-Precedent Tray (1 to 3 Cases)</span>
+          <button type="button" class="btn btn-sm btn-gold" id="export-comparison-btn">
+            <i class="bi bi-download me-1"></i>Export Matrix
+          </button>
+          <button type="button" class="btn btn-sm btn-judicial-outline" id="print-report-btn">
+            <i class="bi bi-printer me-1"></i>Print Report
+          </button>
+        </div>
+      </div>
+
+      <!-- Precedent Selection Tray (Target + 3 Precedent Slots) -->
+      <div class="card card-judicial p-4 mb-4 shadow">
+        <h2 class="h6 fw-bold text-light mb-3 pb-2 border-bottom border-secondary border-opacity-25 d-flex align-items-center justify-content-between">
+          <span><i class="bi bi-collection text-warning me-2"></i>Multi-Precedent Comparison Tray</span>
+          <small class="text-secondary fw-normal">Select target case and up to 3 comparison authorities</small>
+        </h2>
+
+        <div class="row g-3">
+          <!-- Target Case -->
+          <div class="col-md-6 col-lg-3">
+            <label for="select-target-case" class="form-label text-warning small fw-semibold">
+              <i class="bi bi-file-earmark-person me-1"></i>Target Case / Petition
+            </label>
+            <select class="form-select form-select-sm" id="select-target-case">
+              <option value="">Choose Target Case...</option>
+            </select>
+          </div>
+
+          <!-- Precedent Slot 1 -->
+          <div class="col-md-6 col-lg-3">
+            <label for="select-precedent-1" class="form-label text-secondary small fw-semibold">
+              <i class="bi bi-1-circle text-info me-1"></i>Precedent Slot 1
+            </label>
+            <select class="form-select form-select-sm" id="select-precedent-1">
+              <option value="">Choose Precedent 1...</option>
+            </select>
+          </div>
+
+          <!-- Precedent Slot 2 -->
+          <div class="col-md-6 col-lg-3">
+            <label for="select-precedent-2" class="form-label text-secondary small fw-semibold">
+              <i class="bi bi-2-circle text-info me-1"></i>Precedent Slot 2
+            </label>
+            <select class="form-select form-select-sm" id="select-precedent-2">
+              <option value="">Choose Precedent 2...</option>
+            </select>
+          </div>
+
+          <!-- Precedent Slot 3 -->
+          <div class="col-md-6 col-lg-3">
+            <label for="select-precedent-3" class="form-label text-secondary small fw-semibold">
+              <i class="bi bi-3-circle text-info me-1"></i>Precedent Slot 3 (Optional)
+            </label>
+            <select class="form-select form-select-sm" id="select-precedent-3">
+              <option value="">Choose Precedent 3...</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mt-3 pt-3 border-top border-secondary border-opacity-15 d-flex justify-content-end gap-2">
+          <button type="button" class="btn btn-sm btn-judicial-outline" id="swap-cases-btn">
+            <i class="bi bi-arrow-left-right me-1"></i>Swap Slot 1 &amp; 2
+          </button>
+          <button type="button" class="btn btn-gold px-4" id="run-compare-btn">
+            <i class="bi bi-lightning-charge-fill me-1"></i>Run Multi-Comparison
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading Indicator -->
+      <div id="compare-loading" class="text-center py-5 d-none">
+        <div class="spinner-border text-warning" role="status"></div>
+        <p class="text-secondary small mt-2">Computing multi-dimensional alignment across precedents...</p>
+      </div>
+
+      <!-- Comparison Results Container -->
+      <div id="compare-results-container" class="d-none">
+
+        <!-- Best Match & Score Banner -->
+        <div class="card card-judicial p-4 mb-4 shadow" id="best-match-card">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-4">
+              <!-- SVG Score Ring -->
+              <div class="lg-score-ring">
+                <svg viewBox="0 0 80 80">
+                  <circle class="circle-bg" cx="40" cy="40" r="35"></circle>
+                  <circle class="circle-progress" id="score-ring-circle" cx="40" cy="40" r="35"></circle>
+                </svg>
+                <div class="score-text" id="score-ring-text">0%</div>
+              </div>
+
+              <div>
+                <span class="badge badge-gold mb-1" id="score-tier-badge">Best Precedential Match</span>
+                <h2 class="h5 fw-bold text-light mb-1" id="best-match-title">Analyzing Precedents...</h2>
+                <p class="text-secondary small mb-0" id="best-match-desc">
+                  Highest factual and statutory alignment across evaluated precedent authorities.
+                </p>
+              </div>
+            </div>
+
+            <div class="d-flex gap-2">
+              <div class="text-end" id="precedent-score-pills"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Multi-Precedent Comparison Matrix Table -->
+        <div class="card card-judicial p-4 mb-4 shadow">
+          <h3 class="h6 fw-bold text-light mb-3">
+            <i class="bi bi-table text-warning me-2"></i>Multi-Precedent Dimensional Matrix
+          </h3>
+          <div class="table-responsive">
+            <table class="table table-dark table-hover small border border-secondary border-opacity-25 align-middle mb-0" id="multi-matrix-table">
+              <thead class="table-dark">
+                <tr class="text-secondary border-bottom border-secondary border-opacity-50" id="matrix-head-row">
+                  <th style="width: 25%;">Dimension</th>
+                  <th style="width: 25%;">Target Petition Value</th>
+                  <!-- Dynamic Precedent Columns -->
+                </tr>
+              </thead>
+              <tbody id="matrix-table-body">
+                <!-- Dynamically populated multi-matrix rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Cross-Statutory Matrix (CrPC 1973 vs BNSS 2023) -->
+        <div class="card card-judicial p-4 mb-4 shadow">
+          <h3 class="h6 fw-bold text-light mb-2">
+            <i class="bi bi-arrow-repeat text-info me-2"></i>Cross-Statutory Divergence (CrPC 1973 ↔ BNSS 2023)
+          </h3>
+          <p class="text-secondary small mb-3">
+            Automated statutory concordance mapping older procedural provisions to the new Bharatiya Nagarik Suraksha Sanhita, 2023.
+          </p>
+          <div class="table-responsive">
+            <table class="table table-dark table-striped small border border-secondary border-opacity-25 mb-0">
+              <thead>
+                <tr class="text-secondary">
+                  <th>Previous Provision (CrPC / IPC)</th>
+                  <th>New Provision (BNSS / BNS)</th>
+                  <th>Subject Matter</th>
+                  <th>Judicial Continuity Status</th>
+                </tr>
+              </thead>
+              <tbody id="statutory-divergence-body">
+                <tr>
+                  <td class="font-mono text-warning">Section 482 CrPC</td>
+                  <td class="font-mono text-success">Section 528 BNSS</td>
+                  <td>Saving of inherent powers of High Court</td>
+                  <td><span class="badge bg-success">Binding Precedent Retained</span></td>
+                </tr>
+                <tr>
+                  <td class="font-mono text-warning">Section 438 CrPC</td>
+                  <td class="font-mono text-success">Section 482 BNSS</td>
+                  <td>Direction for grant of anticipatory bail</td>
+                  <td><span class="badge bg-success">Binding Precedent Retained</span></td>
+                </tr>
+                <tr>
+                  <td class="font-mono text-warning">Section 439 CrPC</td>
+                  <td class="font-mono text-success">Section 483 BNSS</td>
+                  <td>Special powers of High Court regarding bail</td>
+                  <td><span class="badge bg-success">Binding Precedent Retained</span></td>
+                </tr>
+                <tr>
+                  <td class="font-mono text-warning">Section 167(2) CrPC</td>
+                  <td class="font-mono text-success">Section 187 BNSS</td>
+                  <td>Default bail &amp; police remand detention limits</td>
+                  <td><span class="badge badge-gold">Modified Statutory Timeframe</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Legal Disclaimer -->
+        <div class="alert alert-dark small border border-secondary border-opacity-25 text-secondary">
+          <i class="bi bi-info-circle-fill text-warning me-2"></i>
+          <strong>Precedent Alignment Disclaimer:</strong> Dimensional scores are generated deterministically based on transparent legal taxonomy matching. They serve as legal research aids and do not constitute judicial predictions or binding ratio decidendi.
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Precedent Comparison Export Modal -->
+  <div class="modal fade" id="comparisonExportModal" tabindex="-1" aria-labelledby="compExportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark border-secondary">
+        <div class="modal-header border-secondary border-opacity-25">
+          <h5 class="modal-title text-white" id="compExportModalLabel">
+            <i class="bi bi-file-earmark-spreadsheet text-warning me-2"></i>Export Precedent Comparison Matrix
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 bg-black bg-opacity-30">
+          <p class="text-secondary small mb-3">
+            Choose your preferred format to export the multi-case comparative dimensional scores and statutory concordance matrix:
+          </p>
+          <div class="d-flex flex-column gap-3">
+            <button type="button" class="btn btn-judicial-outline text-start p-3 d-flex align-items-center justify-content-between" id="export-csv-btn">
+              <div>
+                <div class="fw-bold text-white"><i class="bi bi-filetype-csv text-success me-2"></i>Download CSV Data Sheet</div>
+                <div class="small text-secondary">Structured table with dimensions, scores, matches, and values.</div>
+              </div>
+              <i class="bi bi-arrow-right text-secondary"></i>
+            </button>
+            <button type="button" class="btn btn-judicial-outline text-start p-3 d-flex align-items-center justify-content-between" id="export-md-btn">
+              <div>
+                <div class="fw-bold text-white"><i class="bi bi-markdown text-info me-2"></i>Copy Markdown Matrix Table</div>
+                <div class="small text-secondary">Formatted markdown table ready for research memos and pleadings.</div>
+              </div>
+              <i class="bi bi-clipboard text-secondary"></i>
+            </button>
+            <button type="button" class="btn btn-judicial-outline text-start p-3 d-flex align-items-center justify-content-between" id="export-print-btn">
+              <div>
+                <div class="fw-bold text-white"><i class="bi bi-printer text-warning me-2"></i>Print Official Comparison Memo</div>
+                <div class="small text-secondary">High Court styled printable format with benchmark analysis.</div>
+              </div>
+              <i class="bi bi-printer text-secondary"></i>
+            </button>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary border-opacity-25">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CDN JS Dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+
+  <!-- LexGuard Core & Page Scripts -->
+  <script src="js/lexguard-core.js"></script>
+  <script src="js/lexguard-auth.js"></script>
+  <script src="js/lexguard-toast.js"></script>
+  <script src="js/lexguard-api.js"></script>
+  <script src="js/lexguard-nav.js"></script>
+  <script src="js/pages/case-compare.js"></script>
+</body>
+</html>

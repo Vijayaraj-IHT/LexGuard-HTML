@@ -1,0 +1,436 @@
+/* ==============================================================================
+   LexGuard — High Court & Supreme Court Judicial Theme (lexguard.css)
+   Light Courtroom Palette: Deep Judicial Crimson (#991b1b) & Pristine White (#ffffff)
+   Semester 5 Project · LexGuard Judicial Repository & Verification Platform
+   ============================================================================== */
+
+:root,
+[data-theme="light"],
+[data-bs-theme="light"] {
+  /* Pristine Light Judicial Palette */
+  --bs-body-bg: #f8fafc;
+  --bs-body-color: #0f172a;
+  --bs-body-color-rgb: 15, 23, 42;
+  --bs-border-color: rgba(153, 27, 27, 0.15);
+  --bs-border-color-translucent: rgba(153, 27, 27, 0.1);
+
+  /* Primary Accent: High Court Crimson / Maroon */
+  --bs-primary: #991b1b;
+  --bs-primary-rgb: 153, 27, 27;
+  --bs-primary-text-emphasis: #7f1d1d;
+  --bs-primary-bg-subtle: #fef2f2;
+  --bs-primary-border-subtle: rgba(185, 28, 28, 0.25);
+
+  /* Surface Cards & Modals */
+  --bs-card-bg: #ffffff;
+  --bs-card-border-color: rgba(153, 27, 27, 0.12);
+  --bs-secondary-bg: #fef2f2;
+  --bs-tertiary-bg: #f1f5f9;
+  --bs-dark: #1e293b;
+  --bs-dark-rgb: 30, 41, 59;
+  --bs-light: #ffffff;
+  --bs-light-rgb: 255, 255, 255;
+
+  /* Status Colors */
+  --bs-success: #059669;
+  --bs-success-rgb: 5, 150, 105;
+  --bs-danger: #b91c1c;
+  --bs-danger-rgb: 185, 28, 28;
+  --bs-warning: #d97706;
+  --bs-warning-rgb: 217, 119, 6;
+  --bs-info: #0284c7;
+  --bs-info-rgb: 2, 132, 199;
+
+  /* Custom LexGuard Judicial Tokens */
+  --lg-court-red: #991b1b;
+  --lg-court-red-dark: #7f1d1d;
+  --lg-court-red-light: #b91c1c;
+  --lg-court-red-subtle: #fef2f2;
+  --lg-court-red-border: rgba(153, 27, 27, 0.2);
+  --lg-court-red-glow: rgba(185, 28, 28, 0.18);
+
+  --lg-gold: #d97706;
+  --lg-gold-hover: #b45309;
+  --lg-gold-subtle: rgba(217, 119, 6, 0.1);
+  --lg-gold-border: rgba(217, 119, 6, 0.3);
+
+  --lg-sidebar-w: 260px;
+  --lg-navbar-h: 66px;
+
+  /* Typography */
+  --lg-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --lg-font-serif: 'Playfair Display', Georgia, Cambria, 'Times New Roman', serif;
+  --lg-font-mono: 'JetBrains Mono', 'Fira Code', Menlo, Monaco, Consolas, monospace;
+}
+
+body {
+  font-family: var(--lg-font-sans);
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Subtle Judicial Architectural Watermark / Atmosphere */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 380px;
+  background: radial-gradient(circle at 50% -80px, rgba(185, 28, 28, 0.05) 0%, rgba(248, 250, 252, 0) 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Judicial Serif Headings */
+.font-serif,
+.lg-serif {
+  font-family: var(--lg-font-serif) !important;
+  color: #0f172a;
+}
+
+/* Code & Digest Monospace */
+.font-mono,
+.lg-mono {
+  font-family: var(--lg-font-mono) !important;
+  letter-spacing: -0.02em;
+}
+
+/* Smooth Light Scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(185, 28, 28, 0.25);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(185, 28, 28, 0.45);
+}
+
+/* ==============================================================================
+   1. Form Inputs, Selects & Input Groups
+   ============================================================================== */
+.form-control,
+.form-select {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.form-control:focus,
+.form-select:focus {
+  background-color: #ffffff !important;
+  border-color: var(--lg-court-red-light) !important;
+  color: #0f172a !important;
+  box-shadow: 0 0 0 0.2rem var(--lg-court-red-glow) !important;
+}
+.form-control::placeholder {
+  color: #94a3b8 !important;
+}
+
+.input-group-text {
+  background-color: #fef2f2 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #991b1b !important;
+  font-weight: 600;
+}
+
+/* ==============================================================================
+   2. Buttons: Judicial Court Red & Pristine Outlines
+   ============================================================================== */
+.btn-gold,
+.btn-court-red {
+  background: linear-gradient(135deg, #991b1b 0%, #b91c1c 100%) !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  border: 1px solid #7f1d1d !important;
+  box-shadow: 0 2px 6px rgba(153, 27, 27, 0.25);
+  transition: all 0.2s ease;
+}
+.btn-gold:hover,
+.btn-gold:focus,
+.btn-court-red:hover,
+.btn-court-red:focus {
+  background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%) !important;
+  color: #ffffff !important;
+  border-color: #4c0519 !important;
+  box-shadow: 0 4px 12px rgba(153, 27, 27, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-judicial-outline {
+  background-color: #ffffff !important;
+  color: #991b1b !important;
+  border: 1px solid rgba(185, 28, 28, 0.35) !important;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+.btn-judicial-outline:hover {
+  background-color: #fef2f2 !important;
+  color: #7f1d1d !important;
+  border-color: #991b1b !important;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(153, 27, 27, 0.12);
+}
+
+.btn-outline-secondary {
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
+  background-color: #ffffff !important;
+}
+.btn-outline-secondary:hover {
+  background-color: #fef2f2 !important;
+  border-color: #991b1b !important;
+  color: #991b1b !important;
+}
+
+.btn-outline-light {
+  border-color: rgba(185, 28, 28, 0.3) !important;
+  color: #7f1d1d !important;
+  background-color: #ffffff !important;
+}
+.btn-outline-light:hover {
+  background-color: #fef2f2 !important;
+  color: #991b1b !important;
+}
+
+/* ==============================================================================
+   3. Cards & Surfaces
+   ============================================================================== */
+.card-judicial {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(185, 28, 28, 0.12) !important;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 18px -2px rgba(153, 27, 27, 0.05), 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.card.bg-dark {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(185, 28, 28, 0.12) !important;
+  box-shadow: 0 4px 18px -2px rgba(153, 27, 27, 0.05) !important;
+}
+
+.bg-dark {
+  background-color: #ffffff !important;
+  border-color: rgba(185, 28, 28, 0.1) !important;
+}
+
+/* ==============================================================================
+   4. High-Contrast Typography Overrides
+   ============================================================================== */
+.text-light,
+.text-white {
+  color: #0f172a !important;
+}
+
+.text-secondary,
+.text-muted {
+  color: #475569 !important;
+}
+
+.border-secondary {
+  border-color: rgba(185, 28, 28, 0.15) !important;
+}
+
+/* ==============================================================================
+   5. Tables: High Court Clean Table with Subtle Red Borders
+   ============================================================================== */
+.table {
+  color: #0f172a !important;
+  background-color: #ffffff !important;
+  border-color: rgba(185, 28, 28, 0.1) !important;
+}
+
+.table-dark {
+  --bs-table-bg: #ffffff !important;
+  --bs-table-color: #0f172a !important;
+  --bs-table-border-color: rgba(185, 28, 28, 0.1) !important;
+  --bs-table-hover-bg: #fef2f2 !important;
+  --bs-table-hover-color: #0f172a !important;
+  color: #0f172a !important;
+  background-color: #ffffff !important;
+}
+
+.table-dark th,
+.table th {
+  background-color: #fef2f2 !important;
+  color: #7f1d1d !important;
+  font-weight: 700 !important;
+  border-bottom: 2px solid rgba(185, 28, 28, 0.2) !important;
+  text-transform: uppercase;
+  font-size: 0.76rem;
+  letter-spacing: 0.05em;
+}
+
+.table-dark td,
+.table td {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+  border-bottom: 1px solid rgba(185, 28, 28, 0.08) !important;
+}
+
+.table-dark tbody tr:hover td,
+.table tbody tr:hover td {
+  background-color: #fff1f2 !important;
+}
+
+/* ==============================================================================
+   6. Judicial Tabs Navigation
+   ============================================================================== */
+.nav-tabs {
+  border-bottom: 2px solid rgba(185, 28, 28, 0.18) !important;
+}
+
+.nav-tabs .nav-link {
+  color: #475569 !important;
+  font-weight: 600 !important;
+  border: 1px solid transparent !important;
+  border-bottom: none !important;
+  border-radius: 0.5rem 0.5rem 0 0 !important;
+  padding: 0.65rem 1.15rem !important;
+  transition: all 0.15s ease;
+}
+
+.nav-tabs .nav-link:hover {
+  color: #991b1b !important;
+  background-color: #fef2f2 !important;
+  border-color: rgba(185, 28, 28, 0.12) !important;
+}
+
+.nav-tabs .nav-link.active {
+  color: #991b1b !important;
+  background-color: #ffffff !important;
+  border: 1px solid rgba(185, 28, 28, 0.18) !important;
+  border-bottom: 2px solid #ffffff !important;
+  border-top: 3px solid #991b1b !important;
+  font-weight: 700 !important;
+}
+
+/* ==============================================================================
+   7. Modals
+   ============================================================================== */
+.modal-content.bg-dark,
+.modal-content {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(185, 28, 28, 0.2) !important;
+  box-shadow: 0 20px 40px rgba(153, 27, 27, 0.15) !important;
+  border-radius: 0.75rem;
+}
+
+.modal-header {
+  border-bottom: 1px solid rgba(185, 28, 28, 0.15) !important;
+  background-color: #fef2f2 !important;
+}
+
+.modal-header .modal-title {
+  color: #7f1d1d !important;
+  font-weight: 700 !important;
+}
+
+.modal-footer {
+  border-top: 1px solid rgba(185, 28, 28, 0.15) !important;
+  background-color: #f8fafc !important;
+}
+
+.btn-close-white {
+  filter: none !important;
+}
+
+/* ==============================================================================
+   8. Dropdown Menus
+   ============================================================================== */
+.dropdown-menu-dark,
+.dropdown-menu {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(185, 28, 28, 0.15) !important;
+  box-shadow: 0 10px 25px rgba(153, 27, 27, 0.08) !important;
+  border-radius: 0.5rem;
+}
+
+.dropdown-item {
+  color: #1e293b !important;
+  font-weight: 500;
+}
+
+.dropdown-item:hover {
+  background-color: #fef2f2 !important;
+  color: #991b1b !important;
+}
+
+.dropdown-divider {
+  border-color: rgba(185, 28, 28, 0.1) !important;
+}
+
+/* ==============================================================================
+   9. Badges & Status Indicators
+   ============================================================================== */
+.badge-gold {
+  background-color: #fef2f2 !important;
+  color: #991b1b !important;
+  border: 1px solid rgba(185, 28, 28, 0.25) !important;
+  font-weight: 600;
+}
+
+.badge-court-red {
+  background-color: rgba(185, 28, 28, 0.1) !important;
+  color: #991b1b !important;
+  border: 1px solid rgba(185, 28, 28, 0.25) !important;
+  font-weight: 700;
+}
+
+.badge.bg-dark {
+  background-color: #fef2f2 !important;
+  color: #991b1b !important;
+  border: 1px solid rgba(185, 28, 28, 0.2) !important;
+}
+
+.badge.bg-secondary {
+  background-color: #f1f5f9 !important;
+  color: #334155 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+/* ==============================================================================
+   10. Progress Bars & Pagination
+   ============================================================================== */
+.progress {
+  background-color: #f1f5f9 !important;
+  border: 1px solid rgba(185, 28, 28, 0.12) !important;
+  border-radius: 4px;
+}
+
+.progress-bar {
+  background-color: #991b1b !important;
+}
+
+.pagination .page-link {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.pagination .page-link:hover {
+  background-color: #fef2f2 !important;
+  color: #991b1b !important;
+  border-color: #991b1b !important;
+}
+
+.pagination .page-item.active .page-link {
+  background-color: #991b1b !important;
+  border-color: #7f1d1d !important;
+  color: #ffffff !important;
+}

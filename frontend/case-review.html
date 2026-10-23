@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="alternate icon" href="favicon.ico">
+  <title>Staff Case Review Workstation · LexGuard</title>
+
+  <!-- Google Fonts & CDN CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- LexGuard Styles -->
+  <link rel="stylesheet" href="css/lexguard.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body data-active-page="admin">
+
+  <!-- Shared Top Navbar & Left Sidebar slots -->
+  <div id="navbar-slot"></div>
+  <div id="sidebar-slot"></div>
+
+  <!-- Main Content -->
+  <main class="lg-main">
+    <div class="container-fluid px-0">
+
+      <!-- Workstation Header & Actions -->
+      <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2 pb-2 border-bottom border-secondary border-opacity-25">
+        <div class="d-flex align-items-center gap-3">
+          <a href="admin.html" class="btn btn-sm btn-judicial-outline">
+            <i class="bi bi-arrow-left me-1"></i>Back to Queue
+          </a>
+          <div>
+            <h1 class="h5 fw-bold text-light mb-0" id="review-header-title">Case Review: Loading...</h1>
+            <div class="small text-secondary" id="review-header-sub">Human-in-the-Loop CIS Verification Workstation</div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex align-items-center gap-2">
+          <button type="button" class="btn btn-sm btn-judicial-outline" id="btn-reextract" title="Re-run Multi-Pass CIS & NLP Extraction">
+            <i class="bi bi-arrow-repeat me-1"></i>Re-extract NLP
+          </button>
+          <button type="button" class="btn btn-sm btn-judicial-outline text-info" id="btn-save-meta">
+            <i class="bi bi-save me-1"></i>Save Edits
+          </button>
+          <button type="button" class="btn btn-sm btn-danger" id="btn-reject-case">
+            <i class="bi bi-x-circle me-1"></i>Reject
+          </button>
+          <button type="button" class="btn btn-sm btn-gold" id="btn-approve-seal">
+            <i class="bi bi-shield-fill-check me-1"></i>Approve &amp; Seal (Phi_case)
+          </button>
+        </div>
+      </div>
+
+      <!-- Split-Screen Container -->
+      <div class="lg-split-container" id="review-split-container" style="min-height: calc(100vh - var(--lg-navbar-h) - 6rem);">
+
+        <!-- LEFT PANE: Official PDF Viewer -->
+        <div class="lg-split-pane shadow" id="left-pane" style="flex: 1 1 50%;">
+          <div class="lg-split-header">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-file-earmark-pdf text-danger fs-5"></i>
+              <span class="fw-bold text-light small">Official Court Document Stream</span>
+            </div>
+            <div class="d-flex align-items-center gap-1">
+              <button type="button" class="btn btn-xs btn-judicial-outline" id="pdf-prev-page"><i class="bi bi-chevron-left"></i></button>
+              <span class="text-secondary small px-1">Page <span id="pdf-current-page" class="text-light">1</span> of <span id="pdf-total-pages">1</span></span>
+              <button type="button" class="btn btn-xs btn-judicial-outline" id="pdf-next-page"><i class="bi bi-chevron-right"></i></button>
+              <button type="button" class="btn btn-xs btn-judicial-outline ms-2" id="pdf-zoom-in"><i class="bi bi-zoom-in"></i></button>
+              <button type="button" class="btn btn-xs btn-judicial-outline" id="pdf-zoom-out"><i class="bi bi-zoom-out"></i></button>
+              <button type="button" class="btn btn-xs btn-judicial-outline" id="pdf-rotate"><i class="bi bi-arrow-clockwise"></i></button>
+            </div>
+          </div>
+
+          <div class="lg-split-body p-2 d-flex flex-column" style="background-color: #f1f5f9; overflow: auto; text-align: center;">
+            <div id="pdf-loading" class="text-center py-5">
+              <div class="spinner-border text-warning" role="status"></div>
+              <p class="text-secondary small mt-2">Streaming court judgment for verification...</p>
+            </div>
+            <canvas id="pdf-canvas" class="d-none" style="margin: 0 auto; box-shadow: 0 4px 15px rgba(0,0,0,0.5);"></canvas>
+            <div id="pdf-fallback-text" class="text-start d-none p-3 font-mono text-light" style="white-space: pre-wrap; font-size: 0.85rem;"></div>
+          </div>
+        </div>
+
+        <!-- DRAGGABLE DIVIDER -->
+        <div class="lg-resizer-gutter" id="resizer-gutter" title="Drag to resize split panes"></div>
+
+        <!-- RIGHT PANE: Human-in-the-Loop Metadata Editor -->
+        <div class="lg-split-pane shadow" id="right-pane" style="flex: 1 1 50%;">
+          <div class="lg-split-header">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-pencil-square text-warning fs-5"></i>
+              <span class="fw-bold text-light small">Extracted CIS Metadata Review &amp; Edits</span>
+            </div>
+            <span class="badge bg-secondary font-mono small" id="meta-hash-badge">SHA-256</span>
+          </div>
+
+          <div class="lg-split-body p-3">
+            <form id="review-meta-form">
+              <div class="mb-3">
+                <label for="edit-title" class="form-label text-secondary small fw-semibold">Case Title</label>
+                <input type="text" class="form-control form-control-sm" id="edit-title" required>
+              </div>
+
+              <div class="row g-2 mb-3">
+                <div class="col-6">
+                  <label for="edit-caseno" class="form-label text-secondary small fw-semibold">Case Number</label>
+                  <input type="text" class="form-control form-control-sm" id="edit-caseno" required>
+                </div>
+                <div class="col-6">
+                  <label for="edit-cnr" class="form-label text-secondary small fw-semibold">CNR Number</label>
+                  <input type="text" class="form-control form-control-sm" id="edit-cnr">
+                </div>
+              </div>
+
+              <div class="row g-2 mb-3">
+                <div class="col-6">
+                  <label for="edit-court" class="form-label text-secondary small fw-semibold">Court / Jurisdiction</label>
+                  <select class="form-select form-select-sm" id="edit-court">
+                    <option value="Madras High Court (Principal Seat)">Madras High Court (Principal Seat)</option>
+                    <option value="Madras High Court (Madurai Bench)">Madras High Court (Madurai Bench)</option>
+                    <option value="Supreme Court of India">Supreme Court of India</option>
+                  </select>
+                </div>
+                <div class="col-3">
+                  <label for="edit-year" class="form-label text-secondary small fw-semibold">Filing Year</label>
+                  <input type="number" class="form-control form-control-sm" id="edit-year" min="1950" max="2026">
+                </div>
+                <div class="col-3">
+                  <label for="edit-benchtype" class="form-label text-secondary small fw-semibold">Bench Type</label>
+                  <select class="form-select form-select-sm" id="edit-benchtype">
+                    <option value="Single Bench">Single Bench</option>
+                    <option value="Division Bench">Division Bench</option>
+                    <option value="Full Bench">Full Bench</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="edit-judge" class="form-label text-secondary small fw-semibold">Judicial Coram / Bench Names</label>
+                <input type="text" class="form-control form-control-sm" id="edit-judge">
+              </div>
+
+              <div class="row g-2 mb-3">
+                <div class="col-6">
+                  <label for="edit-disposition" class="form-label text-secondary small fw-semibold">Disposition</label>
+                  <select class="form-select form-select-sm" id="edit-disposition">
+                    <option value="Allowed">Allowed</option>
+                    <option value="Dismissed">Dismissed</option>
+                    <option value="Disposed">Disposed</option>
+                    <option value="Quashed">Quashed</option>
+                    <option value="Bail Granted">Bail Granted</option>
+                    <option value="Bail Rejected">Bail Rejected</option>
+                    <option value="Remanded">Remanded</option>
+                  </select>
+                </div>
+                <div class="col-6">
+                  <label for="edit-precstatus" class="form-label text-secondary small fw-semibold">Precedential Status</label>
+                  <select class="form-select form-select-sm" id="edit-precstatus">
+                    <option value="Good Law">Good Law</option>
+                    <option value="Overruled">Overruled</option>
+                    <option value="Distinguished">Distinguished</option>
+                    <option value="Precedential status not checked">Precedential status not checked</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="edit-acts" class="form-label text-secondary small fw-semibold">Statutory Acts &amp; Sections (comma-separated)</label>
+                <input type="text" class="form-control form-control-sm" id="edit-acts" placeholder="Section 482 CrPC, Section 420 IPC, Article 21">
+              </div>
+
+              <div class="mb-3">
+                <label for="edit-ratio" class="form-label text-secondary small fw-semibold">Ratio Decidendi</label>
+                <textarea class="form-control form-control-sm font-serif" id="edit-ratio" rows="3"></textarea>
+              </div>
+
+              <div class="mb-3">
+                <label for="edit-summary" class="form-label text-secondary small fw-semibold">Factual Context &amp; Background</label>
+                <textarea class="form-control form-control-sm" id="edit-summary" rows="3"></textarea>
+              </div>
+            </form>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Approval Confirmation Modal -->
+  <div class="modal fade" id="approveSealModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark text-light border border-warning border-opacity-50">
+        <div class="modal-header border-bottom border-secondary border-opacity-25">
+          <h5 class="modal-title font-serif fw-bold text-warning">
+            <i class="bi bi-shield-fill-check me-2"></i>Affix Composite Judicial Seal (Phi_case)
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <p class="text-light small mb-3">
+            You are about to approve this judgment for permanent publication in the LexGuard repository.
+          </p>
+          <div class="mb-3">
+            <label for="approve-note" class="form-label text-secondary small fw-semibold">Registrar Approval Note</label>
+            <textarea class="form-control" id="approve-note" rows="2" placeholder="Verified against certified copy from Madras High Court Registry..."></textarea>
+          </div>
+          <div class="p-3 bg-black rounded border border-warning border-opacity-25 font-mono text-warning" style="font-size: 0.78rem;">
+            Computing: Phi_case = SHA-256(H_doc || H_meta || H_text || T_approved)
+          </div>
+        </div>
+        <div class="modal-footer border-top border-secondary border-opacity-25">
+          <button type="button" class="btn btn-sm btn-judicial-outline" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-sm btn-gold" id="confirm-approve-btn">Confirm &amp; Affix Seal</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CDN JS Dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+  <!-- LexGuard Core & Page Scripts -->
+  <script src="js/lexguard-core.js"></script>
+  <script src="js/lexguard-auth.js"></script>
+  <script src="js/lexguard-toast.js"></script>
+  <script src="js/lexguard-api.js"></script>
+  <script src="js/lexguard-nav.js"></script>
+  <script src="js/pages/case-review.js"></script>
+</body>
+</html>
