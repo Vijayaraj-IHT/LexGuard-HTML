@@ -693,6 +693,7 @@ def verify_case_integrity(
 
 
 @router.get("/{case_id}/download")
+@router.get("/{case_id}/pdf")
 def download_case(
     case_id: str,
     request: Request,

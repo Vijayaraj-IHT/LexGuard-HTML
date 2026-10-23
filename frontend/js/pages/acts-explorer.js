@@ -166,6 +166,54 @@ $(document).ready(function () {
           query: 'Section 11 Arbitration Act appointment of arbitrator'
         }
       ]
+    },
+    {
+      name: 'Narcotic Drugs and Psychotropic Substances Act, 1985 (NDPS)',
+      shortName: 'NDPS Act',
+      category: 'Special Criminal Legislation',
+      badge: 'NDPS Special',
+      description: 'Rigorous statutory provisions governing narcotics offences, search/seizure safeguards, and twin-condition bail bars.',
+      sections: [
+        {
+          section: 'Section 37',
+          title: 'Offences to be cognizable and non-bailable (Twin Conditions for Bail)',
+          desc: 'Rigorous twin conditions requiring Court satisfaction that accused is not guilty and unlikely to commit offences while on bail.',
+          query: 'Section 37 NDPS Act commercial quantity bail'
+        },
+        {
+          section: 'Section 21(c)',
+          title: 'Punishment for contravention involving commercial quantity',
+          desc: 'Manufacture, possession, sale, and transport of commercial narcotics quantities attracting minimum 10-year imprisonment.',
+          query: 'Section 21 NDPS Act commercial quantity'
+        },
+        {
+          section: 'Section 29',
+          title: 'Punishment for abetment and criminal conspiracy',
+          desc: 'Joint conspiracy and abetment in international/interstate narcotic drug trafficking networks.',
+          query: 'Section 29 NDPS Act conspiracy'
+        }
+      ]
+    },
+    {
+      name: 'Prevention of Money Laundering Act, 2002 (PMLA)',
+      shortName: 'PMLA',
+      category: 'Financial Crimes & Enforcement',
+      badge: 'PMLA Enforcement',
+      description: 'Anti-money laundering legal framework, Enforcement Directorate investigations, ECIR, and proceeds of crime attachment.',
+      sections: [
+        {
+          section: 'Section 45',
+          title: 'Offences to be cognizable and non-bailable under PMLA',
+          desc: 'Rigorous twin conditions for grant of bail in money laundering prosecutions involving proceeds of crime.',
+          query: 'Section 45 PMLA twin conditions bail'
+        },
+        {
+          section: 'Section 50',
+          title: 'Powers of authorities regarding summons, production of documents',
+          desc: 'Admissibility of statements recorded before Enforcement Directorate officers and validity of Look Out Circulars (LOC).',
+          query: 'Section 50 PMLA summons statements LOC'
+        }
+      ]
     }
   ];
 

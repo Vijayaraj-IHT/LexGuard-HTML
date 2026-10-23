@@ -18,22 +18,22 @@ class PrecedentCited(BaseModel):
 
 
 class CaseBase(BaseModel):
-    case_no: str = Field(..., max_length=100)
-    title: str = Field(..., max_length=300)
-    court: str = Field(..., max_length=150)
-    year: int = Field(..., ge=1900, le=2100)
-    judge: Optional[str] = Field(default=None, max_length=255)
-    parties: Optional[str] = Field(default=None, max_length=500)
+    case_no: str = Field(..., max_length=255)
+    title: str = Field(..., max_length=500)
+    court: str = Field(..., max_length=255)
+    year: int = Field(..., ge=1800, le=2100)
+    judge: Optional[str] = Field(default=None, max_length=500)
+    parties: Optional[str] = Field(default=None, max_length=1000)
     act_tags: List[str] = Field(default_factory=list)
     section_tags: List[str] = Field(default_factory=list)
     keyword_tags: List[str] = Field(default_factory=list)
     summary: Optional[str] = None
-    outcome: Optional[str] = Field(default=None, max_length=100)
+    outcome: Optional[str] = Field(default=None, max_length=500)
     facts: Optional[str] = None
     issues_framed: List[str] = Field(default_factory=list)
     ratio_decidendi: Optional[str] = None
     statutory_tests: List[Any] = Field(default_factory=list)
-    disposition: Optional[str] = Field(default=None, max_length=100)
+    disposition: Optional[str] = Field(default=None, max_length=1000)
     precedents_cited: List[Any] = Field(default_factory=list)
     full_text: Optional[str] = None
     page_count: Optional[int] = 1

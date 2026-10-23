@@ -1,15 +1,360 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light" data-bs-theme="light">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="0; url=frontend/index.html">
-  <title>Redirecting to LexGuard Portal...</title>
-  <script>
-    window.location.replace("frontend/index.html");
-  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="alternate icon" href="favicon.ico">
+  <title>LexGuard — High Court of Judicature at Madras · Judicial Case Repository</title>
+
+  <!-- Google Fonts & CDN CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- LexGuard Styles (Court Red & White) -->
+  <link rel="stylesheet" href="css/lexguard.css">
+  <link rel="stylesheet" href="css/components.css">
+  <style>
+    .govt-topbar {
+      background-color: #7f1d1d;
+      color: #fee2e2;
+      font-size: 0.72rem;
+      padding: 0.4rem 1.5rem;
+      font-family: var(--lg-font-mono);
+      border-bottom: 1px solid #4c0519;
+    }
+    .hero-banner {
+      background: linear-gradient(180deg, rgba(185, 28, 28, 0.04) 0%, rgba(255, 255, 255, 0.9) 60%, #f8fafc 100%);
+      padding: 3.5rem 1rem 2.5rem;
+      border-bottom: 1px solid rgba(185, 28, 28, 0.12);
+    }
+    .hero-search-box {
+      background: #ffffff;
+      border: 2px solid rgba(185, 28, 28, 0.25);
+      border-radius: 12px;
+      padding: 0.4rem;
+      box-shadow: 0 10px 30px -5px rgba(153, 27, 27, 0.1);
+      transition: all 0.2s ease;
+    }
+    .hero-search-box:focus-within {
+      border-color: #991b1b;
+      box-shadow: 0 12px 35px -5px rgba(153, 27, 27, 0.2), 0 0 0 4px rgba(185, 28, 28, 0.1);
+    }
+    .hero-search-input {
+      border: none !important;
+      font-size: 1.05rem;
+      padding: 0.75rem 1rem;
+      color: #0f172a !important;
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+    .hero-search-input:focus {
+      outline: none !important;
+      box-shadow: none !important;
+    }
+    .query-pill {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.25rem 0.65rem;
+      border-radius: 9999px;
+      background: #ffffff;
+      color: #991b1b;
+      border: 1px solid rgba(185, 28, 28, 0.25);
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    .query-pill:hover {
+      background: #fef2f2;
+      border-color: #991b1b;
+      color: #7f1d1d;
+    }
+    .trust-stat-card {
+      background: #ffffff;
+      border: 1px solid rgba(185, 28, 28, 0.12);
+      border-radius: 10px;
+      padding: 1.25rem;
+      box-shadow: 0 2px 8px rgba(153, 27, 27, 0.03);
+    }
+  </style>
 </head>
-<body style="font-family: system-ui, sans-serif; text-align: center; padding: 50px;">
-  <h2>LexGuard Judicial Repository</h2>
-  <p>Redirecting to High Court Portal... <a href="frontend/index.html">Click here if not redirected automatically</a>.</p>
+<body data-active-page="landing">
+
+  <!-- Top Government Ribbon -->
+  <div class="govt-topbar d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-2">
+      <i class="bi bi-bank text-warning"></i>
+      <span class="fw-bold">HIGH COURT OF JUDICATURE AT MADRAS</span>
+      <span class="text-white-50 d-none d-sm-inline">&bull;</span>
+      <span class="d-none d-sm-inline text-light">Chennai Principal Seat &amp; Madurai Bench</span>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+      <span class="text-success small"><i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>PostgreSQL 17 Live</span>
+      <a href="login.html" class="text-warning text-decoration-none fw-bold"><i class="bi bi-lock-fill me-1"></i>Staff / Advocate Sign In</a>
+    </div>
+  </div>
+
+  <!-- Main Navigation Navbar -->
+  <nav class="navbar navbar-expand-lg bg-white border-bottom border-danger border-opacity-15 sticky-top shadow-xs">
+    <div class="container-fluid px-4">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+        <div class="brand-emblem"><i class="bi bi-shield-fill-check"></i></div>
+        <div class="d-flex flex-column">
+          <span class="fw-bold font-serif text-dark fs-5 tracking-tight">LEX<span class="text-danger">GUARD</span></span>
+          <span class="text-secondary small font-mono" style="font-size: 0.65rem; margin-top: -3px;">JUDICIAL REPOSITORY</span>
+        </div>
+      </a>
+
+      <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#landingNav" aria-controls="landingNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="landingNav">
+        <ul class="navbar-nav ms-auto align-items-lg-center gap-1">
+          <li class="nav-item">
+            <a class="nav-link px-3 text-dark fw-semibold" href="search.html"><i class="bi bi-search me-1 text-danger"></i>Case Search</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link px-3 text-dark fw-semibold" href="acts-explorer.html"><i class="bi bi-book-half me-1 text-danger"></i>Statutory Acts</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link px-3 text-dark fw-semibold" href="verify.html"><i class="bi bi-shield-check me-1 text-danger"></i>Document Verifier</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link px-3 text-dark fw-semibold" href="cause-list.html"><i class="bi bi-clock-history me-1 text-danger"></i>Daily Cause List</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link px-3 text-dark fw-semibold" href="admin.html?auth_role=staff"><i class="bi bi-speedometer2 me-1 text-danger"></i>Staff Admin</a>
+          </li>
+          <li class="nav-item ms-lg-2">
+            <a href="login.html" class="btn btn-sm btn-gold px-3"><i class="bi bi-box-arrow-in-right me-1"></i>Sign In</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero-banner text-center">
+    <div class="container" style="max-width: 860px;">
+      <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill mb-3" style="background: rgba(185, 28, 28, 0.08); border: 1px solid rgba(185, 28, 28, 0.25);">
+        <i class="bi bi-shield-shaded text-danger"></i>
+        <span class="text-danger fw-bold font-mono" style="font-size: 0.75rem;">OFFICIAL HIGH COURT PRECEDENT &amp; VERIFICATION SYSTEM</span>
+      </div>
+
+      <h1 class="display-5 font-serif fw-bold text-dark mb-2 tracking-tight">
+        LEX<span class="text-danger">GUARD</span> JUDICIAL REPOSITORY
+      </h1>
+      <p class="text-secondary lead fs-6 max-w-xl mx-auto mb-4">
+        High Court judgments, orders, and ratio decidendi authenticated with 
+        <strong class="text-danger">SHA-256 cryptographic seals</strong> and InLegalBERT AI factual extraction across 208 precedent dockets.
+      </p>
+
+      <!-- CNR / Case Search Box -->
+      <form id="hero-search-form" class="mb-3">
+        <div class="hero-search-box d-flex align-items-center">
+          <i class="bi bi-search text-danger fs-5 ms-3"></i>
+          <input type="text" id="hero-search-input" class="form-control hero-search-input" placeholder="Search by Case No (e.g. WP 24102/2026), 16-Digit CNR, Act, or Judge Name..." autocomplete="off">
+          <button type="submit" class="btn btn-gold px-4 py-2 me-1">
+            <span class="fw-bold">Search</span>
+            <i class="bi bi-arrow-right ms-1"></i>
+          </button>
+        </div>
+      </form>
+
+      <!-- Quick Search Chips -->
+      <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 pt-1">
+        <span class="small text-secondary fw-semibold font-mono">Quick Filters:</span>
+        <a href="search.html?q=Section+482+CrPC+Quashing" class="query-pill">Sec 482 Cr.P.C. Quash</a>
+        <a href="search.html?q=Section+138+Negotiable+Instruments" class="query-pill">Sec 138 NI Act Presumption</a>
+        <a href="search.html?q=Anticipatory+Bail" class="query-pill">Anticipatory Bail Jurisprudence</a>
+        <a href="acts-explorer.html" class="query-pill" style="background:#7f1d1d; color:#fff; border-color:#7f1d1d;">Explore All Acts &rarr;</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 Official High Court Service Grid -->
+  <section class="py-5 bg-white border-bottom border-danger border-opacity-10">
+    <div class="container" style="max-width: 1200px;">
+      
+      <div class="d-flex align-items-center justify-content-between mb-4 pb-2 border-bottom border-danger border-opacity-15 flex-wrap gap-2">
+        <div>
+          <h2 class="h4 font-serif fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+            <i class="bi bi-grid-3x3-gap-fill text-danger"></i>
+            <span>High Court Authorized Services &amp; Portals</span>
+          </h2>
+          <p class="text-secondary small mb-0">Select an authorized judicial portal service below for legal research, docket filing, or cryptographic verification.</p>
+        </div>
+        <span class="badge badge-court-red font-mono">CIS Version 3.2 Standard</span>
+      </div>
+
+      <!-- 10-Tile Grid (Court Red & White) -->
+      <div class="row g-3 g-md-4">
+        
+        <!-- Tile 1: Case Status / CNR -->
+        <div class="col-6 col-md-4 col-lg-2-4">
+          <a href="search.html" class="portal-service-tile h-100">
+            <div class="portal-service-icon"><i class="bi bi-search"></i></div>
+            <div class="portal-service-title">Case Status / CNR</div>
+            <div class="portal-service-desc">Track docket status by 16-digit CNR or Case Number across benches.</div>
+            <div class="portal-service-tag">CIS e-Courts</div>
+          </a>
+        </div>
+
+        <!-- Tile 2: Judgments & Orders -->
+        <div class="col-6 col-md-4 col-lg-2-4">
+          <a href="search.html" class="portal-service-tile h-100">
+            <div class="portal-service-icon"><i class="bi bi-file-earmark-ruled"></i></div>
+            <div class="portal-service-title">Judgments &amp; Orders</div>
+            <div class="portal-service-desc">Full-text precedent search querying live 208 PostgreSQL cases.</div>
+            <div class="portal-service-tag">Repository</div>
+          </a>
+        </div>
+
+        <!-- Tile 3: Acts & Sections -->
+        <div class="col-6 col-md-4 col-lg-2-4">
+          <a href="acts-explorer.html" class="portal-service-tile h-100">
+            <div class="portal-service-icon"><i class="bi bi-book-half"></i></div>
+            <div class="portal-service-title">Acts &amp; Sections</div>
+            <div class="portal-service-desc">Categorized statutory directory covering IPC, CrPC, BNS, and BNSS.</div>
+            <div class="portal-service-tag">Statutes</div>
+          </a>
+        </div>
+
+        <!-- Tile 4: Tamper Verification -->
+        <div class="col-6 col-md-4 col-lg-2-4">
+          <a href="verify.html" class="portal-service-tile h-100">
+            <div class="portal-service-icon"><i class="bi bi-shield-check"></i></div>
+            <div class="portal-service-title">Tamper Verifier</div>
+            <div class="portal-service-desc">Zero-byte browser SHA-256 digest validation against the ledger.</div>
+            <div class="portal-service-tag">SHA-256 Seal</div>
+          </a>
+        </div>
+
+        <!-- Tile 5: Precedent Comparator -->
+        <div class="col-6 col-md-4 col-lg-2-4">
+          <a href="case-compare.html" class="portal-service-tile h-100">
+            <div class="portal-service-icon"><i class="bi bi-columns-gap"></i></div>
+            <div class="portal-service-title">Precedent Comparator</div>
+            <div class="portal-service-desc">Side-by-side legal ratio decidendi and concordance matrix analysis.</div>
+            <div class="portal-service-tag">Analysis</div>
+          </a>
+        </div>
+
+        <!-- Tile 6: Landmark Summaries -->
+        <div class="col-6 col-md-4 col-lg-2-4">
+          <a href="search.html?outcome=Allowed" class="portal-service-tile h-100">
+            <div class="portal-service-icon"><i class="bi bi-journal-bookmark-fill"></i></div>
+            <div class="portal-service-title">Landmark Summaries</div>
+            <div class="portal-service-desc">Official judicial case briefs and ratio briefs for rapid citation.</div>
+            <div class="portal-service-tag">Ratio Decidendi</div>
+          </a>
+        </div>
+
+        <!-- Tile 7: Daily Cause List -->
+        <div class="col-6 col-md-4 col-lg-2-4">
+          <a href="cause-list.html" class="portal-service-tile h-100">
+            <div class="portal-service-icon"><i class="bi bi-clock-history"></i></div>
+            <div class="portal-service-title">Daily Cause List</div>
+            <div class="portal-service-desc">Real-time courtroom proceedings and sitting roster tracker.</div>
+            <div class="portal-service-tag">Daily Roster</div>
+          </a>
+        </div>
+
+        <!-- Tile 8: Saved Research -->
+        <div class="col-6 col-md-4 col-lg-2-4">
+          <a href="bookmarks.html" class="portal-service-tile h-100">
+            <div class="portal-service-icon"><i class="bi bi-bookmarks-fill"></i></div>
+            <div class="portal-service-title">Saved Research</div>
+            <div class="portal-service-desc">Organized case folders and one-click bluebook bibliography export.</div>
+            <div class="portal-service-tag">Advocates</div>
+          </a>
+        </div>
+
+        <!-- Tile 9: Case Ingestion Desk -->
+        <div class="col-6 col-md-4 col-lg-2-4">
+          <a href="case-upload.html" class="portal-service-tile h-100">
+            <div class="portal-service-icon"><i class="bi bi-cloud-arrow-up"></i></div>
+            <div class="portal-service-title">Official Ingestion</div>
+            <div class="portal-service-desc">Court staff PDF upload desk with automated NER fact extraction.</div>
+            <div class="portal-service-tag">Court Staff</div>
+          </a>
+        </div>
+
+        <!-- Tile 10: Merkle Audit Ledger -->
+        <div class="col-6 col-md-4 col-lg-2-4">
+          <a href="audit-ledger.html" class="portal-service-tile h-100">
+            <div class="portal-service-icon"><i class="bi bi-diagram-3-fill"></i></div>
+            <div class="portal-service-title">Cryptographic Ledger</div>
+            <div class="portal-service-desc">Immutable SHA-256 chained audit logs tracking all court actions.</div>
+            <div class="portal-service-tag">Audit Trail</div>
+          </a>
+        </div>
+
+      </div>
+
+      <!-- Trust Metrics & Infrastructure Row -->
+      <div class="row g-3 mt-4 pt-2">
+        <div class="col-md-3 col-sm-6">
+          <div class="trust-stat-card text-center">
+            <div class="h3 fw-bold text-dark font-serif mb-1">Madras HC</div>
+            <div class="small text-secondary">Principal Seat &amp; Madurai Bench</div>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="trust-stat-card text-center">
+            <div class="h3 fw-bold text-danger font-serif mb-1">208 Verified</div>
+            <div class="small text-secondary">Precedents in PostgreSQL 17</div>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="trust-stat-card text-center">
+            <div class="h3 fw-bold text-success font-serif mb-1">916 Blocks</div>
+            <div class="small text-secondary">SHA-256 Chained Merkle Ledger</div>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="trust-stat-card text-center">
+            <div class="h3 fw-bold text-dark font-serif mb-1">Zero-Tamper</div>
+            <div class="small text-secondary">Public Verification Engine</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="py-4 bg-white border-top border-danger border-opacity-15 text-center text-secondary small">
+    <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between gap-2">
+      <div class="d-flex align-items-center gap-2 text-dark font-serif">
+        <i class="bi bi-shield-shaded text-danger"></i>
+        <span>LexGuard Judicial Case Repository &bull; Open Legal Information System</span>
+      </div>
+      <div>
+        Secured with HttpOnly Cryptographic Tokens &bull; <a href="screenshots-gallery.html" class="text-danger text-decoration-none fw-semibold">Visual Showcase</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+  <script src="js/lexguard-core.js"></script>
+  <script src="js/lexguard-auth.js"></script>
+  <script>
+    $(document).ready(function () {
+      $('#hero-search-form').on('submit', function (e) {
+        e.preventDefault();
+        const q = $('#hero-search-input').val().trim();
+        if (q) {
+          window.location.href = 'search.html?q=' + encodeURIComponent(q);
+        } else {
+          window.location.href = 'search.html';
+        }
+      });
+    });
+  </script>
 </body>
 </html>
