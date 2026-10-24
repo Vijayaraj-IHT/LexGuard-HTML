@@ -1,224 +1,68 @@
 /**
  * LexGuard — Statutory & Acts Explorer Controller (acts-explorer.js)
- * Semester 5 Project · LexGuard Judicial Repository & Verification Platform
+ * Live Codified Bare Acts, Judicial Commentary, and Case Precedent Linker
  */
 
 $(document).ready(function () {
   'use strict';
 
-  const ACTS_CATALOG = [
-    {
-      id: 'crpc',
-      name: 'Code of Criminal Procedure, 1973 (Cr.P.C.)',
-      shortName: 'Cr.P.C.',
-      newEquiv: 'Bharatiya Nagarik Suraksha Sanhita, 2023 (BNSS)',
-      category: 'Criminal Procedure',
-      badgeClass: 'badge-court-madras',
-      description: 'Governs criminal investigations, trials, bail powers, and High Court inherent quashing jurisdiction.',
-      sections: [
-        {
-          section: 'Section 482 CrPC',
-          title: 'Inherent powers of High Court (Quashing FIR)',
-          desc: 'Quashing of FIR, Charge Sheet, and criminal complaint proceedings to prevent abuse of process of the Court.',
-          query: 'Section 482 CrPC quashing FIR abuse of process'
-        },
-        {
-          section: 'Section 438 CrPC',
-          title: 'Direction for grant of bail (Anticipatory Bail)',
-          desc: 'Anticipatory bail applications before the High Court or Sessions Court for apprehended arrest.',
-          query: 'Section 438 CrPC anticipatory bail'
-        },
-        {
-          section: 'Section 439 CrPC',
-          title: 'Special powers of High Court regarding bail (Regular Bail)',
-          desc: 'Grant or cancellation of regular bail after judicial custody or arrest.',
-          query: 'Section 439 CrPC regular bail'
-        },
-        {
-          section: 'Section 397 CrPC',
-          title: 'Calling for records to exercise powers of revision',
-          desc: 'Criminal revision against interlocutory orders or jurisdictional errors by Magistrate.',
-          query: 'Section 397 CrPC revision'
-        }
-      ]
-    },
-    {
-      id: 'constitution',
-      name: 'Constitution of India, 1950',
-      shortName: 'Constitution',
-      category: 'Constitutional Law',
-      badgeClass: 'badge-court-supreme',
-      description: 'Supreme constitutional charter guaranteeing fundamental rights, writ jurisdiction, and judicial review.',
-      sections: [
-        {
-          section: 'Article 21',
-          title: 'Protection of life and personal liberty',
-          desc: 'Right to speedy trial, personal liberty against arbitrary incarceration, and fair procedure.',
-          query: 'Article 21 life and personal liberty speedy trial'
-        },
-        {
-          section: 'Article 226',
-          title: 'Power of High Courts to issue certain writs',
-          desc: 'Extraordinary original writ jurisdiction for enforcement of fundamental and statutory rights (Mandamus, Certiorari, Habeas Corpus).',
-          query: 'Article 226 writ jurisdiction High Court'
-        },
-        {
-          section: 'Article 32',
-          title: 'Remedies for enforcement of fundamental rights',
-          desc: 'Constitutional remedies directly before the Supreme Court of India.',
-          query: 'Article 32 Supreme Court fundamental rights'
-        },
-        {
-          section: 'Article 14',
-          title: 'Equality before law & Arbitrariness Doctrine',
-          desc: 'Non-arbitrariness, natural justice, and equal protection of the laws in state action.',
-          query: 'Article 14 equality non-arbitrariness'
-        }
-      ]
-    },
-    {
-      id: 'ipc',
-      name: 'Indian Penal Code, 1860 (IPC)',
-      shortName: 'IPC',
-      newEquiv: 'Bharatiya Nyaya Sanhita, 2023 (BNS)',
-      category: 'Substantive Criminal Law',
-      badgeClass: 'badge-court-madurai',
-      description: 'Defines offences and prescribing punishments across the Republic of India.',
-      sections: [
-        {
-          section: 'Section 420 IPC',
-          title: 'Cheating and dishonestly inducing delivery of property',
-          desc: 'Distinction between breach of contract and criminal cheating at inception of agreement.',
-          query: 'Section 420 IPC cheating dishonest intention'
-        },
-        {
-          section: 'Section 406 IPC',
-          title: 'Punishment for criminal breach of trust',
-          desc: 'Entrustment of property and dishonest misappropriation under fiduciary duty.',
-          query: 'Section 406 IPC criminal breach of trust'
-        },
-        {
-          section: 'Section 302 IPC',
-          title: 'Punishment for murder',
-          desc: 'Circumstantial evidence, chain of custody, and last seen theory jurisprudence.',
-          query: 'Section 302 IPC murder circumstantial evidence'
-        },
-        {
-          section: 'Section 307 IPC',
-          title: 'Attempt to murder',
-          desc: 'Intention and knowledge necessary to constitute attempt to commit murder.',
-          query: 'Section 307 IPC attempt to murder'
-        }
-      ]
-    },
-    {
-      id: 'ni-act',
-      name: 'Negotiable Instruments Act, 1881',
-      shortName: 'NI Act',
-      category: 'Commercial & Banking Law',
-      badgeClass: 'badge badge-gold',
-      description: 'Criminal enforcement of cheques and negotiable banking instruments.',
-      sections: [
-        {
-          section: 'Section 138 NI Act',
-          title: 'Dishonour of cheque for insufficiency of funds',
-          desc: 'Statutory demand notice, 15-day period, and quasi-criminal cheque bounce proceedings.',
-          query: 'Section 138 Negotiable Instruments Act cheque bounce'
-        },
-        {
-          section: 'Section 139 NI Act',
-          title: 'Presumption in favour of holder in due course',
-          desc: 'Rebuttable statutory presumption of legally enforceable debt or liability.',
-          query: 'Section 139 NI Act presumption enforceable debt'
-        },
-        {
-          section: 'Section 141 NI Act',
-          title: 'Offences by companies and vicarious liability',
-          desc: 'Specific averments required against directors in charge of day-to-day business.',
-          query: 'Section 141 NI Act vicarious liability director'
-        }
-      ]
-    },
-    {
-      id: 'arbitration',
-      name: 'Arbitration and Conciliation Act, 1996',
-      shortName: 'Arbitration Act',
-      category: 'Dispute Resolution & Commercial',
-      badgeClass: 'badge bg-primary',
-      description: 'Domestic and international commercial arbitrations and enforcement of awards.',
-      sections: [
-        {
-          section: 'Section 34',
-          title: 'Application for setting aside arbitral award',
-          desc: 'Challenge to domestic awards on grounds of patent illegality and public policy.',
-          query: 'Section 34 Arbitration and Conciliation Act patent illegality'
-        },
-        {
-          section: 'Section 9',
-          title: 'Interim measures by Court',
-          desc: 'Preservation of assets, injunctions, and interim protection before or during arbitral proceedings.',
-          query: 'Section 9 Arbitration Act interim measures'
-        },
-        {
-          section: 'Section 11',
-          title: 'Appointment of arbitrators by Chief Justice / Designated Court',
-          desc: 'Prima facie examination of existence of valid arbitration agreement.',
-          query: 'Section 11 Arbitration Act appointment of arbitrator'
-        }
-      ]
-    },
-    {
-      name: 'Narcotic Drugs and Psychotropic Substances Act, 1985 (NDPS)',
-      shortName: 'NDPS Act',
-      category: 'Special Criminal Legislation',
-      badge: 'NDPS Special',
-      description: 'Rigorous statutory provisions governing narcotics offences, search/seizure safeguards, and twin-condition bail bars.',
-      sections: [
-        {
-          section: 'Section 37',
-          title: 'Offences to be cognizable and non-bailable (Twin Conditions for Bail)',
-          desc: 'Rigorous twin conditions requiring Court satisfaction that accused is not guilty and unlikely to commit offences while on bail.',
-          query: 'Section 37 NDPS Act commercial quantity bail'
-        },
-        {
-          section: 'Section 21(c)',
-          title: 'Punishment for contravention involving commercial quantity',
-          desc: 'Manufacture, possession, sale, and transport of commercial narcotics quantities attracting minimum 10-year imprisonment.',
-          query: 'Section 21 NDPS Act commercial quantity'
-        },
-        {
-          section: 'Section 29',
-          title: 'Punishment for abetment and criminal conspiracy',
-          desc: 'Joint conspiracy and abetment in international/interstate narcotic drug trafficking networks.',
-          query: 'Section 29 NDPS Act conspiracy'
-        }
-      ]
-    },
-    {
-      name: 'Prevention of Money Laundering Act, 2002 (PMLA)',
-      shortName: 'PMLA',
-      category: 'Financial Crimes & Enforcement',
-      badge: 'PMLA Enforcement',
-      description: 'Anti-money laundering legal framework, Enforcement Directorate investigations, ECIR, and proceeds of crime attachment.',
-      sections: [
-        {
-          section: 'Section 45',
-          title: 'Offences to be cognizable and non-bailable under PMLA',
-          desc: 'Rigorous twin conditions for grant of bail in money laundering prosecutions involving proceeds of crime.',
-          query: 'Section 45 PMLA twin conditions bail'
-        },
-        {
-          section: 'Section 50',
-          title: 'Powers of authorities regarding summons, production of documents',
-          desc: 'Admissibility of statements recorded before Enforcement Directorate officers and validity of Look Out Circulars (LOC).',
-          query: 'Section 50 PMLA summons statements LOC'
-        }
-      ]
-    }
-  ];
-
   const $container = $('#acts-catalog-container');
   const $searchInput = $('#acts-search-input');
+  const modalEl = document.getElementById('statute-detail-modal');
+  const statuteModal = modalEl ? new bootstrap.Modal(modalEl) : null;
+
+  let liveActsData = [];
+
+  // Fallback metadata for badges and categories
+  const ACT_METADATA = {
+    'CRPC': { category: 'Criminal Procedure', badgeClass: 'badge-court-madras', newEquiv: 'BNSS, 2023', desc: 'Governs investigations, regular/anticipatory bail, and inherent quashing powers under Section 482.' },
+    'IPC': { category: 'Substantive Criminal Law', badgeClass: 'badge-court-madurai', newEquiv: 'BNS, 2023', desc: 'Defines offences including murder, cheating, cruelty, and statutory criminal liabilities.' },
+    'CONST': { category: 'Constitutional Law', badgeClass: 'badge-court-supreme', newEquiv: null, desc: 'Supreme constitutional charter guaranteeing fundamental rights and extraordinary High Court writ review under Article 226.' },
+    'NI_ACT': { category: 'Commercial Banking', badgeClass: 'badge-gold', newEquiv: null, desc: 'Strict statutory regime governing cheque dishonour, statutory demand notices, and Section 139 legal presumptions.' },
+    'NDPS': { category: 'Special Criminal Law', badgeClass: 'badge-court-madras', newEquiv: null, desc: 'Stringent procedural safeguards and rigorous Section 37 bail twin conditions for commercial narcotic seizures.' },
+    'ARB': { category: 'Commercial Arbitration', badgeClass: 'badge-gold', newEquiv: null, desc: 'Section 9 interim court protections and Section 34 patent illegality challenge thresholds against arbitral awards.' },
+    'IEA': { category: 'Law of Evidence', badgeClass: 'badge-court-madurai', newEquiv: 'BSA, 2023', desc: 'Admissibility of electronic records under Section 65B, dying declarations, and evidentiary burdens.' },
+    'POCSO': { category: 'Child Protection Law', badgeClass: 'badge-court-madras', newEquiv: null, desc: 'Rigorous statutory presumption of guilt under Section 29 and specialized trial procedures for minor protection.' },
+    'PMLA': { category: 'Financial Crime Enforcement', badgeClass: 'badge-court-supreme', newEquiv: null, desc: 'Enforcement Directorate investigations, attachment of crime proceeds, and Section 45 twin bail rigors.' },
+    'SRA': { category: 'Civil Equity Law', badgeClass: 'badge-court-madras', newEquiv: null, desc: 'Personal bars to specific performance and Section 16(c) continuous readiness and willingness proof.' },
+    'CPC': { category: 'Civil Procedure', badgeClass: 'badge-court-madurai', newEquiv: null, desc: 'Code of Civil Procedure governing Section 100 second appeals and Order 39 interim temporary injunctions.' },
+    'PCA': { category: 'Anti-Corruption Law', badgeClass: 'badge-court-supreme', newEquiv: null, desc: 'Prevention of Corruption Act requiring Section 19 prior sanction to protect public servants from vexatious prosecution.' }
+  };
+
+  /**
+   * Fetch live acts and codified sections from FastAPI backend.
+   */
+  function fetchActsCatalog() {
+    $container.html(`
+      <div class="card card-judicial text-center p-5">
+        <div class="spinner-border text-danger mb-3" role="status"></div>
+        <h4 class="h6 text-light mb-0">Loading Codified Indian Bare Acts &amp; Statutes...</h4>
+      </div>
+    `);
+
+    $.getJSON('http://127.0.0.1:8000/api/v1/statutes/acts')
+      .done(function (acts) {
+        liveActsData = acts || [];
+        renderCatalog();
+
+        // Check if opened with URL query params: ?act=CRPC&section=482
+        const params = new URLSearchParams(window.location.search);
+        const urlAct = params.get('act');
+        const urlSec = params.get('section');
+        if (urlAct && urlSec) {
+          openSectionDetail(urlAct, urlSec);
+        }
+      })
+      .fail(function () {
+        $container.html(`
+          <div class="card card-judicial text-center p-4">
+            <i class="bi bi-exclamation-triangle text-danger fs-3 mb-2"></i>
+            <h5 class="text-light">Failed to load codified statutes</h5>
+            <p class="text-secondary small">Please ensure the backend daemon on port 8000 is active.</p>
+          </div>
+        `);
+      });
+  }
 
   /**
    * Render Acts Catalog.
@@ -227,36 +71,43 @@ $(document).ready(function () {
     $container.empty();
     const q = (filterQuery || '').toLowerCase().trim();
 
-    ACTS_CATALOG.forEach(function (act) {
-      // Filter sections based on query
-      const matchedSections = act.sections.filter(function (sec) {
+    liveActsData.forEach(function (act) {
+      const meta = ACT_METADATA[act.act_code] || {
+        category: 'Indian Statute',
+        badgeClass: 'badge-court-madras',
+        newEquiv: null,
+        desc: act.act_title
+      };
+
+      // Filter sections
+      const matchedSections = (act.sections || []).filter(function (s) {
         if (!q) return true;
         return (
-          act.name.toLowerCase().includes(q) ||
-          act.shortName.toLowerCase().includes(q) ||
-          (act.newEquiv && act.newEquiv.toLowerCase().includes(q)) ||
-          sec.section.toLowerCase().includes(q) ||
-          sec.title.toLowerCase().includes(q) ||
-          sec.desc.toLowerCase().includes(q)
+          act.act_code.toLowerCase().includes(q) ||
+          act.act_title.toLowerCase().includes(q) ||
+          (meta.newEquiv && meta.newEquiv.toLowerCase().includes(q)) ||
+          s.section_no.toLowerCase().includes(q) ||
+          s.section_title.toLowerCase().includes(q)
         );
       });
 
       if (matchedSections.length === 0) return;
 
       const actHtml = `
-        <div class="lg-statute-card shadow">
+        <div class="lg-statute-card shadow mb-4">
           <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2 pb-2 border-bottom border-secondary border-opacity-25">
             <div>
               <div class="d-flex align-items-center gap-2 mb-1">
-                <span class="badge ${act.badgeClass}">${act.category}</span>
-                ${act.newEquiv ? `<span class="badge badge-court-red"><i class="bi bi-arrow-repeat me-1"></i>${act.newEquiv}</span>` : ''}
+                <span class="badge ${meta.badgeClass}">${meta.category}</span>
+                ${meta.newEquiv ? `<span class="badge badge-court-red"><i class="bi bi-arrow-repeat me-1"></i>${meta.newEquiv}</span>` : ''}
+                <span class="badge bg-secondary">${act.total_cases || 0} Cases Indexed</span>
               </div>
-              <h2 class="h5 fw-bold text-dark mb-1">${LG.utils.escapeHtml(act.name)}</h2>
-              <p class="text-secondary small mb-0">${LG.utils.escapeHtml(act.description)}</p>
+              <h2 class="h5 fw-bold text-dark mb-1">${LG.utils.escapeHtml(act.act_title)}</h2>
+              <p class="text-secondary small mb-0">${LG.utils.escapeHtml(meta.desc)}</p>
             </div>
             <div>
-              <a href="search.html?q=${encodeURIComponent(act.shortName)}" class="btn btn-xs btn-judicial-outline">
-                <i class="bi bi-search me-1"></i>Search All in ${LG.utils.escapeHtml(act.shortName)}
+              <a href="search.html?q=${encodeURIComponent(act.act_title)}" class="btn btn-xs btn-judicial-outline">
+                <i class="bi bi-search me-1"></i>Search All in Precedents
               </a>
             </div>
           </div>
@@ -265,16 +116,20 @@ $(document).ready(function () {
             ${matchedSections.map(function (s) {
               return `
                 <div class="col-md-6">
-                  <a href="search.html?q=${encodeURIComponent(s.query)}" class="lg-statute-section-item">
+                  <div class="lg-statute-section-item section-click-card" data-act="${act.act_code}" data-section="${s.section_no}" style="cursor: pointer;">
                     <div class="d-flex align-items-center justify-content-between mb-1">
-                      <span class="fw-bold text-danger font-mono">${LG.utils.escapeHtml(s.section)}</span>
+                      <span class="fw-bold text-danger font-mono">
+                        <i class="bi bi-bookmark-fill me-1 text-danger"></i>Section ${LG.utils.escapeHtml(s.section_no)}
+                      </span>
                       <span class="badge bg-light text-danger border border-danger border-opacity-25 small">
-                        Explore Precedents <i class="bi bi-arrow-right ms-1"></i>
+                        ${s.case_count || 0} Judgments <i class="bi bi-chevron-right ms-1"></i>
                       </span>
                     </div>
-                    <div class="fw-bold text-dark small mb-1">${LG.utils.escapeHtml(s.title)}</div>
-                    <div class="text-secondary small lh-sm" style="font-size: 0.8rem;">${LG.utils.escapeHtml(s.desc)}</div>
-                  </a>
+                    <div class="fw-bold text-dark small mb-1">${LG.utils.escapeHtml(s.section_title)}</div>
+                    <div class="text-secondary small lh-sm" style="font-size: 0.8rem;">
+                      Click to inspect official codified text &amp; matching High Court rulings.
+                    </div>
+                  </div>
                 </div>
               `;
             }).join('')}
@@ -283,6 +138,13 @@ $(document).ready(function () {
       `;
 
       $container.append(actHtml);
+    });
+
+    // Attach click events to section cards
+    $('.section-click-card').on('click', function () {
+      const actCode = $(this).data('act');
+      const secNo = $(this).data('section');
+      openSectionDetail(actCode, secNo);
     });
 
     if ($container.children().length === 0) {
@@ -296,11 +158,82 @@ $(document).ready(function () {
     }
   }
 
+  /**
+   * Opens the Codified Bare Act Section Modal and displays legislative text + linked cases.
+   */
+  function openSectionDetail(actCode, secNo) {
+    if (!statuteModal) return;
+
+    $('#modal-act-code').text(actCode);
+    $('#modal-section-title').text(`Section ${secNo}`);
+    $('#modal-act-title').text('Loading legislative details...');
+    $('#modal-bare-text').text('Loading official legislative bare text...');
+    $('#modal-explanation').text('Loading judicial commentary...');
+    $('#modal-cases-list').html('<div class="spinner-border spinner-border-sm text-warning" role="status"></div> Loading cases...');
+    $('#modal-search-all-link').attr('href', `search.html?q=Section+${secNo}+${actCode}`);
+
+    statuteModal.show();
+
+    $.getJSON(`http://127.0.0.1:8000/api/v1/statutes/${encodeURIComponent(actCode)}/${encodeURIComponent(secNo)}`)
+      .done(function (data) {
+        $('#modal-section-title').text(`Section ${data.section_no}: ${data.section_title}`);
+        $('#modal-act-title').text(data.act_title);
+        $('#modal-bare-text').text(data.bare_text || 'Bare act text not available.');
+        $('#modal-explanation').text(data.explanation || 'Judicial commentary under collation.');
+        $('#modal-cases-count').text(data.cases ? data.cases.length : 0);
+
+        const $list = $('#modal-cases-list');
+        $list.empty();
+
+        if (data.cases && data.cases.length > 0) {
+          data.cases.forEach(function (c) {
+            const item = $(`
+              <div class="card p-3 bg-dark border-secondary border-opacity-25 hover-border-warning">
+                <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-1">
+                  <div>
+                    <span class="badge bg-secondary mb-1" style="font-size: 0.7rem;">${LG.utils.escapeHtml(c.court || '')}</span>
+                    <span class="badge bg-danger mb-1" style="font-size: 0.7rem;">${LG.utils.escapeHtml(c.case_type || 'Judgment')}</span>
+                    <h6 class="text-light fw-bold mb-0">
+                      <a href="case-viewer.html?id=${encodeURIComponent(c.id)}" class="text-light text-decoration-none hover-text-warning" target="_blank">
+                        ${LG.utils.escapeHtml(c.title || c.case_no)}
+                      </a>
+                    </h6>
+                  </div>
+                  <div>
+                    <span class="badge badge-gold" style="font-size: 0.7rem;">${LG.utils.escapeHtml(c.outcome || 'Disposed')}</span>
+                  </div>
+                </div>
+                ${c.ratio_decidendi ? `<div class="small text-secondary fst-italic lh-sm mb-2" style="font-size: 0.78rem;">${LG.utils.escapeHtml(c.ratio_decidendi)}...</div>` : ''}
+                <div class="d-flex align-items-center justify-content-between pt-1 border-top border-secondary border-opacity-10">
+                  <span class="font-mono text-warning small" style="font-size: 0.72rem;">Case No: ${LG.utils.escapeHtml(c.case_no)}</span>
+                  <a href="case-viewer.html?id=${encodeURIComponent(c.id)}" class="btn btn-xs btn-gold" target="_blank">
+                    Open Case Viewer &rarr;
+                  </a>
+                </div>
+              </div>
+            `);
+            $list.append(item);
+          });
+        } else {
+          $list.html(`
+            <div class="text-secondary small fst-italic p-3 text-center bg-dark rounded border border-secondary border-opacity-15">
+              No direct cases indexed yet for Section ${secNo}. You can search related precedents in the search catalog.
+            </div>
+          `);
+        }
+      })
+      .fail(function () {
+        $('#modal-bare-text').text('Error loading codified text.');
+        $('#modal-explanation').text('Unable to retrieve judicial commentary from backend.');
+        $('#modal-cases-list').html('<div class="text-danger small">Failed to load linked cases.</div>');
+      });
+  }
+
   // Real-time Search Filter Handler
   $searchInput.on('input propertychange', function () {
     renderCatalog($(this).val());
   });
 
-  // Initial Render
-  renderCatalog();
+  // Initial Load
+  fetchActsCatalog();
 });

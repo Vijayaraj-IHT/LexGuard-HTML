@@ -19,15 +19,25 @@ class PrecedentCited(BaseModel):
 
 class CaseBase(BaseModel):
     case_no: str = Field(..., max_length=255)
+    cnr_number: Optional[str] = Field(default=None, max_length=50)
+    case_type: Optional[str] = Field(default="Judgment", max_length=100)
     title: str = Field(..., max_length=500)
     court: str = Field(..., max_length=255)
     year: int = Field(..., ge=1800, le=2100)
+    decision_date: Optional[Any] = None
     judge: Optional[str] = Field(default=None, max_length=500)
+    bench_type: Optional[str] = Field(default="Single Bench", max_length=100)
     parties: Optional[str] = Field(default=None, max_length=1000)
+    petitioner: Optional[str] = Field(default=None, max_length=500)
+    respondent: Optional[str] = Field(default=None, max_length=500)
+    petitioner_counsel: Optional[str] = Field(default=None, max_length=500)
+    respondent_counsel: Optional[str] = Field(default=None, max_length=500)
+    legal_domain: Optional[str] = Field(default="General", max_length=100)
     act_tags: List[str] = Field(default_factory=list)
     section_tags: List[str] = Field(default_factory=list)
     keyword_tags: List[str] = Field(default_factory=list)
     summary: Optional[str] = None
+    layman_summary: Optional[str] = None
     outcome: Optional[str] = Field(default=None, max_length=500)
     facts: Optional[str] = None
     issues_framed: List[str] = Field(default_factory=list)
@@ -35,11 +45,13 @@ class CaseBase(BaseModel):
     statutory_tests: List[Any] = Field(default_factory=list)
     disposition: Optional[str] = Field(default=None, max_length=1000)
     precedents_cited: List[Any] = Field(default_factory=list)
+    cited_by_count: Optional[int] = 0
+    official_citation: Optional[str] = Field(default=None, max_length=200)
     full_text: Optional[str] = None
     page_count: Optional[int] = 1
     source_url: Optional[str] = None
     source_verification_state: Optional[str] = "unverified"
-    precedential_status: Optional[str] = "Precedential status not checked"
+    precedential_status: Optional[str] = "Good Law"
     auto_extracted: bool = False
 
 

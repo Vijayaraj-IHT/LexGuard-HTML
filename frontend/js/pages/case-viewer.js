@@ -108,6 +108,38 @@ $(document).ready(function () {
     });
 
   /**
+   * Safe in-text statute linkifier.
+   * Transforms statutory section references into interactive clickable links to Acts Explorer.
+   */
+  function linkifyLegalText(text) {
+    if (!text) return '';
+    const escaped = LG.utils.escapeHtml(text);
+    
+    // Pattern: Section 482 of CrPC, Sec. 138 NI Act, Article 226 of the Constitution
+    const pattern = /\b(Section|Sec\.|Article|Art\.)\s+(\d+[A-Z]?(\s*\([0-9a-zA-Z]+\))*)\s*(?:of\s+(?:the\s+)?)?([A-Za-z\s,\.]{2,35}?(?:Act|Code|Constitution|Rules|Order|Cr\.?P\.?C\.?|I\.?P\.?C\.?|N\.?I\.?\s*Act|N\.?D\.?P\.?S\.?|P\.?O\.?C\.?S\.?O\.?|P\.?M\.?L\.?A\.?))\b/gi;
+    
+    return escaped.replace(pattern, function(match, prefix, secNo, subP, actName) {
+      let actCode = 'CRPC';
+      const aUpper = (actName || '').toUpperCase();
+      if (aUpper.includes('CRPC') || aUpper.includes('CRIMINAL')) actCode = 'CRPC';
+      else if (aUpper.includes('IPC') || aUpper.includes('PENAL')) actCode = 'IPC';
+      else if (aUpper.includes('CONST')) actCode = 'CONST';
+      else if (aUpper.includes('NI') || aUpper.includes('NEGOTIABLE')) actCode = 'NI_ACT';
+      else if (aUpper.includes('NDPS') || aUpper.includes('NARCOTIC')) actCode = 'NDPS';
+      else if (aUpper.includes('POCSO')) actCode = 'POCSO';
+      else if (aUpper.includes('PMLA') || aUpper.includes('LAUNDERING')) actCode = 'PMLA';
+      else if (aUpper.includes('ARBITRATION')) actCode = 'ARB';
+      else if (aUpper.includes('SPECIFIC RELIEF')) actCode = 'SRA';
+      else if (aUpper.includes('CIVIL PROCEDURE') || aUpper.includes('CPC')) actCode = 'CPC';
+      else if (aUpper.includes('CORRUPTION')) actCode = 'PCA';
+      else if (aUpper.includes('EVIDENCE')) actCode = 'IEA';
+      
+      const cleanSec = secNo.trim().split(' ')[0];
+      return `<a href="acts-explorer.html?act=${encodeURIComponent(actCode)}&section=${encodeURIComponent(cleanSec)}" class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-1 py-0.5 rounded text-decoration-none fw-semibold" style="font-size: 0.85em;" title="Explore ${actName} Section ${cleanSec} in Acts Explorer"><i class="bi bi-book me-1"></i>${match}</a>`;
+    });
+  }
+
+  /**
    * Render Case Header & Identification details.
    */
   function renderCaseHeader(c) {
@@ -116,7 +148,7 @@ $(document).ready(function () {
     $headerCaseno.html(`<i class="bi bi-file-earmark-text me-1"></i>Case No: <span class="text-light">${LG.utils.escapeHtml(c.case_no || '—')}</span>`);
     $headerDate.html(`<i class="bi bi-calendar3 me-1"></i>Date: <span class="text-light">${LG.utils.formatDate(c.decision_date || c.created_at)}</span>`);
     $headerBench.html(`<i class="bi bi-person-badge me-1"></i>Bench: <span class="text-light">${LG.utils.escapeHtml(c.judge || 'Hon\'ble Bench')}</span>`);
-    $headerCnr.html(`<i class="bi bi-upc-scan me-1"></i>CNR: <span class="text-light font-mono">${LG.utils.escapeHtml(c.cnr || '—')}</span>`);
+    $headerCnr.html(`<i class="bi bi-upc-scan me-1"></i>CNR: <span class="text-light font-mono">${LG.utils.escapeHtml(c.cnr_number || c.cnr || '—')}</span>`);
 
     if (c.outcome) {
       $headerOutcome.text(c.outcome).show();
@@ -135,12 +167,17 @@ $(document).ready(function () {
    * Render Tab 1: Structure & Overview.
    */
   function renderOverviewTab(c) {
-    $ratio.text(c.ratio_decidendi || 'Legal principles and ratio decidendi affirmed under judicial consideration.');
-    $summary.text(c.summary || 'Summary under extraction from official court records.');
-    $issues.text(c.issues_framed || '1. Statutory compliance with procedural standards.\n2. Fundamental rights invocation and constitutional remedy validity.');
+    $ratio.html(linkifyLegalText(c.ratio_decidendi || 'Legal principles and ratio decidendi affirmed under judicial consideration.'));
+    $summary.html(linkifyLegalText(c.summary || 'Summary under extraction from official court records.'));
+    $issues.html(linkifyLegalText(c.issues_framed || '1. Statutory compliance with procedural standards.\n2. Fundamental rights invocation and constitutional remedy validity.'));
+
+    // Populate Citizen View Card
+    const layman = c.layman_summary || `In this ${c.case_type || 'case'}, the Court examined the dispute involving ${c.title || 'the parties'}. The ruling resulted in the petition being ${c.outcome || c.disposition || 'disposed'}.`;
+    $('#citizen-summary-text').text(layman);
+    $('#citizen-takeaway').html(`<strong>Final Judicial Outcome:</strong> <span class="badge badge-gold">${LG.utils.escapeHtml(c.outcome || c.disposition || 'Disposed')}</span> under <strong>${LG.utils.escapeHtml(c.court || 'Court')}</strong>.`);
 
     $metaCourt.text(c.court || '—');
-    $metaCasetype.text(c.cis_case_type || c.case_type || 'Civil / Criminal');
+    $metaCasetype.text(c.case_type || c.cis_case_type || 'Civil / Criminal');
     $metaYear.text(c.year || '—');
     $metaOutcome.text(c.outcome || c.disposition || 'Disposed');
     $metaStatus.html(`<span class="${LG.utils.statusBadgeClass(c.verification_status || c.status)}">${c.verification_status || c.status || 'Verified'}</span>`);
@@ -172,11 +209,28 @@ $(document).ready(function () {
     }
 
     // Citation
-    const citation = `${c.title || 'Case'}, (${c.year || ''}) ${c.court || ''}`;
+    const citation = c.official_citation || `${c.title || 'Case'}, (${c.year || ''}) ${c.court || ''}`;
     $citationBox.text(citation);
 
     $copyCitationBtn.on('click', function () {
       LG.utils.copyToClipboard(citation, 'Citation copied: ' + citation);
+    });
+
+    // Mode Toggle Event Listeners
+    $('#mode-advocate').off('change').on('change', function () {
+      if ($(this).is(':checked')) {
+        $('#citizen-card').addClass('d-none');
+        $ratio.closest('.card').removeClass('d-none');
+        $issues.closest('.card').removeClass('d-none');
+      }
+    });
+
+    $('#mode-citizen').off('change').on('change', function () {
+      if ($(this).is(':checked')) {
+        $('#citizen-card').removeClass('d-none');
+        $ratio.closest('.card').addClass('d-none');
+        $issues.closest('.card').addClass('d-none');
+      }
     });
   }
 

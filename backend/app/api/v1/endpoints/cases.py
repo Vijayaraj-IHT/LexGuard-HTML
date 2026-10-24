@@ -632,40 +632,8 @@ def view_case_document(
         user_agent=request.headers.get("user-agent"),
     )
 
-    response_data = CaseDetailResponse(
-        id=case.id,
-        case_no=case.case_no,
-        title=case.title,
-        court=case.court,
-        year=case.year,
-        judge=case.judge,
-        parties=case.parties,
-        act_tags=case.act_tags or [],
-        section_tags=case.section_tags or [],
-        keyword_tags=case.keyword_tags or [],
-        summary=case.summary,
-        outcome=case.outcome,
-        facts=case.facts,
-        issues_framed=case.issues_framed or [],
-        ratio_decidendi=case.ratio_decidendi,
-        statutory_tests=case.statutory_tests or [],
-        disposition=case.disposition or case.outcome,
-        precedents_cited=case.precedents_cited or [],
-        source_url=case.source_url,
-        source_verification_state=case.source_verification_state or "unverified",
-        precedential_status=case.precedential_status or "Precedential status not checked",
-        file_hash=case.file_hash,
-        redacted_file_hash=case.redacted_file_hash,
-        status=case.status,
-        uploaded_by_id=case.uploaded_by_id,
-        approved_by_id=case.approved_by_id,
-        approved_at=case.approved_at,
-        created_at=case.created_at,
-        updated_at=case.updated_at,
-        integrity_status=integrity_status,
-        full_text=case.full_text,
-        page_count=case.page_count or 1,
-    )
+    response_data = CaseDetailResponse.model_validate(case)
+    response_data.integrity_status = integrity_status
     return response_data
 
 

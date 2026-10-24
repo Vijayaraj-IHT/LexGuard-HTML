@@ -51,6 +51,12 @@ $(document).ready(function () {
     const outcome = $filterOutcome.val();
     if (outcome) filters.outcome = outcome;
 
+    const domain = $('#filter-domain').val();
+    if (domain) filters.legal_domain = domain;
+
+    const caseType = $('#filter-casetype').val();
+    if (caseType) filters.case_type = caseType;
+
     return Object.keys(filters).length > 0 ? filters : null;
   }
 
@@ -173,8 +179,10 @@ $(document).ready(function () {
               </a>
               <div class="d-flex flex-wrap align-items-center gap-2 mt-1">
                 <span class="${courtBadge}">${LG.utils.escapeHtml(item.court)}</span>
+                ${item.case_type ? `<span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">${LG.utils.escapeHtml(item.case_type)}</span>` : ''}
                 <span class="badge bg-secondary">${item.year}</span>
                 ${item.outcome ? `<span class="badge badge-gold">${LG.utils.escapeHtml(item.outcome)}</span>` : ''}
+                ${item.cnr_number ? `<span class="badge bg-dark text-warning font-mono border border-secondary border-opacity-25" style="font-size: 0.7rem;"><i class="bi bi-upc-scan me-1"></i>${LG.utils.escapeHtml(item.cnr_number)}</span>` : ''}
                 ${item.judge ? `<span class="small text-secondary"><i class="bi bi-person-fill me-1"></i>${LG.utils.escapeHtml(item.judge)}</span>` : ''}
               </div>
             </div>
@@ -317,6 +325,8 @@ $(document).ready(function () {
     $filterYearTo.val('');
     $filterAct.val('');
     $filterOutcome.val('');
+    $('#filter-domain').val('');
+    $('#filter-casetype').val('');
     executeSearch(1);
   });
 

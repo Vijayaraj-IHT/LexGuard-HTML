@@ -1,11 +1,12 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, cases, search, draft, admin, bookmarks, verification, comparison
+from app.api.v1.endpoints import auth, cases, search, draft, admin, bookmarks, verification, comparison, statutes
 
 api_router = APIRouter()
 
 api_router.include_router(auth.router, prefix="/auth", tags=["Authentication & RBAC"])
 api_router.include_router(auth.router, prefix="/users", tags=["User Profile Alias"])
 api_router.include_router(cases.router, prefix="/cases", tags=["Case Repository & Cryptographic Verification"])
+api_router.include_router(statutes.router, prefix="/statutes", tags=["Codified Bare Acts & Statutes"])
 api_router.include_router(verification.router, prefix="/verification", tags=["Document Integrity & Hash Verification"])
 api_router.include_router(comparison.router, prefix="/comparison", tags=["Precedent Case Comparison"])
 api_router.include_router(search.router, prefix="/search", tags=["Legal Search & Precedent Matching"])

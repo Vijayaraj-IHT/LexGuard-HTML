@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Integer, Text, JSON, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, String, Integer, Text, JSON, DateTime, ForeignKey, Boolean, Date
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -17,18 +17,28 @@ class Case(Base):
     __tablename__ = "cases"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    cnr_number = Column(String(16), index=True, nullable=True)
     case_no = Column(String(100), index=True, nullable=False)
+    case_type = Column(String(50), index=True, default="Judgment", nullable=True)
     title = Column(String(300), index=True, nullable=False)
     court = Column(String(150), index=True, nullable=False)
     year = Column(Integer, index=True, nullable=False)
+    decision_date = Column(Date, index=True, nullable=True)
     judge = Column(String(255), nullable=True)
+    bench_type = Column(String(50), default="Single Bench", nullable=True)
     parties = Column(String(500), nullable=True)
+    petitioner = Column(String(255), nullable=True)
+    respondent = Column(String(255), nullable=True)
+    petitioner_counsel = Column(String(255), nullable=True)
+    respondent_counsel = Column(String(255), nullable=True)
+    legal_domain = Column(String(100), index=True, default="General", nullable=True)
     
     # Categorization and Metadata
     act_tags = Column(JSON, default=list, nullable=False)        # e.g. ["IPC", "CrPC", "NDPS Act"]
     section_tags = Column(JSON, default=list, nullable=False)    # e.g. ["Section 420 IPC", "Section 37 NDPS"]
     keyword_tags = Column(JSON, default=list, nullable=False)    # e.g. ["bail", "mens rea", "quashing"]
     summary = Column(Text, nullable=True)
+    layman_summary = Column(Text, nullable=True)                 # Plain-English summary
     outcome = Column(String(100), nullable=True)                 # Allowed, Dismissed, Partly Allowed
 
     # Multi-Dimensional Judicial Rhetorical Structure
@@ -38,6 +48,8 @@ class Case(Base):
     statutory_tests = Column(JSON, default=list, nullable=False) # Mandatory statutory conditions/prerequisites
     disposition = Column(String(100), nullable=True)             # Allowed, Dismissed, Quashed, Remanded
     precedents_cited = Column(JSON, default=list, nullable=False)# Prior landmark judgments relied upon
+    cited_by_count = Column(Integer, default=0, nullable=True)
+    official_citation = Column(String(150), nullable=True)
 
     # Official PDF Full Text & Metadata
     full_text = Column(Text, nullable=True)                      # Complete extracted text of official judgment PDF
