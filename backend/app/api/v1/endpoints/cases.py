@@ -39,6 +39,26 @@ ALLOWED_EXTENSIONS = {".pdf", ".docx"}
 MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024  # 20MB
 
 
+def resolve_case_file_path(file_path: str) -> str:
+    """Resolves physical file path, falling back to STORAGE_DIR if moved across environments."""
+    if not file_path:
+        return ""
+    if os.path.exists(file_path):
+        return file_path
+    fname = os.path.basename(file_path)
+    candidates = [
+        os.path.join(settings.STORAGE_DIR, fname),
+        os.path.join(os.getcwd(), "storage", "cases", fname),
+        os.path.join(os.getcwd(), "backend", "storage", "cases", fname),
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "storage", "cases", fname),
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "backend", "storage", "cases", fname),
+    ]
+    for cand in candidates:
+        if os.path.exists(cand):
+            return cand
+    return file_path
+
+
 @router.post("/upload", response_model=CaseResponse, status_code=status.HTTP_201_CREATED)
 async def upload_case(
     request: Request,
@@ -478,7 +498,8 @@ def re_extract_case(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Case record not found.",
         )
-    if not os.path.exists(case.file_path):
+    doc_path = resolve_case_file_path(case.file_path)
+    if not doc_path or not os.path.exists(doc_path):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Original court PDF file is missing on storage.",
@@ -486,7 +507,7 @@ def re_extract_case(
 
     from app.services.extraction_service import ExtractionService
     try:
-        extracted = ExtractionService.extract_from_pdf(case.file_path, extract_passes=[1, 2, 3])
+        extracted = ExtractionService.extract_from_pdf(doc_path, extract_passes=[1, 2, 3])
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -575,8 +596,9 @@ def view_case_document(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Document access restricted.")
 
     integrity_status = "verified"
-    if os.path.exists(case.file_path):
-        with open(case.file_path, "rb") as f:
+    doc_path = resolve_case_file_path(case.file_path)
+    if doc_path and os.path.exists(doc_path):
+        with open(doc_path, "rb") as f:
             content = f.read()
         if not verify_sha256(content, case.file_hash):
             integrity_status = "tampered"
@@ -662,10 +684,11 @@ def verify_case_integrity(
     if not case:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case record not found.")
 
-    if not os.path.exists(case.file_path):
+    doc_path = resolve_case_file_path(case.file_path)
+    if not doc_path or not os.path.exists(doc_path):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Physical document file missing on disk.")
 
-    with open(case.file_path, "rb") as f:
+    with open(doc_path, "rb") as f:
         bytes_data = f.read()
 
     computed_hash = compute_sha256(bytes_data)
@@ -715,7 +738,8 @@ def download_case(
             detail="Access restricted: This case record is not yet published.",
         )
 
-    if not os.path.exists(case.file_path):
+    doc_path = resolve_case_file_path(case.file_path)
+    if not doc_path or not os.path.exists(doc_path):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Physical document file missing on disk.")
 
     log_audit_event(
@@ -729,7 +753,7 @@ def download_case(
     )
 
     clean_case_no = "".join(c for c in case.case_no if c.isalnum() or c in ("-", "_")).strip() or "judgment"
-    file_ext = os.path.splitext(case.file_path)[1].lower()
+    file_ext = os.path.splitext(doc_path)[1].lower()
     if file_ext == ".docx":
         filename = f"{clean_case_no}.docx"
         media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -738,7 +762,7 @@ def download_case(
         media_type = "application/pdf"
 
     return FileResponse(
-        path=case.file_path,
+        path=doc_path,
         filename=filename,
         media_type=media_type,
         headers={
