@@ -1,9 +1,14 @@
 /**
  * LexGuard — Sign In Page Controller (login.js)
- * Semester 5 Project · LexGuard Judicial Repository & Verification Platform
+ * LexGuard Judicial Repository & Verification Platform
  */
 
 $(document).ready(function () {
+  // Unhide demo test accounts if ?demo=1 or stored in localStorage
+  if (window.location.search.includes('demo=1') || window.location.search.includes('test=1') || localStorage.getItem('lexguard_demo') === '1') {
+    $('#demo-accounts-card').removeClass('d-none');
+  }
+
   'use strict';
 
   // If already authenticated, redirect immediately

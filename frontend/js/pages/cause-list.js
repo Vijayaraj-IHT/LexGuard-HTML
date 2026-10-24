@@ -1,6 +1,6 @@
 /**
  * LexGuard — Daily Cause List & Court Board Tracker (cause-list.js)
- * Semester 5 Project · LexGuard Judicial Repository & Verification Platform
+ * LexGuard Judicial Repository & Verification Platform
  */
 
 $(document).ready(function () {

@@ -1,7 +1,7 @@
 /**
  * LexGuard — Client-Side Cryptographic Verifier (lexguard-crypto.js)
  * Web Crypto API SHA-256 zero-upload hash generator
- * Semester 5 Project · LexGuard Judicial Repository & Verification Platform
+ * LexGuard Judicial Repository & Verification Platform
  */
 
 (function (window) {

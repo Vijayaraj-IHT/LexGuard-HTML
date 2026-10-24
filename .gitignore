@@ -36,6 +36,11 @@ wheels/
 .DS_Store
 Thumbs.db
 
+# Storage & local artifacts
+backend/storage/
+*.db
+*.sqlite
+
 # Logs & temp
 *.log
 temp/

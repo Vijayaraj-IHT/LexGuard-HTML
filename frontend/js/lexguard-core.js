@@ -1,6 +1,6 @@
 /**
  * LexGuard — Core Utilities & Configuration (lexguard-core.js)
- * Semester 5 Project · LexGuard Judicial Repository & Verification Platform
+ * LexGuard Judicial Repository & Verification Platform
  */
 
 (function (window) {

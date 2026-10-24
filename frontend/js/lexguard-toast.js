@@ -1,6 +1,6 @@
 /**
  * LexGuard — Toast Notification System (lexguard-toast.js)
- * Semester 5 Project · LexGuard Judicial Repository & Verification Platform
+ * LexGuard Judicial Repository & Verification Platform
  */
 
 (function (window) {

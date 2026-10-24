@@ -1,6 +1,6 @@
 /**
  * LexGuard — 4-Tab Case Viewer & PDF.js Engine (case-viewer.js)
- * Semester 5 Project · LexGuard Judicial Repository & Verification Platform
+ * LexGuard Judicial Repository & Verification Platform
  */
 
 $(document).ready(function () {
@@ -161,11 +161,53 @@ $(document).ready(function () {
     } else {
       $sealHash.text('SHA-256 Digest Pending');
     }
+
+    // Populate Digital Seal Certificate Modal
+    $('#cert-court-name').text(c.court || 'High Court of Judicature');
+    $('#cert-case-title').text(c.title || 'Untitled Judicial Case');
+    $('#cert-case-no').text(c.case_no || '—');
+    $('#cert-cnr-no').text(c.cnr_number ? ('CNR: ' + c.cnr_number) : (c.cnr ? ('CNR: ' + c.cnr) : 'CNR: Registered Under Judicial Repository'));
+    $('#cert-judge-name').text(c.judge || 'Hon'ble Judges of the Bench');
+    $('#cert-bench-type').text((c.bench_type || 'Judicial Bench') + (c.legal_domain ? (' • ' + c.legal_domain) : ''));
+    $('#cert-decision-date').text(LG.utils.formatDate(c.decision_date || c.created_at));
+    $('#cert-outcome-badge').text(c.outcome || c.disposition || 'Disposed');
+    $('#cert-sha256-hash').text(c.file_hash || 'SHA-256 Digest Pending');
+    $('#cert-generated-timestamp').text('Generated: ' + new Date().toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'medium' }));
+
   }
 
   /**
    * Render Tab 1: Structure & Overview.
    */
+  
+    // Copy Official / Neutral Citation
+    $('#btn-copy-citation').off('click').on('click', function (e) {
+      e.preventDefault();
+      if (!currentCase) return;
+      const yr = currentCase.decision_date ? new Date(currentCase.decision_date).getFullYear() : (currentCase.year || 2026);
+      const shortId = (currentCase.file_hash || currentCase.id || '').substring(0, 8);
+      const citation = currentCase.official_citation || `${currentCase.title || 'Judgment'}, ${currentCase.case_no || ''} (${currentCase.court || 'Court'}, ${yr}) [LexGuard ID: ${shortId}]`;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(citation).then(function () {
+          if (window.LG && window.LG.toast) {
+            window.LG.toast.success('Citation copied to clipboard!');
+          }
+        });
+      }
+    });
+
+    // Copy SHA-256 Digest in Modal
+    $('#cert-copy-hash-btn').off('click').on('click', function () {
+      if (currentCase && currentCase.file_hash && navigator.clipboard) {
+        navigator.clipboard.writeText(currentCase.file_hash).then(function () {
+          if (window.LG && window.LG.toast) {
+            window.LG.toast.success('SHA-256 cryptographic seal copied!');
+          }
+        });
+      }
+    });
+
+
   function renderOverviewTab(c) {
     $ratio.html(linkifyLegalText(c.ratio_decidendi || 'Legal principles and ratio decidendi affirmed under judicial consideration.'));
     $summary.html(linkifyLegalText(c.summary || 'Summary under extraction from official court records.'));

@@ -14,12 +14,14 @@ from fastapi import (
     Request,
     Query,
 )
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_current_user, get_optional_current_user, require_role
 from app.models.user import User
 from app.models.case import Case
+from app.models.audit_log import AuditLog
 from app.models.document_version import DocumentVersion
 from app.models.approval_queue import ApprovalQueue
 from app.schemas.case import (
@@ -391,6 +393,35 @@ def list_cases(
     return cases
 
 
+@router.get("/stats")
+def get_repository_stats(
+    db: Session = Depends(get_db),
+):
+    """
+    Public live repository statistics:
+    - total_cases: Total registered judgments/cases in repository
+    - verified_cases: Number of cases with active verified integrity status
+    - courts_covered: Distinct judicial bodies represented
+    - total_audit_entries: Total cryptographic audit ledger records
+    """
+    total_cases = db.query(func.count(Case.id)).scalar() or 0
+    verified_cases = (
+        db.query(func.count(Case.id))
+        .filter(Case.file_hash.isnot(None), Case.status != "rejected")
+        .scalar()
+        or 0
+    )
+    courts_covered = db.query(func.count(func.distinct(Case.court))).scalar() or 0
+    total_audit_entries = db.query(func.count(AuditLog.id)).scalar() or 0
+
+    return {
+        "total_cases": total_cases,
+        "verified_cases": verified_cases,
+        "courts_covered": courts_covered,
+        "total_audit_entries": total_audit_entries,
+    }
+
+
 @router.get("/{case_id}", response_model=CaseResponse)
 def get_case(
     case_id: str,
@@ -720,13 +751,11 @@ def download_case(
         user_agent=request.headers.get("user-agent"),
     )
 
-    clean_case_no = "".join(c for c in case.case_no if c.isalnum() or c in ("-", "_")).strip() or "judgment"
     file_ext = os.path.splitext(doc_path)[1].lower()
+    filename = os.path.basename(doc_path)
     if file_ext == ".docx":
-        filename = f"{clean_case_no}.docx"
         media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     else:
-        filename = f"{clean_case_no}.pdf"
         media_type = "application/pdf"
 
     return FileResponse(

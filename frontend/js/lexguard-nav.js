@@ -1,6 +1,6 @@
 /**
  * LexGuard — Dynamic Navigation & Layout Shell (lexguard-nav.js)
- * Semester 5 Project · LexGuard Judicial Repository & Verification Platform
+ * LexGuard Judicial Repository & Verification Platform
  */
 
 (function (window, $) {
@@ -134,7 +134,7 @@
                 <a href="verify.html" class="lg-sidebar-link ${activePage === 'verify' ? 'active' : ''}">
                   <i class="bi bi-shield-check"></i>
                   <span>Public Verifier</span>
-                  <span class="lg-sidebar-badge">0-byte</span>
+                  
                 </a>
               </li>
               <li>
@@ -149,13 +149,7 @@
                   <span>Case Ingestion</span>
                 </a>
               </li>
-              <li>
-                <a href="screenshots-gallery.html" class="lg-sidebar-link ${activePage === 'gallery' ? 'active' : ''}">
-                  <i class="bi bi-camera-fill text-warning"></i>
-                  <span>Visual Showcase</span>
-                  <span class="badge bg-warning text-dark ms-auto">30</span>
-                </a>
-              </li>
+              
             </ul>
           </div>
 
@@ -184,7 +178,7 @@
             <div class="d-flex align-items-center gap-2">
               <div class="text-success"><i class="bi bi-circle-fill" style="font-size: 0.6rem;"></i></div>
               <div class="small text-secondary">
-                <span class="text-light fw-semibold">LexGuard v2.4</span> · Madras HC &amp; SC
+                <span class="text-light fw-semibold">LexGuard Judicial Archive</span>
               </div>
             </div>
           </div>

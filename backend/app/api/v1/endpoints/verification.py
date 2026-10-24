@@ -19,6 +19,28 @@ router = APIRouter()
 HEX_64_PATTERN = re.compile(r"^[a-fA-F0-9]{64}$")
 
 
+def resolve_case_file_path(file_path: str) -> str:
+    """Resolves physical file path, falling back across known storage locations."""
+    if not file_path:
+        return ""
+    if os.path.exists(file_path):
+        return file_path
+    fname = os.path.basename(file_path)
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    candidates = [
+        os.path.join(base_dir, "storage", "cases", fname),
+        os.path.join(base_dir, "backend", "storage", "cases", fname),
+        os.path.join(os.getcwd(), "storage", "cases", fname),
+        os.path.join(os.getcwd(), "backend", "storage", "cases", fname),
+        os.path.join(r"e:\SEM 5 PROJECT\LexGuard-HTML\storage\cases", fname),
+        os.path.join(r"e:\SEM 5 PROJECT\LexGuard-HTML\backend\storage\cases", fname),
+    ]
+    for cand in candidates:
+        if os.path.exists(cand):
+            return cand
+    return file_path
+
+
 def _execute_hash_lookup(hash_str: str, request: Request, db: Session, current_user: User = None) -> HashLookupResponse:
     cleaned_hash = hash_str.strip().lower()
     if not HEX_64_PATTERN.match(cleaned_hash):
@@ -183,14 +205,15 @@ def stream_verified_document(
         file_path = case.redacted_file_path
         expected_hash = case.redacted_file_hash or case.file_hash
 
-    if not os.path.exists(file_path):
+    resolved_path = resolve_case_file_path(file_path)
+    if not resolved_path or not os.path.exists(resolved_path):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Underlying document file is currently unavailable in repository storage."
         )
 
     # Verify bytes on disk before serving
-    with open(file_path, "rb") as f:
+    with open(resolved_path, "rb") as f:
         file_bytes = f.read()
 
     if not verify_sha256(file_bytes, expected_hash):
@@ -222,9 +245,9 @@ def stream_verified_document(
         user_agent=request.headers.get("user-agent"),
     )
 
-    clean_filename = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', f"{case.case_no}.pdf")
+    clean_filename = os.path.basename(resolved_path)
     return FileResponse(
-        path=file_path,
+        path=resolved_path,
         media_type="application/pdf",
         filename=clean_filename,
     )

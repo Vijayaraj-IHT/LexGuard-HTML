@@ -1,6 +1,6 @@
 /**
  * LexGuard — Hybrid Precedent Search Page Controller (search.js)
- * Semester 5 Project · LexGuard Judicial Repository & Verification Platform
+ * LexGuard Judicial Repository & Verification Platform
  */
 
 $(document).ready(function () {

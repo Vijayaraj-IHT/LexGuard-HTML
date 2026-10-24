@@ -1,7 +1,7 @@
 /**
  * LexGuard — API Client Module (lexguard-api.js)
  * Full jQuery AJAX integration for all 9 API functional areas
- * Semester 5 Project · LexGuard Judicial Repository & Verification Platform
+ * LexGuard Judicial Repository & Verification Platform
  */
 
 (function (window, $) {

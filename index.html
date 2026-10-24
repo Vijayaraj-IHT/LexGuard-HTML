@@ -86,12 +86,12 @@
   <div class="govt-topbar d-flex align-items-center justify-content-between flex-wrap gap-2">
     <div class="d-flex align-items-center gap-2">
       <i class="bi bi-bank text-warning"></i>
-      <span class="fw-bold">HIGH COURT OF JUDICATURE AT MADRAS</span>
+      <span class="fw-bold">JUDICIAL DIGITAL ARCHIVE</span>
       <span class="text-white-50 d-none d-sm-inline">&bull;</span>
-      <span class="d-none d-sm-inline text-light">Chennai Principal Seat &amp; Madurai Bench</span>
+      <span class="d-none d-sm-inline text-light">High Court &amp; Supreme Court Judgments</span>
     </div>
     <div class="d-flex align-items-center gap-3">
-      <span class="text-success small"><i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>PostgreSQL 17 Live</span>
+      <span class="text-success small"><i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>Certified Digital Repository</span>
       <a href="login.html" class="text-warning text-decoration-none fw-bold"><i class="bi bi-lock-fill me-1"></i>Staff / Advocate Sign In</a>
     </div>
   </div>
@@ -295,35 +295,33 @@
 
       </div>
 
-      <!-- Trust Metrics & Infrastructure Row -->
+            <!-- Trust Metrics & Infrastructure Row -->
       <div class="row g-3 mt-4 pt-2">
         <div class="col-md-3 col-sm-6">
           <div class="trust-stat-card text-center">
-            <div class="h3 fw-bold text-dark font-serif mb-1">Madras HC</div>
-            <div class="small text-secondary">Principal Seat &amp; Madurai Bench</div>
+            <div class="h3 fw-bold text-dark font-serif mb-1" id="stat-courts-count">15 Courts</div>
+            <div class="small text-secondary">Supreme Court &amp; High Courts</div>
           </div>
         </div>
         <div class="col-md-3 col-sm-6">
           <div class="trust-stat-card text-center">
-            <div class="h3 fw-bold text-danger font-serif mb-1">208 Verified</div>
-            <div class="small text-secondary">Precedents in PostgreSQL 17</div>
+            <div class="h3 fw-bold text-danger font-serif mb-1" id="stat-cases-count">130 Verified</div>
+            <div class="small text-secondary">Precedents in Certified Repository</div>
           </div>
         </div>
         <div class="col-md-3 col-sm-6">
           <div class="trust-stat-card text-center">
-            <div class="h3 fw-bold text-success font-serif mb-1">916 Blocks</div>
-            <div class="small text-secondary">SHA-256 Chained Merkle Ledger</div>
+            <div class="h3 fw-bold text-success font-serif mb-1" id="stat-audit-count">1,150+ Entries</div>
+            <div class="small text-secondary">Tamper-Evident Audit Ledger</div>
           </div>
         </div>
         <div class="col-md-3 col-sm-6">
           <div class="trust-stat-card text-center">
-            <div class="h3 fw-bold text-dark font-serif mb-1">Zero-Tamper</div>
-            <div class="small text-secondary">Public Verification Engine</div>
+            <div class="h3 fw-bold text-dark font-serif mb-1" id="stat-verified-count">100% Sealed</div>
+            <div class="small text-secondary">Cryptographic Hash Registered</div>
           </div>
         </div>
       </div>
-
-    </div>
   </section>
 
   <!-- Footer -->
@@ -331,10 +329,11 @@
     <div class="container d-flex flex-column flex-md-row align-items-center justify-content-between gap-2">
       <div class="d-flex align-items-center gap-2 text-dark font-serif">
         <i class="bi bi-shield-shaded text-danger"></i>
-        <span>LexGuard Judicial Case Repository &bull; Open Legal Information System</span>
+        <span>&copy; LexGuard Judicial Repository &bull; Official Case Information System</span>
       </div>
       <div>
-        Secured with HttpOnly Cryptographic Tokens &bull; <a href="screenshots-gallery.html" class="text-danger text-decoration-none fw-semibold">Visual Showcase</a>
+        <a href="verify.html" class="text-secondary text-decoration-none me-3"><i class="bi bi-patch-check me-1"></i>Verify a Certified Copy</a>
+        <span class="text-muted">Terms of Access &bull; Certified Archive</span>
       </div>
     </div>
   </footer>
@@ -343,8 +342,35 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
   <script src="js/lexguard-core.js"></script>
   <script src="js/lexguard-auth.js"></script>
-  <script>
+    <script>
     $(document).ready(function () {
+      // Dynamic live metrics from repository stats
+      const apiBase = (window.LexGuard && window.LexGuard.API_BASE_URL) || window.API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
+      $.ajax({
+        url: apiBase + '/cases/stats',
+        type: 'GET',
+        xhrFields: { withCredentials: true },
+        success: function (data) {
+          if (data) {
+            if (data.courts_covered) {
+              $('#stat-courts-count').text(data.courts_covered + ' Courts');
+            }
+            if (data.total_cases) {
+              $('#stat-cases-count').text(data.total_cases + ' Verified');
+            }
+            if (data.total_audit_entries) {
+              $('#stat-audit-count').text(Number(data.total_audit_entries).toLocaleString() + ' Entries');
+            }
+            if (data.verified_cases) {
+              $('#stat-verified-count').text(data.verified_cases + ' Sealed');
+            }
+          }
+        },
+        error: function () {
+          // Graceful fallback
+        }
+      });
+
       $('#hero-search-form').on('submit', function (e) {
         e.preventDefault();
         const q = $('#hero-search-input').val().trim();

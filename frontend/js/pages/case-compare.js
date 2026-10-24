@@ -1,6 +1,6 @@
 /**
  * LexGuard — Multi-Precedent Comparator Controller (case-compare.js)
- * Semester 5 Project · LexGuard Judicial Repository & Verification Platform
+ * LexGuard Judicial Repository & Verification Platform
  */
 
 $(document).ready(function () {

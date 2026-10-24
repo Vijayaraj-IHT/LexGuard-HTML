@@ -1,7 +1,7 @@
 /**
  * LexGuard — Public Cryptographic Verifier Controller (verify.js)
- * Web Crypto API 0-Byte local hash computation & Live Lookup
- * Semester 5 Project · LexGuard Judicial Repository & Verification Platform
+ * Web Crypto API Client-side local hash computation & Live Lookup
+ * LexGuard Judicial Repository & Verification Platform
  */
 
 $(document).ready(function () {
@@ -109,7 +109,7 @@ $(document).ready(function () {
       .then(function (computedHash) {
         $hashInput.val(computedHash);
         $progressBox.addClass('d-none');
-        LG.toast('Local 0-byte SHA-256 generated in browser', 'info');
+        LG.toast('Local Client-side SHA-256 generated in browser', 'info');
         performLookup(computedHash);
       })
       .catch(function (err) {
