@@ -2,7 +2,8 @@
 LexGuard Scaled Automated Batch Ingestion Engine.
 Processes authentic Indian court judgment PDFs from an incoming directory,
 computes cryptographic SHA-256 seals, extracts coram, CNRs, dates, and sanitized text,
-generates embeddings, and registers published records into PostgreSQL.
+generates canonical judicial filenames, saves records into PostgreSQL,
+and dynamically links them into the Precedent Citation Network.
 """
 import sys
 import os
@@ -10,6 +11,7 @@ import shutil
 import hashlib
 import json
 import uuid
+import re
 from datetime import datetime, timezone
 import psycopg2
 
@@ -20,13 +22,17 @@ from app.services.embedding_service import embedding_service
 DB_URI = "postgresql://lexguard:lexguard123@localhost:5432/lexguard"
 
 DEFAULT_INCOMING_DIR = os.path.join(os.path.dirname(__file__), "..", "incoming_pdfs")
-STORAGE_LEXGUARD = os.path.join(os.path.dirname(__file__), "..", "backend", "storage", "cases")
-STORAGE_HTML = os.path.join(os.path.dirname(__file__), "..", "..", "LexGuard-HTML", "storage", "cases")
+TARGET_STORAGE_DIRS = [
+    os.path.join(os.path.dirname(__file__), "..", "backend", "storage", "cases"),
+    os.path.join(os.path.dirname(__file__), "..", "storage", "cases"),
+    os.path.join(os.path.dirname(__file__), "..", "..", "LexGuard-HTML", "storage", "cases"),
+    os.path.join(os.path.dirname(__file__), "..", "..", "LexGuard-HTML", "backend", "storage", "cases"),
+]
 QUARANTINE_DIR = os.path.join(os.path.dirname(__file__), "..", "backend", "storage", "quarantine")
 
 os.makedirs(DEFAULT_INCOMING_DIR, exist_ok=True)
-os.makedirs(STORAGE_LEXGUARD, exist_ok=True)
-os.makedirs(STORAGE_HTML, exist_ok=True)
+for d in TARGET_STORAGE_DIRS:
+    os.makedirs(d, exist_ok=True)
 os.makedirs(QUARANTINE_DIR, exist_ok=True)
 
 
@@ -36,6 +42,53 @@ def compute_file_sha256(filepath: str) -> str:
         while chunk := f.read(65536):
             h.update(chunk)
     return h.hexdigest()
+
+
+def get_court_code(court_str: str) -> str:
+    c = (court_str or "").upper()
+    if "SUPREME" in c:
+        return "SC"
+    if "MADRAS" in c:
+        if "MADURAI" in c:
+            return "MHC-MB"
+        return "MHC-PS"
+    if "GUJARAT" in c:
+        return "GHC"
+    if "BOMBAY" in c:
+        return "BHC"
+    if "CALCUTTA" in c or "KOLKATA" in c:
+        return "CHC"
+    if "DELHI" in c:
+        return "DHC"
+    if "JAMMU" in c or "KASHMIR" in c:
+        return "JKHC"
+    if "ALLAHABAD" in c:
+        return "ALHC"
+    if "HIGH COURT" in c or "HC" in c:
+        return "HC"
+    return "IND"
+
+
+def clean_case_no(case_no: str) -> str:
+    clean = re.sub(r"[^a-zA-Z0-9]+", "_", case_no or "judgment").strip("_")
+    if len(clean) > 35:
+        clean = clean[:35].rstrip("_")
+    return clean or "judgment"
+
+
+def build_case_pdf_filename(court: str, year: int, case_no: str, case_id: str, decision_date=None) -> str:
+    court_code = get_court_code(court)
+    clean_no = clean_case_no(case_no)
+    if decision_date:
+        yr = str(decision_date.year)
+    else:
+        m = re.findall(r"(?:19|20)\d{2}", case_no or "")
+        if m:
+            yr = m[-1]
+        else:
+            yr = str(year) if year else str(datetime.now().year)
+    short_id = str(case_id)[:8]
+    return f"{court_code}_{yr}_{clean_no}_{short_id}.pdf"
 
 
 def ingest_batch(incoming_dir: str = DEFAULT_INCOMING_DIR):
@@ -56,8 +109,7 @@ def ingest_batch(incoming_dir: str = DEFAULT_INCOMING_DIR):
     conn = psycopg2.connect(DB_URI)
     cur = conn.cursor()
 
-    # Get staff user ID for audit log attribution
-    cur.execute("SELECT id FROM users WHERE role = 'staff' LIMIT 1;")
+    cur.execute("SELECT id FROM users WHERE role IN ('senior_staff', 'staff') LIMIT 1;")
     user_row = cur.fetchone()
     staff_user_id = user_row[0] if user_row else str(uuid.uuid4())
 
@@ -104,7 +156,6 @@ def ingest_batch(incoming_dir: str = DEFAULT_INCOMING_DIR):
                 clean_name = os.path.splitext(fname)[0].replace("_", " ").replace("-", " ")
                 title = f"Judgment in {case_no} ({clean_name[:80]})"
 
-            # Derive court jurisdiction
             court = "High Court of Judicature"
             if "MADURAI" in cleaned_text[:500].upper():
                 court = "Madras High Court (Madurai Bench)"
@@ -119,20 +170,21 @@ def ingest_batch(incoming_dir: str = DEFAULT_INCOMING_DIR):
             elif "SUPREME COURT" in cleaned_text[:500].upper():
                 court = "Supreme Court of India"
 
-            # 3. Store PDF into Content-Addressable Storage
-            cas_filename = f"{file_hash}.pdf"
-            dst_lexguard = os.path.join(STORAGE_LEXGUARD, cas_filename)
-            dst_html = os.path.join(STORAGE_HTML, cas_filename)
+            case_id = str(uuid.uuid4())
+            case_year = decision_date.year if decision_date else datetime.now().year
 
-            shutil.copy2(src_path, dst_lexguard)
-            if os.path.exists(os.path.dirname(dst_html)):
-                shutil.copy2(src_path, dst_html)
+            # 3. Canonical Judicial Filename & CAS Storage
+            canonical_filename = build_case_pdf_filename(court, case_year, case_no, case_id, decision_date)
+            for d in TARGET_STORAGE_DIRS:
+                dst = os.path.join(d, canonical_filename)
+                shutil.copy2(src_path, dst)
+
+            rel_file_path = f"storage/cases/{canonical_filename}"
 
             # 4. Generate Summaries & Official Citation
             summary = f"Judgment delivered by {judge or 'the Court'} in {case_no}. The dispute involves {domain} concerning {', '.join(act_tags) or 'procedural rights'}."
             layman_summary = f"In this {case_type.lower()}, the {court} evaluated issues between {pet or 'the Petitioner'} and {resp or 'the Respondent'}. The Court decided on statutory principles governing {domain}."
-            case_id = str(uuid.uuid4())
-            official_citation = f"{datetime.now().year} LexGuard ({case_type[:4].strip()}) {case_id[:6].upper()}"
+            official_citation = f"{case_year} LexGuard ({case_type[:4].strip()}) {case_id[:6].upper()}"
 
             # 5. Generate Dense Vector Embedding for Semantic Search
             embed_text = f"{title}. {summary}. {' '.join(act_tags)} {' '.join(section_tags)}"
@@ -161,14 +213,14 @@ def ingest_batch(incoming_dir: str = DEFAULT_INCOMING_DIR):
                     %s, %s, %s, %s
                 );
             """, (
-                case_id, case_no, cnr, case_type, title, court, datetime.now().year, decision_date,
+                case_id, case_no, cnr, case_type, title, court, case_year, decision_date,
                 judge, bench_type, pet, resp, domain,
                 json.dumps(act_tags), json.dumps(section_tags), json.dumps([domain.lower(), case_type.lower()]),
                 summary, layman_summary, "Disposed", "Disposed",
                 f"Holding and principles affirmed under {domain} in {case_no}.",
                 json.dumps(["Procedural standard adherence", "Statutory threshold compliance"]),
                 json.dumps([]), json.dumps([]), cleaned_text, page_count,
-                dst_lexguard, file_hash, "Good Law", official_citation,
+                rel_file_path, file_hash, "Good Law", official_citation,
                 json.dumps(embedding) if embedding else None, "published",
                 True, staff_user_id, datetime.now(timezone.utc), datetime.now(timezone.utc)
             ))
@@ -179,7 +231,7 @@ def ingest_batch(incoming_dir: str = DEFAULT_INCOMING_DIR):
             prev_hash = prev_row[0] if prev_row else "0" * 64
             audit_id = str(uuid.uuid4())
             audit_action = "INGEST_OFFICIAL_JUDGMENT"
-            audit_details = f"Ingested official court judgment {case_no} (SHA-256: {file_hash[:16]}...)"
+            audit_details = f"Ingested official court judgment {case_no} as {canonical_filename} (SHA-256: {file_hash[:16]}...)"
             cur_hash = hashlib.sha256(f"{audit_action}:{audit_details}:{prev_hash}".encode()).hexdigest()
 
             cur.execute("""
@@ -188,31 +240,38 @@ def ingest_batch(incoming_dir: str = DEFAULT_INCOMING_DIR):
             """, (audit_id, case_id, staff_user_id, audit_action, audit_details, prev_hash, cur_hash, datetime.now(timezone.utc)))
 
             conn.commit()
-            print(f"  [+] SUCCESS: Registered '{case_no}' (CNR: {cnr or 'Assigned'}, Pages: {page_count}, Hash: {file_hash[:12]}...)")
             successful += 1
+            print(f"  [+] SUCCESS: Registered '{case_no}' -> {canonical_filename}")
 
         except Exception as e:
             conn.rollback()
-            print(f"  [-] ERROR processing '{fname}': {e}")
-            quarantine_path = os.path.join(QUARANTINE_DIR, fname)
+            quarantined += 1
+            print(f"  [X] ERROR processing '{fname}': {e}")
             try:
-                shutil.copy2(src_path, quarantine_path)
+                shutil.copy2(src_path, os.path.join(QUARANTINE_DIR, fname))
             except Exception:
                 pass
-            quarantined += 1
 
-    cur.close()
     conn.close()
 
     print("\n" + "=" * 70)
-    print("BATCH INGESTION COMPLETE")
-    print(f"Successfully Ingested: {successful}")
-    print(f"Skipped (Duplicates): {skipped}")
-    print(f"Quarantined (Errors): {quarantined}")
-    print(f"Total Examined: {len(pdf_files)}")
+    print("BATCH INGESTION SUMMARY")
+    print(f"Total PDFs In Batch:  {len(pdf_files)}")
+    print(f"Successfully Indexed: {successful}")
+    print(f"Duplicates Skipped:   {skipped}")
+    print(f"Quarantined / Error:  {quarantined}")
     print("=" * 70)
+
+    # Automatically re-link citation network if new judgments were ingested
+    if successful > 0:
+        print("\nRe-linking precedent citation graph...")
+        try:
+            import link_citation_network
+            link_citation_network.main()
+        except Exception as e:
+            print("Citation graph update error:", e)
 
 
 if __name__ == "__main__":
-    target = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_INCOMING_DIR
-    ingest_batch(target)
+    dir_arg = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_INCOMING_DIR
+    ingest_batch(dir_arg)

@@ -949,12 +949,70 @@ const itemsHtml = list.map(function (p) {
     const modal = new bootstrap.Modal(document.getElementById('caseBriefModal'));
     modal.show();
   });
-
-  $('#brief-copy-md-btn').on('click', function () {
+  #brief-copy-md-btn.on('click', function () {
     if (!currentCase) return;
     const c = currentCase;
-    const md = `# JUDICIAL CASE BRIEF: ${c.case_no}\n\n**Court:** ${c.court}\n**CNR:** ${c.cnr || 'N/A'}\n**Coram:** ${c.judge}\n**Parties:** ${c.parties}\n**Disposition:** ${c.disposition || c.outcome}\n\n## Ratio Decidendi\n> ${c.ratio_decidendi}\n\n## Material Facts & Summary\n${c.summary || c.facts}\n\n---\n*LexGuard Verified SHA-256 Digest: ${c.file_hash}*`;
-    LG.utils.copyToClipboard(md, 'Case brief markdown copied to clipboard!');
+    const precList = (c.precedents_cited || []).map(p => - **** [] — ** ()).join('
+');
+    const md = # LEXGUARD OFFICIAL JUDICIAL CASE BRIEF
+## 
+
+ +
+      **Court:** 
+ +
+      **Case Number:** 
+ +
+      **Official Citation:** 
+ +
+      **CNR Number:** 
+ +
+      **Coram:** 
+ +
+      **Parties:** 
+ +
+      **Decision Date:** 
+ +
+      **Precedential Authority:** 
+ +
+      **Disposition:** 
+
+ +
+      ---
+
+### Statutory Provisions Considered
+ +
+      ${(c.section_tags && c.section_tags.length) ? c.section_tags.map(s => '\' + s + '\').join(', ') : (c.act_tags ? c.act_tags.join(', ') : 'General Statutory Principles')}
+
+ +
+      ---
+
+### Key Facts & Procedural Trajectory
+ +
+      ${c.summary || c.facts || 'Factual matrix and procedural history recorded in official judgment.'}
+
+ +
+      ---
+
+### Ratio Decidendi & Binding Legal Principle
+ +
+      > 
+
+ +
+      (precList ? ### Precedents & Authorities Cited
+
+
+---
+
+ : '') +
+      ### Cryptographic Authenticity Stamp
+ +
+      - **SHA-256 Digest:** \${c.file_hash}\
+ +
+      - **Statutory Admissibility:** Admissible electronic record under Section 65B of Indian Evidence Act, 1872 / Section 63 of Bharatiya Sakshya Adhiniyam, 2023.
+ +
+      - **LexGuard Verified Ledger Timestamp:** 
+;
+    LG.utils.copyToClipboard(md, 'Comprehensive case brief markdown copied to clipboard!');
   });
 
   $('#brief-download-json-btn').on('click', function () {
