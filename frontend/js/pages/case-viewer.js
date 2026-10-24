@@ -145,6 +145,15 @@ $(document).ready(function () {
   function renderCaseHeader(c) {
     $headerTitle.text(c.title || 'Untitled Case');
     $headerCourt.attr('class', LG.utils.courtBadgeClass(c.court)).text(c.court || 'Court');
+        if (c.precedential_status) {
+      $('#case-header-status-badge').html(`<i class="bi bi-shield-check me-1"></i>${LG.utils.escapeHtml(c.precedential_status)}`).show();
+    }
+    if (c.cited_by_count && c.cited_by_count > 0) {
+      $('#case-header-cited-count-text').text(`${c.cited_by_count} Citations`);
+      $('#case-header-cited-count-badge').removeClass('d-none');
+    } else {
+      $('#case-header-cited-count-badge').addClass('d-none');
+    }
     $headerCaseno.html(`<i class="bi bi-file-earmark-text me-1"></i>Case No: <span class="text-light">${LG.utils.escapeHtml(c.case_no || '—')}</span>`);
     $headerDate.html(`<i class="bi bi-calendar3 me-1"></i>Date: <span class="text-light">${LG.utils.formatDate(c.decision_date || c.created_at)}</span>`);
     $headerBench.html(`<i class="bi bi-person-badge me-1"></i>Bench: <span class="text-light">${LG.utils.escapeHtml(c.judge || 'Hon\'ble Bench')}</span>`);
@@ -388,20 +397,157 @@ $(document).ready(function () {
   /**
    * Render Tab 4: Precedents & Citator Graph.
    */
-  function loadPrecedentNetwork(cid) {
-    LG.api.comparison.getPrecedents(cid)
-      .done(function (res) {
-        const list = res.precedents || res.results || res;
-        if (!Array.isArray(list) || list.length === 0) {
-          $('#precedents-list').html(`
-            <div class="text-secondary small p-3 text-center border border-secondary border-opacity-15 rounded">
-              <i class="bi bi-info-circle me-1"></i>No upstream or downstream precedent citations indexed for this case yet.
-            </div>
-          `);
-          return;
-        }
+    function loadPrecedentNetwork(cid) {
+    const apiBase = (window.LexGuard && window.LexGuard.API_BASE_URL) || window.API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
+    $.ajax({
+      url: apiBase + '/cases/' + encodeURIComponent(cid) + '/citations',
+      type: 'GET',
+      xhrFields: { withCredentials: true },
+      success: function (res) {
+        if (!res) return;
+        const precedentsCited = res.precedents_cited || [];
+        const citedBy = res.cited_by || [];
 
-        const itemsHtml = list.map(function (p) {
+        let html = `
+          <div class="row g-3 mb-4">
+            <div class="col-sm-4">
+              <div class="p-3 rounded bg-dark border border-success border-opacity-30">
+                <div class="text-secondary small text-uppercase">Precedential Authority</div>
+                <div class="fw-bold text-success fs-6 mt-1">
+                  <i class="bi bi-shield-check me-1"></i>${LG.utils.escapeHtml(res.precedential_status || 'Good Law')}
+                </div>
+              </div>
+            </div>
+            <div class="col-sm-4">
+              <div class="p-3 rounded bg-dark border border-secondary border-opacity-30">
+                <div class="text-secondary small text-uppercase">Official Law Report Citation</div>
+                <div class="fw-bold font-mono text-warning fs-6 mt-1">
+                  ${LG.utils.escapeHtml(res.official_citation || 'LexGuard Certified Precedent')}
+                </div>
+              </div>
+            </div>
+            <div class="col-sm-4">
+              <div class="p-3 rounded bg-dark border border-warning border-opacity-30">
+                <div class="text-secondary small text-uppercase">Downstream Citations ("Cited In")</div>
+                <div class="fw-bold text-warning fs-6 mt-1">
+                  <i class="bi bi-diagram-3 me-1"></i>Cited by ${citedBy.length} ${citedBy.length === 1 ? 'Judgment' : 'Judgments'}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        // Section 1: Precedents Cited in this judgment
+        html += `
+          <div class="mb-4">
+            <h6 class="fw-bold text-light text-uppercase border-bottom border-secondary border-opacity-25 pb-2 mb-3">
+              <i class="bi bi-arrow-up-right-circle text-info me-2"></i>Authorities &amp; Precedents Cited in this Judgment (${precedentsCited.length})
+            </h6>
+        `;
+
+        if (precedentsCited.length === 0) {
+          html += `
+            <div class="text-secondary small p-3 text-center border border-secondary border-opacity-15 rounded bg-dark bg-opacity-25">
+              <i class="bi bi-info-circle me-1"></i>No upstream formal judicial citations explicitly extracted for this judgment.
+            </div>
+          `;
+        } else {
+          html += '<div class="row g-2">';
+          precedentsCited.forEach(function (p) {
+            const hasDbCase = !!p.case_id;
+            const targetUrl = hasDbCase ? `case-viewer.html?id=${encodeURIComponent(p.case_id)}` : `search.html?q=${encodeURIComponent(p.citation || p.title)}`;
+            html += `
+              <div class="col-md-6">
+                <div class="card card-judicial p-3 h-100 border-secondary border-opacity-30">
+                  <div class="d-flex align-items-start justify-content-between gap-2 mb-1">
+                    <span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-30" style="font-size: 0.72rem;">
+                      <i class="bi bi-check-circle me-1"></i>${LG.utils.escapeHtml(p.status || 'Good Law')}
+                    </span>
+                    <span class="badge bg-dark border border-secondary text-warning font-mono" style="font-size: 0.72rem;">
+                      ${LG.utils.escapeHtml(p.citation || 'Precedent')}
+                    </span>
+                  </div>
+                  <div class="fw-bold text-light fs-7 my-1">
+                    ${LG.utils.escapeHtml(p.title || 'Judicial Precedent')}
+                  </div>
+                  <div class="small text-secondary mb-2" style="font-size: 0.75rem;">
+                    <i class="bi bi-building me-1"></i>${LG.utils.escapeHtml(p.court || 'Court')} &bull;
+                    <span class="text-info">${LG.utils.escapeHtml(p.treatment || 'Relied upon')}</span>
+                  </div>
+                  <div class="mt-auto pt-2">
+                    <a href="${targetUrl}" class="btn btn-xs ${hasDbCase ? 'btn-gold' : 'btn-judicial-outline'}">
+                      <i class="bi ${hasDbCase ? 'bi-box-arrow-up-right' : 'bi-search'} me-1"></i>
+                      ${hasDbCase ? 'View in LexGuard' : 'Search Case Law'}
+                    </a>
+                  </div>
+                </div>
+              </div>
+            `;
+          });
+          html += '</div>';
+        }
+        html += '</div>';
+
+        // Section 2: Judgments in LexGuard that Cite This Case ("Cited In")
+        html += `
+          <div>
+            <h6 class="fw-bold text-light text-uppercase border-bottom border-secondary border-opacity-25 pb-2 mb-3">
+              <i class="bi bi-arrow-down-left-circle text-warning me-2"></i>Repository Judgments Citing this Ruling ("Cited In") (${citedBy.length})
+            </h6>
+        `;
+
+        if (citedBy.length === 0) {
+          html += `
+            <div class="text-secondary small p-3 text-center border border-secondary border-opacity-15 rounded bg-dark bg-opacity-25">
+              <i class="bi bi-info-circle me-1"></i>No downstream judgments in the current repository subset cite this ruling yet.
+            </div>
+          `;
+        } else {
+          html += '<div class="d-flex flex-column gap-2">';
+          citedBy.forEach(function (cb) {
+            html += `
+              <div class="card card-judicial p-3 border-warning border-opacity-25">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                  <div>
+                    <a href="case-viewer.html?id=${encodeURIComponent(cb.id)}" class="fw-bold text-light text-decoration-none">
+                      ${LG.utils.escapeHtml(cb.title || cb.case_no)}
+                    </a>
+                    <div class="small text-secondary mt-1">
+                      <span class="${LG.utils.courtBadgeClass(cb.court)} me-2">${LG.utils.escapeHtml(cb.court || '')}</span>
+                      <span class="badge bg-secondary me-2">${cb.year || '—'}</span>
+                      <span class="badge badge-gold me-2">${LG.utils.escapeHtml(cb.outcome || 'Decided')}</span>
+                      <span class="font-mono text-light">${LG.utils.escapeHtml(cb.case_no || '')}</span>
+                    </div>
+                  </div>
+                  <div class="d-flex align-items-center gap-2">
+                    <a href="case-viewer.html?id=${encodeURIComponent(cb.id)}" class="btn btn-xs btn-gold">
+                      <i class="bi bi-eye me-1"></i>View Judgment
+                    </a>
+                    <a href="case-compare.html?case1=${encodeURIComponent(cid)}&case2=${encodeURIComponent(cb.id)}" class="btn btn-xs btn-judicial-outline">
+                      <i class="bi bi-columns-gap me-1"></i>Compare
+                    </a>
+                  </div>
+                </div>
+              </div>
+            `;
+          });
+          html += '</div>';
+        }
+        html += '</div>';
+
+        $('#precedents-list').html(html);
+      },
+      error: function () {
+        $('#precedents-list').html(`
+          <div class="text-secondary small p-3 text-center">
+            Unable to load precedent network at this time.
+          </div>
+        `);
+      }
+    });
+  }
+
+const itemsHtml = list.map(function (p) {
           return `
             <div class="card card-judicial p-3 mb-2">
               <div class="d-flex align-items-center justify-content-between">

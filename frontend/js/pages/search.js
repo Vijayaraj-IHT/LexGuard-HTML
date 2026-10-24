@@ -178,11 +178,14 @@ $(document).ready(function () {
                 ${LG.utils.escapeHtml(item.title)}
               </a>
               <div class="d-flex flex-wrap align-items-center gap-2 mt-1">
-                <span class="${courtBadge}">${LG.utils.escapeHtml(item.court)}</span>
+                                <span class="${courtBadge}">${LG.utils.escapeHtml(item.court)}</span>
                 ${item.case_type ? `<span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">${LG.utils.escapeHtml(item.case_type)}</span>` : ''}
                 <span class="badge bg-secondary">${item.year}</span>
                 ${item.outcome ? `<span class="badge badge-gold">${LG.utils.escapeHtml(item.outcome)}</span>` : ''}
-                ${item.cnr_number ? `<span class="badge bg-dark text-warning font-mono border border-secondary border-opacity-25" style="font-size: 0.7rem;"><i class="bi bi-upc-scan me-1"></i>${LG.utils.escapeHtml(item.cnr_number)}</span>` : ''}
+                ${item.precedential_status ? `<span class="badge bg-success bg-opacity-15 text-success border border-success border-opacity-30" style="font-size: 0.72rem;"><i class="bi bi-shield-check me-1"></i>${LG.utils.escapeHtml(item.precedential_status)}</span>` : ''}
+                ${item.cited_by_count > 0 ? `<span class="badge bg-warning bg-opacity-15 text-warning border border-warning border-opacity-30" style="font-size: 0.72rem;"><i class="bi bi-diagram-3 me-1"></i>Cited in ${item.cited_by_count}</span>` : ''}
+                ${item.official_citation ? `<span class="badge bg-dark text-warning border border-secondary border-opacity-25 font-mono" style="font-size: 0.7rem;">${LG.utils.escapeHtml(item.official_citation)}</span>` : ''}
+                ${item.cnr_number ? `<span class="badge bg-dark text-light font-mono border border-secondary border-opacity-25" style="font-size: 0.7rem;"><i class="bi bi-upc-scan me-1"></i>${LG.utils.escapeHtml(item.cnr_number)}</span>` : ''}
                 ${item.judge ? `<span class="small text-secondary"><i class="bi bi-person-fill me-1"></i>${LG.utils.escapeHtml(item.judge)}</span>` : ''}
               </div>
             </div>

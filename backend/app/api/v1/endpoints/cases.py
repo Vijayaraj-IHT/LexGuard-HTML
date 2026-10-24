@@ -422,6 +422,44 @@ def get_repository_stats(
     }
 
 
+@router.get("/landmarks")
+def list_landmark_precedents(
+    limit: int = Query(25, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """
+    Returns landmark Supreme Court precedents and top cited authorities
+    in the LexGuard repository.
+    """
+    landmarks = (
+        db.query(Case)
+        .filter(Case.status == "published")
+        .order_by(Case.cited_by_count.desc(), Case.year.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "id": c.id,
+            "case_no": c.case_no,
+            "title": c.title,
+            "court": c.court,
+            "year": c.year,
+            "decision_date": c.decision_date,
+            "bench_type": c.bench_type,
+            "judge": c.judge,
+            "legal_domain": c.legal_domain,
+            "official_citation": c.official_citation,
+            "precedential_status": c.precedential_status or "Good Law",
+            "cited_by_count": c.cited_by_count or 0,
+            "summary": c.summary,
+            "layman_summary": c.layman_summary,
+            "ratio_decidendi": c.ratio_decidendi,
+        }
+        for c in landmarks
+    ]
+
+
 @router.get("/{case_id}", response_model=CaseResponse)
 def get_case(
     case_id: str,
@@ -903,5 +941,78 @@ def search_keywords_in_case(
         "pages_matched": sorted(list(pages_matched)),
         "page_count": case.page_count or 1,
         "occurrences": occurrences,
+    }
+
+
+@router.get("/{case_id}/citations")
+def get_case_citations_network(
+    case_id: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Two-way precedent and citation network for a specific case:
+    1. Precedents Cited: Authorities and statutory precedents referenced in this judgment.
+    2. Cited By: Subsequent judgments in the LexGuard repository citing this ruling.
+    """
+    case = db.query(Case).filter(Case.id == case_id).first()
+    if not case:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Case record not found in repository.",
+        )
+
+    # 1. Precedents cited by this case
+    precedents_cited = case.precedents_cited or []
+
+    # 2. Query other cases in repository that cite this case
+    all_cases = db.query(Case).filter(Case.status == "published").all()
+    citing_cases = []
+    case_no_clean = (case.case_no or "").strip().lower()
+    citation_clean = (case.official_citation or "").strip().lower()
+
+    for other_c in all_cases:
+        if other_c.id == case.id:
+            continue
+        cited_list = other_c.precedents_cited or []
+        is_citing = False
+        for p in cited_list:
+            if isinstance(p, dict):
+                p_id = p.get("case_id")
+                p_cit = (p.get("citation") or "").strip().lower()
+                p_title = (p.get("title") or "").strip().lower()
+                if p_id and p_id == case.id:
+                    is_citing = True
+                    break
+                if citation_clean and p_cit and p_cit == citation_clean:
+                    is_citing = True
+                    break
+                if case_no_clean and (case_no_clean in p_cit or case_no_clean in p_title):
+                    is_citing = True
+                    break
+
+        if is_citing:
+            citing_cases.append({
+                "id": other_c.id,
+                "case_no": other_c.case_no,
+                "title": other_c.title,
+                "court": other_c.court,
+                "year": other_c.year,
+                "decision_date": other_c.decision_date,
+                "outcome": other_c.outcome,
+                "disposition": other_c.disposition,
+                "precedential_status": other_c.precedential_status or "Good Law",
+            })
+
+    return {
+        "case_id": case.id,
+        "case_no": case.case_no,
+        "title": case.title,
+        "court": case.court,
+        "year": case.year,
+        "official_citation": case.official_citation,
+        "precedential_status": case.precedential_status or "Good Law",
+        "cited_by_count": len(citing_cases),
+        "precedents_cited": precedents_cited,
+        "cited_by": citing_cases,
     }
 

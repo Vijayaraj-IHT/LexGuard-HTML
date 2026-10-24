@@ -146,6 +146,14 @@ def search_cases(
                 matched_keywords=[],
                 source_url=c.source_url,
                 rrf_score=1.0,
+                cnr_number=c.cnr_number,
+                case_type=c.case_type,
+                legal_domain=c.legal_domain,
+                decision_date=str(c.decision_date) if c.decision_date else None,
+                precedential_status=c.precedential_status or "Good Law",
+                cited_by_count=c.cited_by_count or 0,
+                official_citation=c.official_citation,
+                search_mode="Repository Index Browse",
             )
             for c in cases_page
         ]
@@ -344,6 +352,14 @@ def search_cases(
                 matched_keywords=case_matched_kws[c.id],
                 source_url=c.source_url,
                 rrf_score=round(raw_rrf, 5),
+                cnr_number=c.cnr_number,
+                case_type=c.case_type,
+                legal_domain=c.legal_domain,
+                decision_date=str(c.decision_date) if c.decision_date else None,
+                precedential_status=c.precedential_status or "Good Law",
+                cited_by_count=c.cited_by_count or 0,
+                official_citation=c.official_citation,
+                search_mode="Hybrid Semantic/Lexical RRF",
             )
         ))
 

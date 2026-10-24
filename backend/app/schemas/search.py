@@ -41,6 +41,14 @@ class SearchResultItem(BaseModel):
     matched_keywords: List[str] = []
     source_url: Optional[str] = None
     rrf_score: Optional[float] = None
+    cnr_number: Optional[str] = None
+    case_type: Optional[str] = None
+    legal_domain: Optional[str] = None
+    decision_date: Optional[str] = None
+    precedential_status: Optional[str] = "Good Law"
+    cited_by_count: Optional[int] = 0
+    official_citation: Optional[str] = None
+    search_mode: Optional[str] = None
 
 
 class SearchResponse(BaseModel):
