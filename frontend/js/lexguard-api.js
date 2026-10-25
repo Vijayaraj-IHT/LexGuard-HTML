@@ -183,6 +183,27 @@
           url: '/cases/' + encodeURIComponent(caseId) + '/re-extract',
           method: 'POST'
         });
+      },
+
+      getStats: function () {
+        return apiRequest({
+          url: '/cases/stats',
+          method: 'GET'
+        });
+      },
+
+      getLandmarks: function () {
+        return apiRequest({
+          url: '/cases/landmarks',
+          method: 'GET'
+        });
+      },
+
+      getCitations: function (caseId) {
+        return apiRequest({
+          url: '/cases/' + encodeURIComponent(caseId) + '/citations',
+          method: 'GET'
+        });
       }
     },
 
@@ -340,21 +361,40 @@
        8. Saved Bookmarks (/bookmarks)
        ------------------------------------------------------------------------- */
     bookmarks: {
-      list: function () {
+      list: function (binder) {
+        const data = {};
+        if (binder && binder !== 'all') data.binder = binder;
         return apiRequest({
           url: '/bookmarks/',
+          method: 'GET',
+          data: data
+        });
+      },
+
+      getBinders: function () {
+        return apiRequest({
+          url: '/bookmarks/binders',
           method: 'GET'
         });
       },
 
-      add: function (caseId, notes) {
+      add: function (caseId, notes, binderName) {
         return apiRequest({
           url: '/bookmarks/',
           method: 'POST',
           data: {
             case_id: caseId,
-            notes: notes || ''
+            notes: notes || '',
+            binder_name: binderName || 'General Research'
           }
+        });
+      },
+
+      update: function (bookmarkId, data) {
+        return apiRequest({
+          url: '/bookmarks/' + encodeURIComponent(bookmarkId),
+          method: 'PUT',
+          data: data
         });
       },
 
@@ -362,6 +402,16 @@
         return apiRequest({
           url: '/bookmarks/' + encodeURIComponent(bookmarkId),
           method: 'DELETE'
+        });
+      },
+
+      exportMemo: function (binder) {
+        const data = {};
+        if (binder && binder !== 'all') data.binder = binder;
+        return apiRequest({
+          url: '/bookmarks/export-memo',
+          method: 'GET',
+          data: data
         });
       }
     },

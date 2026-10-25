@@ -302,6 +302,14 @@ $(document).ready(function () {
     });
   }
 
+  // Load live verified repository stats
+  LG.api.cases.getStats()
+    .done(function (stats) {
+      if (stats && stats.total_cases) {
+        $('#total-cases-badge').text(`${stats.total_cases} Verified Court Judgments`);
+      }
+    });
+
   // Handle Form Submission
   $form.on('submit', function (e) {
     e.preventDefault();

@@ -1029,19 +1029,113 @@ const itemsHtml = list.map(function (p) {
     window.print();
   });
 
-  // Bookmark Button Handler
+  // Bookmark & Research Binder Handler
+  let existingBookmarkId = null;
+
+  function checkBookmarkStatus() {
+    if (!LG.session.isAuthenticated() || !caseId) return;
+    LG.api.bookmarks.list('all')
+      .done(function (bookmarks) {
+        if (!Array.isArray(bookmarks)) return;
+        const found = bookmarks.find(b => b.case_id === caseId || (b.case && b.case.id === caseId));
+        if (found) {
+          existingBookmarkId = found.id;
+          $bookmarkBtn.find('i').attr('class', 'bi bi-bookmark-fill text-warning');
+          $bookmarkBtn.attr('title', `Saved in '${found.binder_name || 'General Research'}'`);
+        } else {
+          existingBookmarkId = null;
+          $bookmarkBtn.find('i').attr('class', 'bi bi-bookmark text-warning');
+          $bookmarkBtn.attr('title', 'Save to Research Binder');
+        }
+      });
+  }
+
   $bookmarkBtn.on('click', function () {
     if (!LG.session.isAuthenticated()) {
-      LG.toast('Please sign in to save research bookmarks.', 'warning');
+      LG.toast('Please sign in to save research bookmarks and binders.', 'warning');
       return;
     }
-    LG.api.bookmarks.add(caseId, 'Saved from Case Viewer')
-      .done(function () {
-        LG.toast('Case saved to your bookmarks!', 'success');
-        $bookmarkBtn.find('i').attr('class', 'bi bi-bookmark-fill text-warning');
-      })
-      .fail(function () {
-        LG.toast('Case is already in your bookmarks or error occurred.', 'info');
+
+    if (!currentCase) return;
+
+    $('#binder-modal-case-title').text(currentCase.title || 'Judicial Precedent');
+    $('#binder-modal-notes').val('');
+    $('#binder-modal-new-input').val('');
+
+    // Load available binders
+    LG.api.bookmarks.getBinders()
+      .done(function (binders) {
+        let opts = '';
+        const names = (binders || []).map(b => b.binder_name);
+        if (!names.includes('General Research')) names.unshift('General Research');
+        names.forEach(function (name) {
+          opts += `<option value="${LG.utils.escapeHtml(name)}">${LG.utils.escapeHtml(name)}</option>`;
+        });
+        $('#binder-modal-select').html(opts);
+
+        // Prepopulate if already bookmarked
+        if (existingBookmarkId) {
+          LG.api.bookmarks.list('all').done(function (bms) {
+            const found = (bms || []).find(b => b.id === existingBookmarkId || b.case_id === caseId);
+            if (found) {
+              if (found.binder_name) $('#binder-modal-select').val(found.binder_name);
+              if (found.notes) $('#binder-modal-notes').val(found.notes);
+              $('#binder-modal-delete-btn').removeClass('d-none');
+              $('#binder-modal-save-btn').html('<i class="bi bi-check-lg me-1"></i>Update Precedent');
+            }
+          });
+        } else {
+          $('#binder-modal-delete-btn').addClass('d-none');
+          $('#binder-modal-save-btn').html('<i class="bi bi-bookmark-fill me-1"></i>Save Precedent');
+        }
+
+        const modal = new bootstrap.Modal(document.getElementById('saveToBinderModal'));
+        modal.show();
       });
   });
+
+  // Save / Update Bookmark from Modal
+  $('#binder-modal-save-btn').off('click').on('click', function () {
+    const customBinder = $('#binder-modal-new-input').val().trim();
+    const binder = customBinder || $('#binder-modal-select').val() || 'General Research';
+    const notes = $('#binder-modal-notes').val().trim();
+
+    LG.api.bookmarks.add(caseId, notes, binder)
+      .done(function (res) {
+        LG.toast(`Precedent saved to binder '${binder}'!`, 'success');
+        existingBookmarkId = res.id;
+        $bookmarkBtn.find('i').attr('class', 'bi bi-bookmark-fill text-warning');
+        $bookmarkBtn.attr('title', `Saved in '${binder}'`);
+        const modalEl = document.getElementById('saveToBinderModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+      })
+      .fail(function () {
+        LG.toast('Failed to save bookmark.', 'danger');
+      });
+  });
+
+  // Delete Bookmark from Modal
+  $('#binder-modal-delete-btn').off('click').on('click', function () {
+    if (!existingBookmarkId) return;
+    if (!confirm('Remove this case from your research binders?')) return;
+
+    LG.api.bookmarks.remove(existingBookmarkId)
+      .done(function () {
+        LG.toast('Precedent removed from research binders.', 'info');
+        existingBookmarkId = null;
+        $bookmarkBtn.find('i').attr('class', 'bi bi-bookmark text-warning');
+        $bookmarkBtn.attr('title', 'Save to Research Binder');
+        const modalEl = document.getElementById('saveToBinderModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+      })
+      .fail(function () {
+        LG.toast('Failed to remove bookmark.', 'danger');
+      });
+  });
+
+  // Initial bookmark status check
+  checkBookmarkStatus();
+});
 });

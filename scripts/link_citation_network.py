@@ -281,7 +281,7 @@ def main():
     top_cited = db.query(Case).filter(Case.cited_by_count > 0).order_by(Case.cited_by_count.desc()).all()
     print("\n--- TOP CITED PRECEDENTS IN LEXGUARD ---")
     for tc in top_cited:
-        print(f"  ★ [{tc.cited_by_count} Citations] {tc.title} ({tc.court}, {tc.year}) [{tc.official_citation or tc.case_no}]")
+        print(f"  * [{tc.cited_by_count} Citations] {tc.title} ({tc.court}, {tc.year}) [{tc.official_citation or tc.case_no}]")
 
     db.close()
     print("\n" + "=" * 70)

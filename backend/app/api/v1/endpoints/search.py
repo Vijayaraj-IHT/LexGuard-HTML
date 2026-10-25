@@ -1,4 +1,5 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple, Dict, Any
+import re
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
@@ -19,10 +20,69 @@ from app.services.audit_service import log_audit_event
 router = APIRouter()
 
 
-import re
+def parse_advanced_query(raw_query: str) -> Dict[str, Any]:
+    """
+    Parses boolean operators (AND, OR, NOT), exact quotes ("..."), and field prefixes.
+    e.g. '"dying declaration" AND burn NOT accidental court:Madras year:2026'
+    """
+    text = (raw_query or "").strip()
+    required_phrases = []
+    excluded_terms = []
+    and_terms = []
+    or_terms = []
+    field_filters = {}
+
+    # 1. Extract exact quotes "..."
+    quote_matches = re.findall(r'"([^"]+)"', text)
+    for qm in quote_matches:
+        if qm.strip():
+            required_phrases.append(qm.strip().lower())
+    text_without_quotes = re.sub(r'"[^"]+"', ' ', text)
+
+    # 2. Extract field prefixes like court:Madras or year:2026 or section:482 or citation:...
+    prefix_pattern = re.compile(r'(\b[a-zA-Z_]+):([a-zA-Z0-9_\-\(\)\s\.]+?)(?=\s+[a-zA-Z_]+:|\s+AND\b|\s+OR\b|\s+NOT\b|\s*$)', re.IGNORECASE)
+    for m in prefix_pattern.finditer(text_without_quotes):
+        field = m.group(1).lower()
+        val = m.group(2).strip().strip('"').lower()
+        field_filters[field] = val
+    text_cleaned = prefix_pattern.sub(' ', text_without_quotes)
+
+    # 3. Check for Boolean operators AND, OR, NOT
+    has_boolean = bool(re.search(r'\b(AND|OR|NOT)\b', text_cleaned))
+
+    if has_boolean:
+        raw_tokens = text_cleaned.split()
+        mode = "AND"
+        for tok in raw_tokens:
+            tok_upper = tok.upper()
+            if tok_upper in ["AND", "OR", "NOT"]:
+                mode = tok_upper
+                continue
+            t_clean = tok.strip().lower()
+            if not t_clean or len(t_clean) < 2:
+                continue
+            if mode == "NOT" or tok.startswith("-"):
+                excluded_terms.append(t_clean.lstrip("-"))
+            elif mode == "OR":
+                or_terms.append(t_clean)
+            else:
+                and_terms.append(t_clean)
+    else:
+        # Standard token list
+        and_terms = [t.lower() for t in text_cleaned.split() if len(t) > 2]
+
+    is_advanced = bool(required_phrases or excluded_terms or or_terms or field_filters or has_boolean)
+    return {
+        "required_phrases": required_phrases,
+        "excluded_terms": excluded_terms,
+        "and_terms": and_terms,
+        "or_terms": or_terms,
+        "field_filters": field_filters,
+        "is_advanced": is_advanced,
+    }
 
 
-def _extract_matched_snippets(text: str, tokens: List[str], max_snippets: int = 2) -> tuple[List[str], List[str]]:
+def _extract_matched_snippets(text: str, tokens: List[str], max_snippets: int = 2) -> Tuple[List[str], List[str]]:
     if not text or not tokens:
         return [], []
     snippets = []
@@ -44,11 +104,9 @@ def _extract_matched_snippets(text: str, tokens: List[str], max_snippets: int = 
             if tok in line_lower:
                 matched_kws.add(tok)
                 if len(snippets) < max_snippets:
-                    # Highlight match with <mark> tags
                     pattern = re.compile(re.escape(tok), re.IGNORECASE)
                     highlighted = pattern.sub(lambda m: f"<mark>{m.group(0)}</mark>", stripped)
                     if len(highlighted) > 220:
-                        # Trim around the first match
                         m_pos = highlighted.lower().find("<mark>")
                         start_pos = max(0, m_pos - 40)
                         end_pos = min(len(highlighted), m_pos + 160)
@@ -65,16 +123,16 @@ def search_cases(
     db: Session = Depends(get_db),
 ):
     """
-    Hugging Face Hybrid Legal Precedent Search with Reciprocal Rank Fusion (RRF):
-    1. Local LLM / InLegalBERT extracts statutory sections and legal issues from natural language query.
-    2. Sentence-Transformers (all-MiniLM-L6-v2) computes 384-dimensional query vector.
-    3. RRF Rank Fusion across:
+    Advanced Boolean, Citation & Reciprocal Rank Fusion (RRF) Legal Search Engine:
+    1. Parses exact quotes ("..."), Boolean logic (AND, OR, NOT), and field prefixes.
+    2. Local LLM / InLegalBERT extracts statutory sections and legal issues.
+    3. Sentence-Transformers computes 384-dimensional query vector.
+    4. RRF Rank Fusion across:
        - Dense Semantic Vector Similarity (Rank 1)
-       - Lexical / Keyword / CNR / Full-Text Search (Rank 2)
+       - Lexical / Exact Phrase / Boolean Keyword / Citation Hit (Rank 2)
        - Statutory Section and Act Alignment (Rank 3)
-    4. Extracts matched context snippets from official judgment text with page numbers.
-    5. Returns rich judicial metadata (court, bench, coram, disposition, ratio decidendi, seals).
-    6. Logs search query in the immutable audit trail.
+    5. Extracts matched context snippets with page numbers.
+    6. Returns rich judicial metadata, precedential validity stamps, and citation counts.
     """
     query_text = (search_in.query or "").strip()
 
@@ -173,18 +231,22 @@ def search_cases(
             query_understanding={"sections": [], "issue": "All Published Cases", "jurisdiction": "All Courts"},
         )
 
-    # 1. AI Query Enrichment (Local Qwen/Llama or InLegalBERT NER)
-    enriched = local_llm_service.enrich_query(search_in.query)
+    # 1. Parse Advanced Boolean & Field Query
+    adv_query = parse_advanced_query(query_text)
+
+    # 2. AI Query Enrichment (Local Qwen/Llama or InLegalBERT NER)
+    clean_search_text = " ".join(adv_query["and_terms"] + adv_query["required_phrases"] + adv_query["or_terms"]) or query_text
+    enriched = local_llm_service.enrich_query(clean_search_text)
     query_sections = enriched.get("sections", [])
     query_acts = enriched.get("acts", [])
 
-    # 2. Vector Embedding for Query
-    query_embedding = embedding_service.generate_embedding(search_in.query)
+    # 3. Vector Embedding for Query
+    query_embedding = embedding_service.generate_embedding(clean_search_text)
 
-    # 3. Base Query: Only published cases
+    # 4. Base Query: Only published cases
     query_obj = db.query(Case).filter(Case.status == "published")
 
-    # Apply optional filters
+    # Apply UI filters
     if search_in.filters:
         f = search_in.filters
         if f.court and f.court != "All Courts":
@@ -219,25 +281,61 @@ def search_cases(
                 )
             )
 
+    # Apply Field Prefixes parsed directly from query (court:..., year:..., etc.)
+    ff = adv_query["field_filters"]
+    if "court" in ff:
+        query_obj = query_obj.filter(Case.court.ilike(f"%{ff['court']}%"))
+    if "year" in ff:
+        try:
+            query_obj = query_obj.filter(Case.year == int(ff["year"]))
+        except Exception:
+            pass
+    if "judge" in ff:
+        query_obj = query_obj.filter(Case.judge.ilike(f"%{ff['judge']}%"))
+    if "cnr" in ff:
+        query_obj = query_obj.filter(Case.cnr_number.ilike(f"%{ff['cnr']}%"))
+
     candidates: List[Case] = query_obj.all()
     if not candidates:
         return SearchResponse(total=0, results=[], query_understanding=enriched)
 
-    tokens = [t.lower() for t in search_in.query.split() if len(t) > 2]
+    tokens = [t.lower() for t in clean_search_text.split() if len(t) > 2]
+    all_query_terms = adv_query["and_terms"] + adv_query["required_phrases"]
     is_cnr_query = bool(re.search(r'(TNCH|TNMD|[A-Z]{4}\d{8,12}|\d{3,5}/\d{4})', query_text, re.IGNORECASE))
+    is_citation_query = bool(re.search(r'(\d{4}\s+(?:SCC|AIR|SCR)|SCC\s+OnLine|\d+\s+of\s+\d{4})', query_text, re.IGNORECASE))
 
-    # 4. Compute 3 Component Scores for Reciprocal Rank Fusion (RRF)
-    # Channel 1: Semantic Vector Similarity
-    # Channel 2: Lexical Keyword / Full-Text / CNR Hit
-    # Channel 3: Statutory Section & Act Overlap
+    # 5. Compute 3 Component Scores for Reciprocal Rank Fusion (RRF)
     vector_scores = {}
     lexical_scores = {}
     statute_scores = {}
     case_snippets = {}
     case_matched_kws = {}
     case_matched_sections = {}
+    case_search_modes = {}
 
     for c in candidates:
+        c_no_lower = (c.case_no or "").lower()
+        title_lower = (c.title or "").lower()
+        official_cit_lower = (c.official_citation or "").lower()
+        full_text_start = (c.full_text or "")[:15000].lower()
+        haystack = f"{c_no_lower} {title_lower} {official_cit_lower} {c.summary or ''} {' '.join(c.keyword_tags or [])} {c.facts or ''} {c.ratio_decidendi or ''} {full_text_start}".lower()
+
+        # Boolean Excluded Terms Check (NOT)
+        if any(ex in haystack for ex in adv_query["excluded_terms"]):
+            vector_scores[c.id] = 0.0
+            lexical_scores[c.id] = -100.0
+            statute_scores[c.id] = 0.0
+            continue
+
+        # Quoted Phrases Check ("...")
+        phrase_miss = False
+        phrase_bonus = 0.0
+        for phrase in adv_query["required_phrases"]:
+            if phrase in haystack:
+                phrase_bonus += 120.0
+            else:
+                phrase_miss = True
+
         # Vector Similarity
         sem_sim = 0.0
         if c.embedding:
@@ -248,26 +346,44 @@ def search_cases(
         vector_scores[c.id] = max(0.0, float(sem_sim))
 
         # Lexical Score
-        c_no_lower = (c.case_no or "").lower()
-        title_lower = (c.title or "").lower()
-        full_text_start = (c.full_text or "")[:12000].lower()
-        haystack = f"{c_no_lower} {title_lower} {c.summary or ''} {' '.join(c.keyword_tags or [])} {c.facts or ''} {c.ratio_decidendi or ''} {full_text_start}".lower()
-
         lex_score = 0.0
-        # Direct CNR or Case Number Exact Match boost
-        if is_cnr_query and any(tok in c_no_lower for tok in tokens):
-            lex_score += 50.0
-        elif c_no_lower in query_text.lower():
-            lex_score += 50.0
+        mode_label = "Hybrid Semantic/Lexical RRF"
 
-        # Title token hits (weight 3.0)
-        title_hits = sum(3.0 for tok in tokens if tok in title_lower)
-        body_hits = sum(1.0 for tok in tokens if tok in haystack)
+        # Exact Official Citation Match (e.g. (2014) 2 SCC 1)
+        if official_cit_lower and (official_cit_lower in query_text.lower() or query_text.lower() in official_cit_lower):
+            lex_score += 300.0
+            mode_label = "Exact Citation Lookup"
+        elif is_citation_query and any(tok in haystack for tok in tokens):
+            lex_score += 60.0
+            mode_label = "Citation Search Match"
+
+        # Exact CNR or Case Number Match
+        if is_cnr_query and any(tok in c_no_lower for tok in tokens):
+            lex_score += 150.0
+            mode_label = "Case / CNR Number Match"
+        elif c_no_lower in query_text.lower():
+            lex_score += 100.0
+            mode_label = "Exact Case Number Match"
+
+        # Boolean and Exact Phrase Bonuses
+        if adv_query["required_phrases"]:
+            if not phrase_miss:
+                lex_score += phrase_bonus
+                mode_label = "Exact Phrase Match"
+            else:
+                # Penalize missing mandatory quoted phrase
+                lex_score -= 50.0
+
+        # Title & Body token hits
+        title_hits = sum(4.0 for tok in tokens if tok in title_lower)
+        body_hits = sum(1.5 for tok in tokens if tok in haystack)
         lex_score += title_hits + body_hits
         lexical_scores[c.id] = lex_score
+        case_search_modes[c.id] = mode_label
 
         # Extract Snippets & Matched Keywords
-        snips, kws = _extract_matched_snippets(c.full_text or c.summary or "", tokens, max_snippets=2)
+        snip_tokens = all_query_terms or tokens
+        snips, kws = _extract_matched_snippets(c.full_text or c.summary or "", snip_tokens, max_snippets=2)
         case_snippets[c.id] = snips
         case_matched_kws[c.id] = kws
 
@@ -284,60 +400,60 @@ def search_cases(
         sec_overlap = len(matched_secs)
         statute_scores[c.id] = (sec_overlap * 2.0) + act_overlap
 
+    # Filter out excluded cases (negative lexical score)
+    valid_candidates = [c for c in candidates if lexical_scores.get(c.id, 0.0) >= 0]
+    if not valid_candidates:
+        return SearchResponse(total=0, results=[], query_understanding=enriched)
+
     # Build Ranks (1-indexed) for each channel
-    sorted_by_vector = sorted(candidates, key=lambda c: vector_scores[c.id], reverse=True)
+    sorted_by_vector = sorted(valid_candidates, key=lambda c: vector_scores.get(c.id, 0.0), reverse=True)
     vector_rank = {c.id: idx + 1 for idx, c in enumerate(sorted_by_vector)}
 
-    sorted_by_lexical = sorted(candidates, key=lambda c: lexical_scores[c.id], reverse=True)
+    sorted_by_lexical = sorted(valid_candidates, key=lambda c: lexical_scores.get(c.id, 0.0), reverse=True)
     lexical_rank = {c.id: idx + 1 for idx, c in enumerate(sorted_by_lexical)}
 
-    sorted_by_statute = sorted(candidates, key=lambda c: statute_scores[c.id], reverse=True)
+    sorted_by_statute = sorted(valid_candidates, key=lambda c: statute_scores.get(c.id, 0.0), reverse=True)
     statute_rank = {c.id: idx + 1 for idx, c in enumerate(sorted_by_statute)}
 
-    # Standard Reciprocal Rank Fusion (RRF) with constant k=60
-    # RRF(d) = sum( w_m / (k + rank_m(d)) )
-    K_RRF = 60
-    W_VECTOR = 0.50
-    W_LEXICAL = 0.30
-    W_STATUTE = 0.20
-
+    k = 60
     rrf_scored = []
-    for c in candidates:
-        r_vec = vector_rank[c.id]
-        r_lex = lexical_rank[c.id]
-        r_stat = statute_rank[c.id]
+    max_raw_rrf = 0.0
 
-        raw_rrf = (
-            (W_VECTOR / (K_RRF + r_vec))
-            + (W_LEXICAL / (K_RRF + r_lex))
-            + (W_STATUTE / (K_RRF + r_stat))
-        )
+    for c in valid_candidates:
+        v_r = vector_rank.get(c.id, 999)
+        l_r = lexical_rank.get(c.id, 999)
+        s_r = statute_rank.get(c.id, 999)
 
-        # Scale RRF to standard 0.0 - 1.0 percentage score
-        # Max theoretical RRF = 1.0 / 61 = 0.01639. Normalize so top is ~0.95+
-        normalized_score = round(min(0.99, raw_rrf * 60.0), 3)
+        # Weighting:
+        # If exact phrase/citation, weight lexical higher
+        if lexical_scores.get(c.id, 0.0) > 80.0:
+            raw_rrf = (0.2 / (k + v_r)) + (0.7 / (k + l_r)) + (0.1 / (k + s_r))
+        else:
+            raw_rrf = (0.5 / (k + v_r)) + (0.35 / (k + l_r)) + (0.15 / (k + s_r))
 
-        # Direct boost for exact CNR / case_no match
-        if lexical_scores[c.id] >= 50.0:
-            normalized_score = 0.99
+        if raw_rrf > max_raw_rrf:
+            max_raw_rrf = raw_rrf
+        rrf_scored.append((c, raw_rrf))
 
-        # Filter out zero-relevance noise if query tokens provided
-        if tokens and lexical_scores[c.id] == 0.0 and vector_scores[c.id] < 0.15 and not case_matched_sections[c.id]:
-            continue
+    if max_raw_rrf == 0.0:
+        max_raw_rrf = 1.0
 
-        c_timestamp = c.created_at.timestamp() if c.created_at else 0.0
-        rrf_scored.append((
-            normalized_score,
+    results_tuples = []
+    for c, raw_rrf in rrf_scored:
+        norm_score = round(raw_rrf / max_raw_rrf, 4)
+        c_ts = c.created_at.timestamp() if c.created_at else 0.0
+        results_tuples.append((
+            norm_score,
             raw_rrf,
-            c_timestamp,
+            c_ts,
             SearchResultItem(
                 id=c.id,
                 case_no=c.case_no,
                 title=c.title,
                 court=c.court,
                 year=c.year,
-                matched_sections=case_matched_sections[c.id],
-                relevance_score=normalized_score,
+                matched_sections=case_matched_sections.get(c.id, []),
+                relevance_score=norm_score,
                 outcome=c.outcome,
                 disposition=c.disposition or c.outcome or "Decided",
                 judge=c.judge or "Hon'ble Court",
@@ -348,8 +464,8 @@ def search_cases(
                 act_tags=c.act_tags or [],
                 section_tags=c.section_tags or [],
                 keyword_tags=c.keyword_tags or [],
-                matched_snippets=case_snippets[c.id],
-                matched_keywords=case_matched_kws[c.id],
+                matched_snippets=case_snippets.get(c.id, []),
+                matched_keywords=case_matched_kws.get(c.id, []),
                 source_url=c.source_url,
                 rrf_score=round(raw_rrf, 5),
                 cnr_number=c.cnr_number,
@@ -359,25 +475,20 @@ def search_cases(
                 precedential_status=c.precedential_status or "Good Law",
                 cited_by_count=c.cited_by_count or 0,
                 official_citation=c.official_citation,
-                search_mode="Hybrid Semantic/Lexical RRF",
+                search_mode=case_search_modes.get(c.id, "Hybrid Semantic/Lexical RRF"),
             )
         ))
 
-    # Sort descending by normalized RRF score, breaking ties by timestamp
-    rrf_scored.sort(key=lambda x: (x[0], x[2]), reverse=True)
-    total_matches = len(rrf_scored)
+    results_tuples.sort(key=lambda x: (x[0], x[2]), reverse=True)
+    total_matches = len(results_tuples)
 
-    # Paginate
-    paged = [
-        item for _, _, _, item in rrf_scored[search_in.offset : search_in.offset + search_in.limit]
-    ]
+    paged = [item for _, _, _, item in results_tuples[search_in.offset : search_in.offset + search_in.limit]]
 
-    # 5. Log immutable audit trail
     log_audit_event(
         db=db,
         action="SEARCH",
         user_id=current_user.id if current_user else None,
-        details=f"RRF Query: '{search_in.query[:100]}' - Returned {len(paged)} of {total_matches} results",
+        details=f"Query: '{query_text[:100]}' (Adv: {adv_query['is_advanced']}) - Returned {len(paged)} of {total_matches} results",
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
@@ -385,5 +496,11 @@ def search_cases(
     return SearchResponse(
         total=total_matches,
         results=paged,
-        query_understanding=enriched,
+        query_understanding={
+            "sections": query_sections,
+            "acts": query_acts,
+            "required_phrases": adv_query["required_phrases"],
+            "excluded_terms": adv_query["excluded_terms"],
+            "is_advanced_syntax": adv_query["is_advanced"],
+        },
     )

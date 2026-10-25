@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="alternate icon" href="favicon.ico">
-  <title>Saved Bookmarks · LexGuard</title>
+  <title>Advocate Research Binders &amp; Bookmarks · LexGuard</title>
 
   <!-- Google Fonts & CDN CSS -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,31 +26,55 @@
 
   <!-- Main Content -->
   <main class="lg-main">
-    <div class="container-fluid px-0" style="max-width: 1000px;">
+    <div class="container-fluid px-0" style="max-width: 1040px;">
 
       <!-- Page Header -->
-      <div class="lg-page-header">
+      <div class="lg-page-header mb-3">
         <div>
           <h1 class="lg-page-title">
-            <i class="bi bi-bookmarks text-warning"></i>
-            <span>Saved Research &amp; Bookmarks</span>
+            <i class="bi bi-folder2-open text-warning"></i>
+            <span>Advocate Research Binders</span>
           </h1>
           <p class="lg-page-subtitle">
-            Curated precedents and judicial authorities saved for ongoing petitions and research briefs.
+            Organized judicial precedent binders, private case notes, and exportable research memorandums for active court matters.
           </p>
         </div>
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
           <span class="badge bg-secondary" id="bookmarks-count-badge">0 Cases Saved</span>
-          <button type="button" class="btn btn-sm btn-judicial-outline" id="export-citations-btn">
-            <i class="bi bi-file-earmark-arrow-down me-1 text-warning"></i>Export Bibliography
+          <button type="button" class="btn btn-sm btn-gold" id="export-memo-btn">
+            <i class="bi bi-file-earmark-medical me-1"></i>Export Legal Memo
           </button>
+          <button type="button" class="btn btn-sm btn-judicial-outline" id="export-citations-btn">
+            <i class="bi bi-file-earmark-arrow-down me-1 text-warning"></i>Bibliography
+          </button>
+        </div>
+      </div>
+
+      <!-- Binder Filter & Control Bar -->
+      <div class="card card-judicial p-3 mb-4 shadow-sm">
+        <div class="row g-3 align-items-center">
+          <div class="col-md-6 d-flex align-items-center gap-2">
+            <label for="binder-select" class="form-label text-secondary small mb-0 text-nowrap fw-semibold">
+              <i class="bi bi-folder-fill text-warning me-1"></i>Active Binder:
+            </label>
+            <select class="form-select form-select-sm bg-dark text-light border-secondary" id="binder-select">
+              <option value="all">All Binders (All Saved Precedents)</option>
+              <option value="General Research">General Research</option>
+            </select>
+          </div>
+          <div class="col-md-6 d-flex justify-content-md-end align-items-center gap-2 flex-wrap">
+            <button type="button" class="btn btn-sm btn-judicial-outline" id="new-binder-btn" data-bs-toggle="modal" data-bs-target="#newBinderModal">
+              <i class="bi bi-folder-plus text-warning me-1"></i>Create New Binder
+            </button>
+            <span class="text-secondary small d-none d-md-inline" id="binder-status-label">Viewing all saved authorities</span>
+          </div>
         </div>
       </div>
 
       <!-- Loading Spinner -->
       <div id="bookmarks-loading" class="text-center py-5">
         <div class="spinner-border text-warning" role="status"></div>
-        <p class="text-secondary small mt-2">Loading your saved research bookmarks...</p>
+        <p class="text-secondary small mt-2">Loading your saved research binders...</p>
       </div>
 
       <!-- Bookmarks List Container -->
@@ -58,20 +82,144 @@
 
       <!-- Empty State -->
       <div id="bookmarks-empty" class="card card-judicial text-center p-5 d-none">
-        <i class="bi bi-bookmark-plus text-secondary display-6 mb-3"></i>
-        <h2 class="h5 text-light">No Bookmarks Saved Yet</h2>
-        <p class="text-secondary small mb-4" style="max-width: 420px; margin: 0 auto;">
-          When exploring judgments in <strong>Hybrid Search</strong> or <strong>Case Viewer</strong>, click the bookmark icon to save cases for quick reference.
+        <i class="bi bi-folder-x text-secondary display-6 mb-3"></i>
+        <h2 class="h5 text-light">No Precedents in this Binder</h2>
+        <p class="text-secondary small mb-4" style="max-width: 460px; margin: 0 auto;">
+          You haven't saved any judicial authorities to this binder yet. Browse the repository or search rulings to curate citations for your legal matters.
         </p>
-        <div>
+        <div class="d-flex justify-content-center gap-2">
           <a href="search.html" class="btn btn-gold">
-            <i class="bi bi-search me-1"></i>Explore Judicial Cases
+            <i class="bi bi-search me-1"></i>Search Precedents
           </a>
+          <button type="button" class="btn btn-judicial-outline" id="empty-all-binders-btn">
+            <i class="bi bi-folder2 me-1"></i>View All Binders
+          </button>
         </div>
       </div>
 
     </div>
   </main>
+
+  <!-- Modal: Create New Binder -->
+  <div class="modal fade" id="newBinderModal" tabindex="-1" aria-labelledby="newBinderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark text-light border-secondary">
+        <div class="modal-header border-secondary border-opacity-25">
+          <h5 class="modal-title text-warning" id="newBinderModalLabel">
+            <i class="bi bi-folder-plus me-2"></i>Create Advocate Research Binder
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <label for="new-binder-name-input" class="form-label text-secondary small fw-semibold">
+            Binder / Subject Matter Name
+          </label>
+          <input type="text" class="form-control bg-dark text-light border-secondary" id="new-binder-name-input" placeholder="e.g., Section 482 Quashing / Anticipatory Bail" maxlength="80">
+          <div class="form-text text-secondary small mt-2">
+            Binders help categorize precedents by client petition, statutory provision, or legal topic.
+          </div>
+        </div>
+        <div class="modal-footer border-secondary border-opacity-25">
+          <button type="button" class="btn btn-sm btn-judicial-outline" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-sm btn-gold" id="confirm-new-binder-btn">Create &amp; Switch Binder</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Edit Bookmark & Move Binder -->
+  <div class="modal fade" id="editBookmarkModal" tabindex="-1" aria-labelledby="editBookmarkModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content bg-dark text-light border-secondary">
+        <div class="modal-header border-secondary border-opacity-25">
+          <h5 class="modal-title text-warning" id="editBookmarkModalLabel">
+            <i class="bi bi-pencil-square me-2"></i>Edit Research Note &amp; Binder
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="edit-bm-id">
+          <div class="mb-3">
+            <label class="text-secondary small fw-semibold mb-1">Case Title</label>
+            <div class="p-2 bg-secondary bg-opacity-10 rounded border border-secondary border-opacity-25 text-light fw-bold" id="edit-bm-title">
+              Case Title Here
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="edit-bm-binder-select" class="form-label text-secondary small fw-semibold">
+              Assign to Research Binder
+            </label>
+            <div class="row g-2">
+              <div class="col-md-6">
+                <select class="form-select bg-dark text-light border-secondary" id="edit-bm-binder-select">
+                  <option value="General Research">General Research</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <input type="text" class="form-control bg-dark text-light border-secondary" id="edit-bm-custom-binder" placeholder="Or type new binder name...">
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="edit-bm-notes" class="form-label text-secondary small fw-semibold">
+              Advocate Private Research Notes / Arguments
+            </label>
+            <textarea class="form-control bg-dark text-light border-secondary font-sans" id="edit-bm-notes" rows="4" placeholder="Record specific proposition, paragraph citations, or application to current brief..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary border-opacity-25">
+          <button type="button" class="btn btn-sm btn-judicial-outline" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-sm btn-gold" id="save-bookmark-edit-btn">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Research Memorandum Preview & Export -->
+  <div class="modal fade" id="memoModal" tabindex="-1" aria-labelledby="memoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+      <div class="modal-content bg-dark text-light border-secondary">
+        <div class="modal-header border-secondary border-opacity-25">
+          <h5 class="modal-title text-warning" id="memoModalLabel">
+            <i class="bi bi-file-earmark-medical me-2"></i>Advocate Legal Research Memorandum
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4" id="memo-modal-body">
+          <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary border-opacity-25 flex-wrap gap-2">
+            <div class="text-secondary small">
+              <strong class="text-warning" id="memo-binder-title">General Research</strong> &mdash; 
+              <span id="memo-cases-count">0 Authorities</span>
+            </div>
+            <div class="btn-group btn-group-sm">
+              <button type="button" class="btn btn-judicial-outline active" id="memo-view-rendered-btn">
+                <i class="bi bi-eye me-1"></i>Formatted View
+              </button>
+              <button type="button" class="btn btn-judicial-outline" id="memo-view-markdown-btn">
+                <i class="bi bi-markdown me-1"></i>Markdown Source
+              </button>
+            </div>
+          </div>
+          <!-- Rendered View -->
+          <div id="memo-rendered-content" class="p-4 bg-black bg-opacity-30 rounded border border-secondary border-opacity-20 text-light" style="font-family: 'Playfair Display', serif; line-height: 1.8;"></div>
+          <!-- Raw Markdown View -->
+          <textarea id="memo-raw-markdown" class="form-control bg-black text-light font-mono small d-none" rows="16" readonly></textarea>
+        </div>
+        <div class="modal-footer border-secondary border-opacity-25">
+          <button type="button" class="btn btn-sm btn-judicial-outline" id="memo-copy-btn">
+            <i class="bi bi-clipboard me-1"></i>Copy Markdown
+          </button>
+          <button type="button" class="btn btn-sm btn-judicial-outline" id="memo-download-btn">
+            <i class="bi bi-file-earmark-arrow-down me-1"></i>Download .md
+          </button>
+          <button type="button" class="btn btn-sm btn-gold" id="memo-print-btn">
+            <i class="bi bi-printer me-1"></i>Print Memo
+          </button>
+          <button type="button" class="btn btn-sm btn-judicial-outline" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- CDN JS Dependencies -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
