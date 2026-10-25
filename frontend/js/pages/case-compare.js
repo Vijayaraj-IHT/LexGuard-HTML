@@ -89,18 +89,24 @@ $(document).ready(function () {
     }
 
     const selectedPrecedentIds = [p1Id, p2Id, p3Id].filter(Boolean);
-    const target = precedentsCache[targetId] || {};
+    const target = uploadedPdfTarget || precedentsCache[targetId] || {};
 
     $loading.removeClass('d-none');
     $resultsContainer.addClass('d-none');
 
     const payload = {
       precedent_case_ids: selectedPrecedentIds,
+      target_case_id: target.id || targetId,
+      target_file_hash: target.file_hash || null,
+      target_case_no: target.case_no || null,
       case_title: target.title || 'Target Petition',
       court_jurisdiction: target.court || 'High Court of Judicature',
-      facts_summary: target.summary || target.ratio_decidendi || 'Dispute regarding procedural compliance and statutory bar.',
-      statutory_provisions: (target.section_tags || target.sections || []).length > 0 ? (target.section_tags || target.sections) : ['Section 482 CrPC'],
-      legal_issues: [target.ratio_decidendi || 'Applicability of binding judicial precedent']
+      facts_summary: target.facts || target.summary || target.ratio_decidendi || 'Dispute regarding procedural compliance and statutory bar.',
+      statutory_provisions: (target.section_tags || target.sections || []).length > 0 ? (target.section_tags || target.sections) : [],
+      keyword_tags: target.keyword_tags || [],
+      remedy_sought: target.outcome || target.disposition || '',
+      outcome: target.outcome || target.disposition || 'Allowed',
+      legal_issues: target.ratio_decidendi ? [target.ratio_decidendi] : []
     };
 
     LG.api.request({
@@ -147,7 +153,29 @@ $(document).ready(function () {
     // Find best precedent object
     const bestPrecedent = precedentsCache[res.best_match_id] || results[0].precedent || {};
     $bestTitle.text(bestPrecedent.title || 'Landmark Precedent');
-    $bestDesc.text(`Highest dimensional score (${bestScore}%) based on statutory overlap, bench hierarchy, and remedy congruence.`);
+    $bestDesc.text(`Highest dimensional score (${bestScore}%) based on statutory concordance, scenario matching, and remedy congruence.`);
+
+    // CBR Comparison Objects & Distinguishability
+    const $distBadge = $('#cbr-distinguishability-badge');
+    const $matchedTerms = $('#cbr-matched-summary-terms');
+    const rating = res.results && res.results[0] ? res.results[0].distinguishability_rating : 'Analogous Precedent';
+    $distBadge.text(rating);
+    if (bestScore >= 90) {
+      $distBadge.removeClass('bg-warning bg-secondary').addClass('bg-success');
+    } else if (bestScore >= 65) {
+      $distBadge.removeClass('bg-success bg-secondary').addClass('bg-warning text-dark');
+    } else {
+      $distBadge.removeClass('bg-success bg-warning text-dark').addClass('bg-secondary');
+    }
+
+    const matchedScen = (res.results && res.results[0] && res.results[0].matched_scenario_terms) || [];
+    const matchedAct = (res.results && res.results[0] && res.results[0].matched_activity_terms) || [];
+    const allMatched = matchedScen.concat(matchedAct);
+    if (allMatched.length > 0) {
+      $matchedTerms.html('<i class="bi bi-tags-fill me-1"></i>Matched Concept Sets: ' + allMatched.map(t => `<span class="badge bg-dark border border-secondary text-light font-mono me-1">${LG.utils.escapeHtml(t)}</span>`).join(''));
+    } else {
+      $matchedTerms.html('');
+    }
 
     // 2. Score Pills across evaluated authorities
     const pillsHtml = results.map(function (item, idx) {
@@ -303,4 +331,88 @@ $(document).ready(function () {
 
   // Initial Load
   loadPrecedents();
+
+  // ---------------------------------------------------------------------------
+  // Target PDF Direct Upload & SHA-256 Extraction
+  // ---------------------------------------------------------------------------
+  let uploadedPdfTarget = null;
+  const $togglePdfBtn = $('#toggle-pdf-target');
+  const $togglePdfLabel = $('#toggle-pdf-label');
+  const $pdfBox = $('#target-pdf-box');
+  const $pdfInput = $('#target-pdf-input');
+  const $pickPdfBtn = $('#btn-pick-pdf');
+  const $pdfInfo = $('#target-pdf-info');
+
+  $togglePdfBtn.on('click', function (e) {
+    e.preventDefault();
+    if ($pdfBox.hasClass('d-none')) {
+      $pdfBox.removeClass('d-none');
+      $targetSelect.addClass('d-none');
+      $togglePdfLabel.text('Select from List');
+    } else {
+      $pdfBox.addClass('d-none');
+      $targetSelect.removeClass('d-none');
+      $togglePdfLabel.text('Upload PDF');
+      uploadedPdfTarget = null;
+      $pdfInfo.text('');
+    }
+  });
+
+  $pickPdfBtn.on('click', function () {
+    $pdfInput.trigger('click');
+  });
+
+  $pdfInput.on('change', async function () {
+    const file = this.files[0];
+    if (!file) return;
+
+    $pdfInfo.html('<span class="spinner-border spinner-border-sm text-info"></span> Hashing PDF...');
+    try {
+      const buffer = await file.arrayBuffer();
+      const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+      // Check if hash matches an existing case
+      let matchedCase = null;
+      Object.values(precedentsCache).forEach(p => {
+        if (p.file_hash && p.file_hash.toLowerCase() === hashHex.toLowerCase()) {
+          matchedCase = p;
+        }
+      });
+
+      if (matchedCase) {
+        uploadedPdfTarget = {
+          id: matchedCase.id,
+          title: matchedCase.title,
+          court: matchedCase.court,
+          case_no: matchedCase.case_no,
+          file_hash: hashHex,
+          facts: matchedCase.facts || matchedCase.summary,
+          summary: matchedCase.summary,
+          section_tags: matchedCase.section_tags,
+          outcome: matchedCase.outcome
+        };
+        $pdfInfo.html(`<span class="text-success"><i class="bi bi-shield-check me-1"></i>${LG.utils.escapeHtml(matchedCase.title)}</span>`);
+        LG.toast(`Matched verified repository case: ${matchedCase.case_no}`, 'success');
+      } else {
+        uploadedPdfTarget = {
+          id: null,
+          title: file.name.replace(/\.pdf$/i, ''),
+          court: 'High Court of Judicature',
+          case_no: file.name.replace(/\.pdf$/i, ''),
+          file_hash: hashHex,
+          facts: 'Uploaded petition: ' + file.name,
+          summary: 'Uploaded petition: ' + file.name,
+          section_tags: [],
+          outcome: 'Allowed'
+        };
+        $pdfInfo.html(`<span class="text-warning"><i class="bi bi-file-earmark-pdf me-1"></i>${LG.utils.escapeHtml(file.name)}</span> (SHA: ${hashHex.substring(0, 8)}...)`);
+      }
+    } catch (err) {
+      $pdfInfo.html('<span class="text-danger">Failed to process PDF</span>');
+      LG.toast('Error reading PDF file.', 'danger');
+    }
+  });
+
 });
