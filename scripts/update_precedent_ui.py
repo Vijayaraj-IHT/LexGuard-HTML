@@ -19,7 +19,7 @@ js_search_files = [
 # 1. Update case-viewer.html header badge
 HEADER_BADGES = """          <div class="d-flex align-items-center gap-2">
             <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-30 fs-7" id="case-header-status-badge">
-              <i class="bi bi-shield-check me-1"></i>Good Law
+              <i class="bi bi-shield-check me-1"></i>Precedential status not checked
             </span>
             <span class="badge bg-warning bg-opacity-20 text-warning border border-warning border-opacity-30 fs-7 d-none" id="case-header-cited-count-badge">
               <i class="bi bi-diagram-3 me-1"></i><span id="case-header-cited-count-text">0 Citations</span>
@@ -59,7 +59,7 @@ NEW_LOAD_PRECEDENTS = """  function loadPrecedentNetwork(cid) {
               <div class="p-3 rounded bg-dark border border-success border-opacity-30">
                 <div class="text-secondary small text-uppercase">Precedential Authority</div>
                 <div class="fw-bold text-success fs-6 mt-1">
-                  <i class="bi bi-shield-check me-1"></i>${LG.utils.escapeHtml(res.precedential_status || 'Good Law')}
+                  <i class="bi bi-shield-check me-1"></i>${LG.utils.escapeHtml(res.precedential_status || 'Precedential status not checked')}
                 </div>
               </div>
             </div>
@@ -106,7 +106,7 @@ NEW_LOAD_PRECEDENTS = """  function loadPrecedentNetwork(cid) {
                 <div class="card card-judicial p-3 h-100 border-secondary border-opacity-30">
                   <div class="d-flex align-items-start justify-content-between gap-2 mb-1">
                     <span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-30" style="font-size: 0.72rem;">
-                      <i class="bi bi-check-circle me-1"></i>${LG.utils.escapeHtml(p.status || 'Good Law')}
+                      <i class="bi bi-check-circle me-1"></i>${LG.utils.escapeHtml(p.status || 'Precedential status not checked')}
                     </span>
                     <span class="badge bg-dark border border-secondary text-warning font-mono" style="font-size: 0.72rem;">
                       ${LG.utils.escapeHtml(p.citation || 'Precedent')}

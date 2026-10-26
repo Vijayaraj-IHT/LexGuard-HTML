@@ -107,7 +107,7 @@ class AIApiService:
         # Fallback to local embedding service if imported
         try:
             from app.services.embedding_service import embedding_service
-            return embedding_service.get_batch_embeddings(texts)
+            return embedding_service.batch_generate_embeddings(texts)
         except Exception:
             return [[0.0] * 384 for _ in texts]
 

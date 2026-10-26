@@ -17,8 +17,7 @@ from app.core.config import settings
 from app.core.database import SessionLocal
 from app.models.case import Case
 from app.models.user import User
-from app.models.audit_log import AuditLog
-from app.services.crypto_service import compute_sha256, compute_audit_log_hash, GENESIS_HASH
+from app.services.audit_service import log_audit_event
 from app.services.embedding_service import embedding_service
 
 SRC_DIR = Path(r"E:\SEM 5 PROJECT\LexGuard-HTML\backend\storage\cases")
@@ -464,10 +463,9 @@ def main():
     user_row = cur.fetchone()
     staff_id = user_row[0] if user_row else "system-ingest-bot"
 
-    # Get latest audit log hash for blockchain-like chaining
-    cur.execute("SELECT current_hash FROM audit_logs ORDER BY timestamp DESC LIMIT 1")
-    last_log = cur.fetchone()
-    prev_audit_hash = last_log[0] if last_log else GENESIS_HASH
+    if not user_row:
+        raise RuntimeError("A staff user is required before canonical audit events can be recorded")
+    pending_audit_events = []
 
     print(f"=== Ingesting and Training 30 Authentic Judicial Precedents into PostgreSQL ===")
     
@@ -542,7 +540,7 @@ def main():
                     year = %s, act_tags = %s, section_tags = %s, keyword_tags = %s,
                     disposition = %s, outcome = %s, summary = %s, ratio_decidendi = %s,
                     full_text = %s, page_count = %s, file_path = %s, file_hash = %s,
-                    redacted_file_hash = %s, status = 'published', approved_at = NOW(),
+                    judicial_seal = %s, status = 'published', approved_at = NOW(),
                     embedding = %s, updated_at = NOW()
                 WHERE id = %s
             """, (
@@ -562,7 +560,7 @@ def main():
                     id, case_no, title, court, judge, parties, year,
                     act_tags, section_tags, keyword_tags, disposition, outcome,
                     summary, ratio_decidendi, full_text, page_count,
-                    file_path, file_hash, redacted_file_hash, status,
+                    file_path, file_hash, judicial_seal, status,
                     source_verification_state, precedential_status, auto_extracted,
                     uploaded_by_id, approved_by_id, approved_at, embedding,
                     created_at, updated_at
@@ -585,21 +583,15 @@ def main():
             ingested_count += 1
             action = "INGEST"
 
-        # Append to cryptographic Audit Ledger
-        audit_payload = f"ACTION:CASE_{action}|CASE_ID:{case_id}|CASE_NO:{case_no}|H_DOC:{h_doc}|PHI:{phi_case}|USER:{staff_id}"
-        new_audit_hash = hashlib.sha256(f"{prev_audit_hash}|{audit_payload}|{now_iso}".encode("utf-8")).hexdigest()
-        
-        cur.execute("""
-            INSERT INTO audit_logs (
-                id, case_id, user_id, action, details,
-                previous_log_hash, current_hash, timestamp
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
-        """, (
-            str(uuid.uuid4()), case_id, staff_id, f"CASE_{action}",
-            f"Authentic court judgment {case_no} verified and sealed (Phi={phi_case[:10]}..)",
-            prev_audit_hash, new_audit_hash
-        ))
-        prev_audit_hash = new_audit_hash
+        # Queue the audit event; it is appended through audit_service after
+        # the raw-SQL case transaction commits and the case is visible.
+        pending_audit_events.append(
+            (
+                f"CASE_{action}",
+                case_id,
+                f"Authentic court judgment {case_no} verified and sealed (Phi={phi_case[:10]}..)",
+            )
+        )
 
         print(f"[{ingested_count + updated_count:02d}] {action} -> {case_no}")
         print(f"     Title: {title[:60]}")
@@ -609,6 +601,20 @@ def main():
     conn.commit()
     cur.close()
     conn.close()
+
+    audit_db = SessionLocal()
+    try:
+        for audit_action, audit_case_id, audit_details in pending_audit_events:
+            log_audit_event(
+                db=audit_db,
+                action=audit_action,
+                user_id=staff_id,
+                case_id=audit_case_id,
+                details=audit_details,
+                ip_address="127.0.0.1",
+            )
+    finally:
+        audit_db.close()
 
     print(f"============================================================")
     print(f"  Ingestion and Sealing of New Court Documents Complete!")

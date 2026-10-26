@@ -12,7 +12,7 @@ FastAPI-powered backend for **Lexguard: Legal Case Research & Document Verificat
 2. **Cryptographic Integrity & Chain of Custody:**
    - **Document SHA-256 Fingerprinting:** Real-time computation on upload and verification on view/download.
    - **Automatic Tamper Detection:** Immediate status quarantine and admin alerting if document bytes change on disk.
-   - **Blockchain-Style Immutable Audit Log:** Every event links `previous_log_hash` and `current_hash` via SHA-256 chaining. Includes cryptographic verification endpoint (`/api/v1/admin/verify-audit-chain`).
+   - **Segmented Tamper-Evident Audit Log:** Every application event is appended only through `audit_service`, links `previous_log_hash` to `current_hash` via SHA-256, and receives a monotonic `seq`. `/api/v1/admin/verify-audit-chain` reports the active segment and archived segments separately. Senior staff may explicitly reseal with `/api/v1/admin/reseal-audit-chain`; historical rows are never rewritten.
 
 3. **Hybrid Precedent Search & AI Draft Assistant:**
    - Query understanding and petition gap analysis using Anthropic Claude API with deterministic local mock fallback for 100% offline testing.
@@ -92,7 +92,19 @@ python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 - Interactive Swagger UI: [http://127.0.0.1:8000/api/v1/docs](http://127.0.0.1:8000/api/v1/docs)
 - Health Check: [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
 
-### 4. Running the Test Suite
+### 4. Phase-0 Migration for a Restored Legacy Dump
+After restoring `database/database_dump.sql`, apply the idempotent schema/backfill migration, then have an active senior-staff operator perform the disclosed reseal:
 ```bash
-pytest tests/test_milestone1.py -v
+python migrate_phase0.py
+python ../scripts/reseal_audit_chain.py \
+  --email staff@lexguard.gov.in \
+  --reason "Phase-0 disclosed remediation of legacy audit segment" \
+  --confirm
+```
+The restored 1,393-row legacy segment is known invalid (first broken link at replay index 31). The migration labels it segment 0, backfills `seq`, and converts audit user/case foreign keys to `ON DELETE RESTRICT`; it does not rewrite hashes. The reseal appends a genesis `CHAIN_RESEALED` event in a new segment.
+
+### 5. Running the Test Suite
+The suite is isolated by `tests/conftest.py`: it forces a fresh temporary SQLite database and storage directory, then resets and reseeds deterministic demo users/cases before each test.
+```bash
+pytest -q
 ```

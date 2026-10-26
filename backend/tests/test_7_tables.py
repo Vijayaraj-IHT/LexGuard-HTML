@@ -24,7 +24,8 @@ from app.models.audit_log import AuditLog
 from app.models.bookmark import Bookmark
 from app.models.draft_session import DraftSession
 from app.models.approval_queue import ApprovalQueue
-from app.services.crypto_service import compute_sha256, compute_audit_log_hash, verify_audit_chain
+from app.services.crypto_service import compute_sha256, verify_audit_chain
+from app.services.audit_service import log_audit_event
 
 
 def run_full_7_table_check():
@@ -112,30 +113,15 @@ def run_full_7_table_check():
         # Table 4: audit_logs
         # ---------------------------------------------------------
         print("\n[4/7] Testing 'audit_logs' table & cryptographic hash-chaining...")
-        ts = datetime.datetime.now(datetime.timezone.utc)
-        log_hash = compute_audit_log_hash(
-            previous_hash="0" * 64,
-            user_id=test_user.id,
-            case_id=test_case.id,
-            action="TEST_VERIFY_ACTION",
-            ip_address="127.0.0.1",
-            timestamp_iso=ts,
-            details=f"Automated verification test run {run_id}",
-        )
-
-        audit_entry = AuditLog(
+        audit_entry = log_audit_event(
+            db=db,
             action="TEST_VERIFY_ACTION",
             user_id=test_user.id,
             case_id=test_case.id,
-            previous_log_hash="0" * 64,
-            current_hash=log_hash,
             details=f"Automated verification test run {run_id}",
             ip_address="127.0.0.1",
             user_agent="Lexguard-Verifier/1.0",
         )
-        db.add(audit_entry)
-        db.commit()
-        db.refresh(audit_entry)
         assert audit_entry.id is not None
         assert len(audit_entry.current_hash) == 64
         print(f"  --> audit_logs: OK (Action: {audit_entry.action}, Current Hash: {audit_entry.current_hash[:16]}...)")

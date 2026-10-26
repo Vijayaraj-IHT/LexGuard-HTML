@@ -123,10 +123,10 @@
             <a class="nav-link px-3 text-dark fw-semibold" href="verify.html"><i class="bi bi-shield-check me-1 text-danger"></i>Document Verifier</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link px-3 text-dark fw-semibold" href="cause-list.html"><i class="bi bi-clock-history me-1 text-danger"></i>Daily Cause List</a>
+            <a class="nav-link px-3 text-dark fw-semibold" href="cause-list.html"><i class="bi bi-clock-history me-1 text-danger"></i>Illustrative Cause Board</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link px-3 text-dark fw-semibold" href="admin.html?auth_role=staff"><i class="bi bi-speedometer2 me-1 text-danger"></i>Staff Admin</a>
+            <a class="nav-link px-3 text-dark fw-semibold" href="admin.html"><i class="bi bi-speedometer2 me-1 text-danger"></i>Staff Admin</a>
           </li>
           <li class="nav-item ms-lg-2">
             <a href="login.html" class="btn btn-sm btn-gold px-3"><i class="bi bi-box-arrow-in-right me-1"></i>Sign In</a>
@@ -149,7 +149,7 @@
       </h1>
       <p class="text-secondary lead fs-6 max-w-xl mx-auto mb-4">
         High Court judgments, orders, and ratio decidendi authenticated with 
-        <strong class="text-danger">SHA-256 cryptographic seals</strong> and InLegalBERT AI factual extraction across 208 precedent dockets.
+        <strong class="text-danger">SHA-256 cryptographic seals</strong> and InLegalBERT AI factual extraction across the 278-record canonical case dump.
       </p>
 
       <!-- CNR / Case Search Box -->
@@ -208,7 +208,7 @@
           <a href="search.html" class="portal-service-tile h-100">
             <div class="portal-service-icon"><i class="bi bi-file-earmark-ruled"></i></div>
             <div class="portal-service-title">Judgments &amp; Orders</div>
-            <div class="portal-service-desc">Full-text precedent search querying live 208 PostgreSQL cases.</div>
+            <div class="portal-service-desc">Full-text precedent search over the restored PostgreSQL repository (278 records in the canonical dump).</div>
             <div class="portal-service-tag">Repository</div>
           </a>
         </div>
@@ -253,12 +253,12 @@
           </a>
         </div>
 
-        <!-- Tile 7: Daily Cause List -->
+        <!-- Tile 7: Illustrative Cause Board -->
         <div class="col-6 col-md-4 col-lg-2-4">
           <a href="cause-list.html" class="portal-service-tile h-100">
             <div class="portal-service-icon"><i class="bi bi-clock-history"></i></div>
-            <div class="portal-service-title">Daily Cause List</div>
-            <div class="portal-service-desc">Real-time courtroom proceedings and sitting roster tracker.</div>
+            <div class="portal-service-title">Illustrative Cause Board</div>
+            <div class="portal-service-desc">Illustrative board of published repository cases — not an official cause list.</div>
             <div class="portal-service-tag">Daily Roster</div>
           </a>
         </div>
@@ -283,12 +283,12 @@
           </a>
         </div>
 
-        <!-- Tile 10: Merkle Audit Ledger -->
+        <!-- Tile 10: Hash-Chained Audit Ledger -->
         <div class="col-6 col-md-4 col-lg-2-4">
           <a href="audit-ledger.html" class="portal-service-tile h-100">
             <div class="portal-service-icon"><i class="bi bi-diagram-3-fill"></i></div>
             <div class="portal-service-title">Cryptographic Ledger</div>
-            <div class="portal-service-desc">Immutable SHA-256 chained audit logs tracking all court actions.</div>
+            <div class="portal-service-desc">Tamper-evident SHA-256 chained audit logs tracking all court actions.</div>
             <div class="portal-service-tag">Audit Trail</div>
           </a>
         </div>
@@ -299,25 +299,25 @@
       <div class="row g-3 mt-4 pt-2">
         <div class="col-md-3 col-sm-6">
           <div class="trust-stat-card text-center">
-            <div class="h3 fw-bold text-dark font-serif mb-1" id="stat-courts-count">15 Courts</div>
+            <div class="h3 fw-bold text-dark font-serif mb-1" id="stat-courts-count">—</div>
             <div class="small text-secondary">Supreme Court &amp; High Courts</div>
           </div>
         </div>
         <div class="col-md-3 col-sm-6">
           <div class="trust-stat-card text-center">
-            <div class="h3 fw-bold text-danger font-serif mb-1" id="stat-cases-count">130 Verified</div>
+            <div class="h3 fw-bold text-danger font-serif mb-1" id="stat-cases-count">—</div>
             <div class="small text-secondary">Precedents in Certified Repository</div>
           </div>
         </div>
         <div class="col-md-3 col-sm-6">
           <div class="trust-stat-card text-center">
-            <div class="h3 fw-bold text-success font-serif mb-1" id="stat-audit-count">1,150+ Entries</div>
+            <div class="h3 fw-bold text-success font-serif mb-1" id="stat-audit-count">—</div>
             <div class="small text-secondary">Tamper-Evident Audit Ledger</div>
           </div>
         </div>
         <div class="col-md-3 col-sm-6">
           <div class="trust-stat-card text-center">
-            <div class="h3 fw-bold text-dark font-serif mb-1" id="stat-verified-count">100% Sealed</div>
+            <div class="h3 fw-bold text-dark font-serif mb-1" id="stat-verified-count">—</div>
             <div class="small text-secondary">Cryptographic Hash Registered</div>
           </div>
         </div>

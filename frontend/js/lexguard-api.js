@@ -10,8 +10,8 @@
   window.LG = window.LG || {};
 
   /**
-   * Generic API request handler wrapping $.ajax with JWT authentication,
-   * CSRF protection, and standardized error processing.
+   * Generic API request handler wrapping $.ajax with HttpOnly-cookie
+   * authentication, CSRF protection, and standardized error processing.
    */
   function apiRequest(options) {
     const url = options.url.startsWith('http')
@@ -19,11 +19,7 @@
       : LG.config.API_BASE + (options.url.startsWith('/') ? options.url : '/' + options.url);
 
     const headers = options.headers || {};
-    const token = LG.session.token();
-    if (token) {
-      headers['Authorization'] = 'Bearer ' + token;
-    }
-    const csrfToken = LG._csrf || LG.utils.getCookie(LG.config.CSRF_COOKIE_NAME) || (LG.session.get() ? LG.session.get().csrf_token : null);
+    const csrfToken = LG._csrf || LG.utils.getCookie(LG.config.CSRF_COOKIE_NAME);
     if (csrfToken) {
       headers['X-CSRF-Token'] = csrfToken;
     }
@@ -93,7 +89,9 @@
           method: 'POST',
           data: { email: email, password: password }
         }).done(function (res) {
-          if (res && res.access_token) {
+          if (res && (res.user_id || res.role)) {
+            // LG.session.set retains only the display profile; the JWT
+            // itself remains exclusively in the HttpOnly cookie.
             LG.session.set(res);
           }
         });
@@ -121,6 +119,8 @@
         return apiRequest({
           url: '/auth/me',
           method: 'GET'
+        }).done(function (profile) {
+          LG.session.set(profile);
         });
       }
     },
@@ -159,15 +159,11 @@
       },
 
       getDownloadUrl: function (caseId) {
-        const token = LG.session.token();
-        return LG.config.API_BASE + '/cases/' + encodeURIComponent(caseId) + '/download' +
-          (token ? '?token=' + encodeURIComponent(token) : '');
+        return LG.config.API_BASE + '/cases/' + encodeURIComponent(caseId) + '/download';
       },
 
       getOfficialContentUrl: function (caseId) {
-        const token = LG.session.token();
-        return LG.config.API_BASE + '/cases/' + encodeURIComponent(caseId) + '/official-content' +
-          (token ? '?token=' + encodeURIComponent(token) : '');
+        return LG.config.API_BASE + '/cases/' + encodeURIComponent(caseId) + '/official-content';
       },
 
       searchKeywords: function (caseId, keyword) {
@@ -312,7 +308,7 @@
     },
 
     /* -------------------------------------------------------------------------
-       7. Staff Administration & Merkle Audit Chain (/admin)
+       7. Staff Administration & Hash-Chained Audit Ledger (/admin)
        ------------------------------------------------------------------------- */
     admin: {
       getQueue: function (statusFilter) {
@@ -327,7 +323,7 @@
         return apiRequest({
           url: '/admin/approve/' + encodeURIComponent(caseId),
           method: 'POST',
-          data: notes ? { notes: notes } : {}
+          data: { status: 'published', review_note: notes || null }
         });
       },
 
@@ -346,6 +342,38 @@
         return apiRequest({
           url: '/admin/verify-audit-chain',
           method: 'GET'
+        });
+      },
+
+      resealAuditChain: function (reason) {
+        return apiRequest({
+          url: '/admin/reseal-audit-chain',
+          method: 'POST',
+          data: { reason: reason }
+        });
+      },
+
+      getUsers: function (params) {
+        return apiRequest({
+          url: '/admin/users',
+          method: 'GET',
+          data: params || {}
+        });
+      },
+
+      createUser: function (userData) {
+        return apiRequest({
+          url: '/admin/users',
+          method: 'POST',
+          data: userData
+        });
+      },
+
+      updateUser: function (userId, updates) {
+        return apiRequest({
+          url: '/admin/users/' + encodeURIComponent(userId),
+          method: 'PATCH',
+          data: updates
         });
       },
 

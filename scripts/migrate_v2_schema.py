@@ -129,7 +129,7 @@ def run_migration():
                     respondent = COALESCE(respondent, %s),
                     layman_summary = COALESCE(layman_summary, %s),
                     official_citation = COALESCE(official_citation, %s),
-                    precedential_status = CASE WHEN precedential_status = 'Precedential status not checked' OR precedential_status IS NULL THEN 'Good Law' ELSE precedential_status END
+                    precedential_status = CASE WHEN precedential_status IS NULL OR precedential_status = '' THEN 'Precedential status not checked' ELSE precedential_status END
                 WHERE id = %s;
             """, (c_type, domain, pet, resp, layman, off_cite, cid))
             updated += 1

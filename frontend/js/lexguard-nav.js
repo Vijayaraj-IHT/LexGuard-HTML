@@ -121,7 +121,7 @@
               <li>
                 <a href="cause-list.html" class="lg-sidebar-link ${activePage === 'causelist' ? 'active' : ''}">
                   <i class="bi bi-clock-history"></i>
-                  <span>Daily Cause List</span>
+                  <span>Illustrative Cause Board</span>
                 </a>
               </li>
             </ul>
@@ -167,7 +167,7 @@
                 <li>
                   <a href="audit-ledger.html" class="lg-sidebar-link ${activePage === 'audit' ? 'active' : ''}">
                     <i class="bi bi-diagram-3-fill text-warning"></i>
-                    <span>Merkle Audit Ledger</span>
+                    <span>Hash-Chained Audit Ledger</span>
                   </a>
                 </li>
               </ul>

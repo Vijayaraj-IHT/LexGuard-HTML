@@ -10,7 +10,7 @@ client = TestClient(app)
 def test_official_case_content_endpoint():
     """Verify official content returns pages, word counts and hash."""
     db = SessionLocal()
-    case = db.query(Case).filter(Case.full_text != None).first()
+    case = db.query(Case).filter(Case.full_text != None, Case.status == "published").first()
     db.close()
 
     assert case is not None, "At least one case with full_text should be seeded"
@@ -32,7 +32,7 @@ def test_official_case_content_endpoint():
 def test_search_keywords_in_case_endpoint():
     """Verify in-document keyword search returns page number and highlighted snippet."""
     db = SessionLocal()
-    case = db.query(Case).filter(Case.full_text != None).first()
+    case = db.query(Case).filter(Case.full_text != None, Case.status == "published").first()
     db.close()
 
     assert case is not None

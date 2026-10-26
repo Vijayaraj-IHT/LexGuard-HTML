@@ -56,6 +56,13 @@ $(document).ready(function () {
   const $confirmApproveBtn = $('#confirm-approve-btn');
   const $approveNote = $('#approve-note');
 
+  const canDecideCase = LG.session.hasRole(['senior_staff']);
+  if (!canDecideCase) {
+    $btnApproveSeal.prop('disabled', true).attr('title', 'Approval requires senior staff who did not submit this case');
+    $btnRejectCase.prop('disabled', true).attr('title', 'Rejection requires senior staff who did not submit this case');
+    $confirmApproveBtn.prop('disabled', true);
+  }
+
   // PDF Elements
   const $pdfLoading = $('#pdf-loading');
   const $pdfCanvas = $('#pdf-canvas');
@@ -104,7 +111,7 @@ $(document).ready(function () {
               No pending or registered case record found matching identifier <code class="text-warning font-monospace">${safeId}</code>. It may have already been sealed, transferred, or rejected.
             </p>
             <div class="d-flex justify-content-center gap-3">
-              <a href="admin.html?auth_role=staff" class="btn btn-gold"><i class="bi bi-speedometer2 me-1"></i>Return to Staff Workstation</a>
+              <a href="admin.html" class="btn btn-gold"><i class="bi bi-speedometer2 me-1"></i>Return to Staff Workstation</a>
               <a href="case-upload.html" class="btn btn-judicial-outline"><i class="bi bi-cloud-arrow-up me-1"></i>Upload New PDF</a>
             </div>
           </div>

@@ -61,7 +61,7 @@ def test_composite_judicial_seal_on_approval():
     """Verify approval affixes the composite judicial seal Phi_case."""
     headers = get_staff_token()
     db = SessionLocal()
-    case = db.query(Case).first()
+    case = db.query(Case).filter(Case.status == "pending_approval").first()
     db.close()
     assert case is not None
 
@@ -73,5 +73,6 @@ def test_composite_judicial_seal_on_approval():
     assert approve_res.status_code == 200
     res_data = approve_res.json()
     assert res_data["status"] == "published"
-    assert res_data["redacted_file_hash"] is not None
-    assert len(res_data["redacted_file_hash"]) == 64  # SHA-256 seal hex digest
+    assert res_data["judicial_seal"] is not None
+    assert len(res_data["judicial_seal"]) == 64  # SHA-256 seal hex digest
+    assert res_data["redacted_file_hash"] is None

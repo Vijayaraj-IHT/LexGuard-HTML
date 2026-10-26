@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.core.security import get_optional_current_user, get_current_user
+from app.core.security import canonical_role, get_optional_current_user, get_current_user
 from app.models.user import User
 from app.models.case import Case
 from app.models.audit_log import AuditLog
@@ -53,7 +53,9 @@ def _execute_hash_lookup(hash_str: str, request: Request, db: Session, current_u
     matched_case = (
         db.query(Case)
         .filter(
-            (Case.file_hash == cleaned_hash) | (Case.redacted_file_hash == cleaned_hash),
+            (Case.file_hash == cleaned_hash)
+            | (Case.judicial_seal == cleaned_hash)
+            | (Case.redacted_file_hash == cleaned_hash),
             Case.status == "published"
         )
         .first()
@@ -72,19 +74,21 @@ def _execute_hash_lookup(hash_str: str, request: Request, db: Session, current_u
 
     # Determine match type: Document Hash H_doc or Composite Judicial Seal Phi_case
     matched_type = "document_hash"
-    if matched_case.redacted_file_hash and cleaned_hash == matched_case.redacted_file_hash.lower():
+    if matched_case.judicial_seal and cleaned_hash == matched_case.judicial_seal.lower():
         matched_type = "composite_seal"
+    elif matched_case.redacted_file_hash and cleaned_hash == matched_case.redacted_file_hash.lower():
+        matched_type = "redacted_document_hash"
 
     # Compute Metadata Hash H_meta and Text Hash H_text for cryptographic verification
     meta_str = f"{matched_case.case_no}|{matched_case.court}|{matched_case.judge or ''}|{matched_case.disposition or ''}|{matched_case.year}"
     h_meta = hashlib.sha256(meta_str.encode("utf-8")).hexdigest()
     h_text = hashlib.sha256((matched_case.full_text or "").encode("utf-8")).hexdigest()
 
-    # Query latest audit log entry for this case to expose tamper-evident blockchain block link
+    # Query latest audit log entry for this case to expose the latest hash-chain link
     latest_audit = (
         db.query(AuditLog)
         .filter(AuditLog.case_id == matched_case.id)
-        .order_by(AuditLog.timestamp.desc())
+        .order_by(AuditLog.segment.desc(), AuditLog.seq.desc().nullslast(), AuditLog.timestamp.desc())
         .first()
     )
     audit_event_dict = None
@@ -123,7 +127,7 @@ def _execute_hash_lookup(hash_str: str, request: Request, db: Session, current_u
         precedential_status=matched_case.precedential_status or "Precedential status not checked",
         expected_hash=matched_case.file_hash,
         file_hash=matched_case.file_hash,
-        composite_seal=matched_case.redacted_file_hash,
+        composite_seal=matched_case.judicial_seal,
         matched_hash_type=matched_type,
         h_meta=h_meta,
         h_text=h_text,
@@ -191,7 +195,7 @@ def stream_verified_document(
             detail="Judgment record not found in repository."
         )
 
-    is_staff = current_user and current_user.role in ["court_staff", "senior_staff", "staff"]
+    is_staff = current_user and canonical_role(current_user.role) in {"court_staff", "senior_staff"}
     if case.status != "published" and not is_staff:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

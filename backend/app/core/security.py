@@ -7,6 +7,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
+from app.services.crypto_service import verify_csrf_token
 
 # Optional bearer scheme for swagger UI docs testing
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -185,22 +186,41 @@ def get_optional_current_user(
         return None
 
 
+def _canonical_role(role: str) -> str:
+    """Map legacy staff spellings to the two staff privilege levels."""
+    normalized = (role or "").strip().lower()
+    if normalized == "senior_staff":
+        return "senior_staff"
+    if normalized in {"staff", "court_staff", "junior_staff"}:
+        return "court_staff"
+    return normalized
+
+
+# Public alias for endpoint-level checks that cannot use ``require_role``.
+canonical_role = _canonical_role
+
+
 def require_role(allowed_roles: List[str]):
     """
     Role-Based Access Control (RBAC) dependency factory.
-    Allowed roles: 'court_staff', 'senior_staff', 'staff', 'advocate', 'scholar', 'public'.
+
+    ``staff``/``court_staff`` denote the ordinary court-staff level. Senior
+    staff inherit ordinary staff access, but a senior-only requirement is
+    strict: legacy ``staff``, ``court_staff`` and ``junior_staff`` accounts
+    do not satisfy it.
     """
-    # Expand staff aliases
-    expanded_allowed = set(allowed_roles)
-    if "staff" in expanded_allowed:
-        expanded_allowed.update(["court_staff", "senior_staff", "junior_staff"])
-    if any(r in expanded_allowed for r in ["court_staff", "senior_staff", "junior_staff"]):
-        expanded_allowed.add("staff")
+    allowed = {(role or "").strip().lower() for role in allowed_roles}
+    expanded_allowed = set()
+    for role in allowed:
+        if role in {"staff", "court_staff", "junior_staff"}:
+            expanded_allowed.update({"court_staff", "senior_staff"})
+        else:
+            expanded_allowed.add(role)
 
     def role_checker(
         current_user=Depends(get_current_user),
     ):
-        user_role = current_user.role
+        user_role = _canonical_role(current_user.role)
         if user_role not in expanded_allowed:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -221,7 +241,7 @@ def verify_csrf_header(request: Request):
         if settings.COOKIE_NAME in request.cookies:
             csrf_token = request.headers.get(settings.CSRF_HEADER_NAME)
             expected_csrf = request.cookies.get("lexguard_csrf_token")
-            if not csrf_token or not expected_csrf or csrf_token != expected_csrf:
+            if not verify_csrf_token(csrf_token or "", expected_csrf or ""):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="CSRF token validation failed.",

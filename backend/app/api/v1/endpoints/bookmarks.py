@@ -40,7 +40,7 @@ class BookmarkCaseBrief(BaseModel):
     section_tags: List[str] = []
     summary: Optional[str] = None
     ratio_decidendi: Optional[str] = None
-    precedential_status: Optional[str] = "Good Law"
+    precedential_status: Optional[str] = "Precedential status not checked"
     official_citation: Optional[str] = None
     file_hash: str
 
@@ -224,6 +224,8 @@ def export_research_memorandum(
         c = b.case
         if not c:
             continue
+        bench_label = c.judge or "Hon'ble Bench"
+        precedential_status = c.precedential_status or "Precedential status not checked"
         items.append({
             "index": idx,
             "title": c.title,
@@ -231,7 +233,7 @@ def export_research_memorandum(
             "court": c.court,
             "year": c.year,
             "official_citation": c.official_citation,
-            "precedential_status": c.precedential_status or "Good Law",
+            "precedential_status": precedential_status,
             "judge": c.judge,
             "disposition": c.disposition or c.outcome,
             "ratio_decidendi": c.ratio_decidendi,
@@ -244,8 +246,8 @@ def export_research_memorandum(
             f"- **Court:** {c.court} ({c.year})",
             f"- **Case Number:** {c.case_no}",
             f"- **Official Citation:** {c.official_citation or 'LexGuard Precedent'}",
-            f"- **Bench:** {c.judge or 'Hon\'ble Bench'}",
-            f"- **Precedential Authority:** {c.precedential_status or 'Good Law'}",
+            f"- **Bench:** {bench_label}",
+            f"- **Precedential Authority:** {precedential_status}",
             f"- **Judicial Ratio:** {c.ratio_decidendi or 'Principles affirmed on record.'}",
             f"- **Advocate Research Note:** {b.notes or 'No private notes attached.'}",
             f"- **Cryptographic Seal:** `{c.file_hash}`",

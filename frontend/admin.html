@@ -36,7 +36,7 @@
             <span>Court Staff Administration Workstation</span>
           </h1>
           <p class="lg-page-subtitle">
-            Judicial registry oversight, pending case ingestion review, composite seal verification, and immutable Merkle audit ledger.
+            Judicial registry oversight, pending case ingestion review, composite seal verification, and tamper-evident hash-chained audit ledger.
           </p>
         </div>
         <div class="d-flex align-items-center gap-2">
@@ -94,7 +94,7 @@
             </div>
             <div>
               <div class="lg-metric-value" id="kpi-total-audit">0</div>
-              <div class="lg-metric-label">Merkle Audit Records</div>
+              <div class="lg-metric-label">Audit Records</div>
             </div>
           </div>
         </div>
@@ -114,7 +114,7 @@
         </li>
         <li class="nav-item" role="presentation">
           <button class="nav-link text-light fw-semibold" id="tab-audit-btn" data-bs-toggle="tab" data-bs-target="#tab-admin-audit" type="button" role="tab">
-            <i class="bi bi-clock-history me-1 text-success"></i>Merkle Audit Ledger
+            <i class="bi bi-clock-history me-1 text-success"></i>Hash-Chained Audit Ledger
           </button>
         </li>
       </ul>
@@ -159,7 +159,7 @@
               <div class="col-md-3">
                 <div class="p-3 bg-dark rounded border border-secondary border-opacity-25">
                   <div class="text-secondary mb-1">Audit Trail Integrity:</div>
-                  <div class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i>Merkle Hash Chained</div>
+                  <div class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i>SHA-256 Hash-Chained</div>
                 </div>
               </div>
               <div class="col-md-3">
@@ -223,18 +223,18 @@
           </div>
         </div>
 
-        <!-- TAB 3: Merkle Audit Ledger -->
+        <!-- TAB 3: Hash-Chained Audit Ledger -->
         <div class="tab-pane fade" id="tab-admin-audit" role="tabpanel">
           <div class="card card-judicial p-4 shadow">
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
               <div>
-                <h3 class="h5 fw-bold text-light mb-0">Cryptographic Merkle Audit Ledger</h3>
-                <p class="text-secondary small mb-0">Chained chronological records proving tamper-proof immutability.</p>
+                <h3 class="h5 fw-bold text-light mb-0">Cryptographic Hash-Chained Audit Ledger</h3>
+                <p class="text-secondary small mb-0">Chronological hash-chained records designed to make unauthorized changes detectable.</p>
               </div>
 
               <!-- Real-Time Audit Chain Verifier Button -->
               <button type="button" class="btn btn-sm btn-gold" id="verify-chain-btn">
-                <i class="bi bi-shield-check me-1"></i>Verify Entire Hash Chain
+                <i class="bi bi-shield-check me-1"></i>Verify Audit Chain Segments
               </button>
             </div>
 

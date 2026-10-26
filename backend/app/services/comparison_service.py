@@ -375,7 +375,7 @@ class CaseComparisonService:
                     "court": prec.court,
                     "year": prec.year,
                     "disposition": prec.disposition or prec.outcome or "Allowed",
-                    "precedential_status": prec.precedential_status or "Good Law",
+                    "precedential_status": prec.precedential_status or "Precedential status not checked",
                     "act_tags": prec.act_tags or [],
                     "section_tags": prec.section_tags or [],
                     "ratio_decidendi": prec.ratio_decidendi or "",

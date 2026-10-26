@@ -1,5 +1,5 @@
 /**
- * LexGuard — Cryptographic Merkle Audit Ledger Controller (audit-ledger.js)
+ * LexGuard — Cryptographic Hash-Chained Audit Ledger Controller (audit-ledger.js)
  * LexGuard Judicial Repository & Verification Platform
  */
 
@@ -166,27 +166,39 @@ $(document).ready(function () {
       method: 'GET'
     })
     .done(function (res) {
-      if (res.is_valid) {
+      const segments = Array.isArray(res.segments) ? res.segments : [];
+      const archivedInvalid = segments.filter(function (segment) {
+        return !segment.is_valid && segment.segment !== res.active_segment;
+      });
+
+      if (res.is_valid && archivedInvalid.length === 0) {
         $chainCard.css('border-color', '#10b981');
         $chainIcon.attr('class', 'p-2 rounded bg-success bg-opacity-10 border border-success border-opacity-25')
           .html('<i class="bi bi-shield-fill-check text-success fs-3"></i>');
-        $chainTitle.html('<span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>Cryptographic Merkle Chain: 100% Verified &amp; Untampered</span>');
-        $chainSubtitle.text(`All ${res.total_records} sequence blocks cryptographically validated against SHA-256 parent digests.`);
-        LG.toast('Merkle hash chain is 100% valid and verified.', 'success');
-      } else {
+        $chainTitle.html('<span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>Hash-Chained Audit Ledger: Active Segment Verified</span>');
+        $chainSubtitle.text(res.message || `${res.active_records != null ? res.active_records : res.total_records} active-segment records validated against SHA-256 parent digests.`);
+        LG.toast('Active audit segment verified.', 'success');
+      } else if (res.is_valid) {
         $chainCard.css('border-color', '#f59e0b');
         $chainIcon.attr('class', 'p-2 rounded bg-warning bg-opacity-10 border border-warning border-opacity-25')
           .html('<i class="bi bi-shield-exclamation text-warning fs-3"></i>');
-        $chainTitle.html('<span class="text-warning"><i class="bi bi-exclamation-triangle-fill me-1"></i>Chain Structure Audited</span>');
-        $chainSubtitle.text(`${res.message || 'Audit check completed.'} Total blocks: ${res.total_records}`);
-        LG.toast(res.message || 'Chain validation completed.', 'info');
+        $chainTitle.html('<span class="text-warning"><i class="bi bi-exclamation-triangle-fill me-1"></i>Active Segment Valid — Archived Segment Invalid/Superseded</span>');
+        $chainSubtitle.text(res.message || 'The active segment is valid; an archived invalid segment is retained for disclosure.');
+        LG.toast('Active segment valid; archived invalid segment disclosed.', 'warning');
+      } else {
+        $chainCard.css('border-color', '#dc3545');
+        $chainIcon.attr('class', 'p-2 rounded bg-danger bg-opacity-10 border border-danger border-opacity-25')
+          .html('<i class="bi bi-shield-fill-x text-danger fs-3"></i>');
+        $chainTitle.html('<span class="text-danger"><i class="bi bi-x-octagon-fill me-1"></i>Audit Chain Invalid</span>');
+        $chainSubtitle.text(res.message || 'Audit chain verification failed.');
+        LG.toast('Audit chain invalid.', 'danger');
       }
     })
     .fail(function () {
       LG.toast('Audit chain verification failed.', 'danger');
     })
     .always(function () {
-      $verifyBtn.prop('disabled', false).html('<i class="bi bi-link-45deg me-1"></i>Verify Entire Hash Chain');
+      $verifyBtn.prop('disabled', false).html('<i class="bi bi-link-45deg me-1"></i>Verify Audit Chain Segments');
     });
   }
 

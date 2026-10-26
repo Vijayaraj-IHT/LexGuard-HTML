@@ -11,6 +11,7 @@ $(document).ready(function () {
     return;
   }
 
+  const canDecideCases = LG.session.hasRole(['senior_staff']);
   let doughnutChart = null;
   let barChart = null;
 
@@ -173,9 +174,10 @@ $(document).ready(function () {
                 <a href="case-review.html?id=${encodeURIComponent(item.case_id)}" class="btn btn-xs btn-gold me-1" title="Open Split-Screen Review Workstation">
                   <i class="bi bi-columns me-1"></i>Split-Screen Review
                 </a>
-                <button type="button" class="btn btn-xs btn-judicial-outline open-review-btn" data-id="${encodeURIComponent(item.case_id)}" data-title="${LG.utils.escapeHtml(item.title)}" data-court="${LG.utils.escapeHtml(item.court)}" title="Quick Seal Modal">
+                ${canDecideCases ? `
+                <button type="button" class="btn btn-xs btn-judicial-outline open-review-btn" data-id="${encodeURIComponent(item.case_id)}" data-title="${LG.utils.escapeHtml(item.title)}" data-court="${LG.utils.escapeHtml(item.court)}" title="Quick Seal Modal (senior staff)">
                   <i class="bi bi-patch-check me-1"></i>Quick Seal
-                </button>
+                </button>` : '<span class="badge bg-secondary" title="Approval and rejection require senior staff who did not submit the case">Senior review required</span>'}
               </td>
             </tr>
           `;
@@ -250,7 +252,7 @@ $(document).ready(function () {
   });
 
   /**
-   * Load Merkle Audit Logs.
+   * Load hash-chained audit logs.
    */
   function loadAuditLogs() {
     LG.api.admin.getAuditLogs(30)
@@ -269,11 +271,11 @@ $(document).ready(function () {
 
           return `
             <tr>
-              <td class="text-secondary">${LG.utils.formatDateTime(log.timestamp)}</td>
+              <td class="text-secondary">${LG.utils.formatDateTime(log.timestamp)}${log.seq != null ? `<div class="small font-mono">#${log.seq} · segment ${log.segment != null ? log.segment : '—'}</div>` : ''}</td>
               <td><span class="${actionBadge}">${LG.utils.escapeHtml(log.action)}</span></td>
               <td class="text-light">${LG.utils.escapeHtml(log.details || 'Event recorded')}</td>
-              <td class="font-mono text-warning small">${LG.utils.truncateHash(log.curr_hash, 6)}</td>
-              <td class="font-mono text-secondary small">${LG.utils.truncateHash(log.prev_hash, 6)}</td>
+              <td class="font-mono text-warning small">${LG.utils.truncateHash(log.current_hash, 6)}</td>
+              <td class="font-mono text-secondary small">${LG.utils.truncateHash(log.previous_log_hash, 6)}</td>
             </tr>
           `;
         }).join('');
@@ -289,39 +291,57 @@ $(document).ready(function () {
    * Verify Entire Cryptographic Audit Chain.
    */
   $verifyChainBtn.on('click', function () {
-    $chainStatusBanner.removeClass('d-none alert-success alert-danger').addClass('alert-dark')
+    $chainStatusBanner.removeClass('d-none alert-success alert-danger alert-warning').addClass('alert-dark')
       .html('<div class="spinner-border spinner-border-sm text-warning me-2"></div>Validating SHA-256 chain links across all historical events...');
 
     LG.api.admin.verifyAuditChain()
       .done(function (res) {
-        if (res.is_valid) {
-          $chainStatusBanner.removeClass('alert-dark alert-danger').addClass('alert-success')
+        const segments = Array.isArray(res.segments) ? res.segments : [];
+        const archivedInvalid = segments.filter(function (segment) {
+          return !segment.is_valid && segment.segment !== res.active_segment;
+        });
+        const safeMessage = LG.utils.escapeHtml(res.message || 'Verification finished.');
+
+        if (res.is_valid && archivedInvalid.length === 0) {
+          $chainStatusBanner.removeClass('alert-dark alert-danger alert-warning').addClass('alert-success')
             .html(`
               <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-shield-fill-check fs-4 text-success"></i>
                 <div>
-                  <strong>Cryptographic Merkle Audit Chain Verified: 100% Valid!</strong>
-                  <div class="small">${res.total_records} sequential events verified with zero broken links or modifications.</div>
+                  <strong>Hash-Chained Audit Ledger Verified</strong>
+                  <div class="small">${res.active_records != null ? res.active_records : res.total_records} active-segment events verified. ${safeMessage}</div>
                 </div>
               </div>
             `);
-          LG.toast('Merkle Audit Chain verified 100% valid!', 'success');
+          LG.toast('Active audit segment verified.', 'success');
+        } else if (res.is_valid) {
+          $chainStatusBanner.removeClass('alert-dark alert-success alert-danger').addClass('alert-warning')
+            .html(`
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-shield-exclamation fs-4 text-warning"></i>
+                <div>
+                  <strong>Active Segment Valid — Archived Segment Invalid/Superseded</strong>
+                  <div class="small">${safeMessage}</div>
+                </div>
+              </div>
+            `);
+          LG.toast('Active segment valid; archived invalid segment retained for disclosure.', 'warning');
         } else {
-          $chainStatusBanner.removeClass('alert-dark alert-success').addClass('alert-danger')
+          $chainStatusBanner.removeClass('alert-dark alert-success alert-warning').addClass('alert-danger')
             .html(`
               <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-shield-fill-x fs-4 text-danger"></i>
                 <div>
-                  <strong>Integrity Violation Detected!</strong>
-                  <div class="small">Broken chain detected at record ID: ${res.broken_at_id || 'Unknown'}. ${res.message}</div>
+                  <strong>Audit Chain Invalid</strong>
+                  <div class="small">Broken chain detected at record ID: ${LG.utils.escapeHtml(res.broken_at_id || 'Unknown')}. ${safeMessage}</div>
                 </div>
               </div>
             `);
-          LG.toast('Audit chain broken! Contact administrator.', 'danger');
+          LG.toast('Audit chain invalid. Contact a senior administrator.', 'danger');
         }
       })
       .fail(function () {
-        $chainStatusBanner.removeClass('alert-dark alert-success').addClass('alert-danger')
+        $chainStatusBanner.removeClass('alert-dark alert-success alert-warning').addClass('alert-danger')
           .text('Failed to execute cryptographic verification.');
       });
   });

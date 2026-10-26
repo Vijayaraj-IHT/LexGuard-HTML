@@ -64,7 +64,8 @@ class Case(Base):
     file_path = Column(String(500), nullable=False)
     file_hash = Column(String(64), index=True, nullable=False)  # SHA-256 hexadecimal digest
     redacted_file_path = Column(String(500), nullable=True)
-    redacted_file_hash = Column(String(64), nullable=True)
+    redacted_file_hash = Column(String(64), nullable=True)  # hash of redacted file bytes only
+    judicial_seal = Column(String(64), nullable=True, index=True)  # Phi_case composite approval seal
 
     # Vector Embedding for Semantic Search
     embedding = Column(VectorColumnType, nullable=True)

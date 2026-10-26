@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="alternate icon" href="favicon.ico">
-  <title>Cryptographic Merkle Audit Ledger · LexGuard</title>
+  <title>Cryptographic Hash-Chained Audit Ledger · LexGuard</title>
 
   <!-- Google Fonts & CDN CSS -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -33,15 +33,15 @@
         <div>
           <h1 class="lg-page-title">
             <i class="bi bi-shield-lock-fill text-warning"></i>
-            <span>Cryptographic Merkle Audit Ledger</span>
+            <span>Cryptographic Hash-Chained Audit Ledger</span>
           </h1>
           <p class="lg-page-subtitle">
-            Immutable SHA-256 hash-chained sequence of judicial access, document views, downloads, integrity verifications, and approvals.
+            Tamper-evident SHA-256 hash-chained sequence of judicial access, document views, downloads, integrity verifications, and approvals.
           </p>
         </div>
         <div class="d-flex align-items-center gap-2">
           <button type="button" class="btn btn-sm btn-gold" id="verify-chain-btn">
-            <i class="bi bi-link-45deg me-1"></i>Verify Entire Hash Chain
+            <i class="bi bi-link-45deg me-1"></i>Verify Audit Chain Segments
           </button>
           <button type="button" class="btn btn-sm btn-judicial-outline" id="refresh-audit-btn" title="Refresh Audit Log">
             <i class="bi bi-arrow-clockwise"></i>
@@ -58,7 +58,7 @@
             </div>
             <div>
               <h2 class="h6 fw-bold text-light mb-0" id="chain-status-title">Chained Ledger Status: Standby</h2>
-              <div class="small text-secondary" id="chain-status-subtitle">Click 'Verify Entire Hash Chain' to recalculate SHA-256 digest links across all 900+ blocks.</div>
+              <div class="small text-secondary" id="chain-status-subtitle">Click 'Verify Audit Chain Segments' to recalculate SHA-256 digest links in each retained segment.</div>
             </div>
           </div>
           <div>
@@ -137,7 +137,7 @@
             <div class="p-2 rounded bg-dark border border-warning border-opacity-25 font-mono text-warning text-break small" id="modal-curr-hash"></div>
           </div>
           <div class="mb-3">
-            <div class="small text-secondary text-uppercase fw-bold mb-1">Previous Chained Block Digest (Merkle Parent)</div>
+            <div class="small text-secondary text-uppercase fw-bold mb-1">Previous Chained Block Digest (Previous Hash)</div>
             <div class="p-2 rounded bg-dark border border-secondary border-opacity-25 font-mono text-secondary text-break small" id="modal-prev-hash"></div>
           </div>
           <div class="row g-2 mb-3">

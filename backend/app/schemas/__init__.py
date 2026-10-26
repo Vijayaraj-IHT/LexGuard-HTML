@@ -1,5 +1,5 @@
 from app.schemas.token import TokenResponse, TokenPayload
-from app.schemas.user import UserBase, UserCreate, UserLogin, UserResponse, UserRoleUpdate
+from app.schemas.user import AdminUserCreate, UserAdminUpdate, UserBase, UserCreate, UserLogin, UserResponse, UserRoleUpdate
 from app.schemas.case import (
     CaseBase,
     CaseCreate,
@@ -16,7 +16,7 @@ from app.schemas.draft import (
     DraftSessionCreate,
     DraftSessionResponse,
 )
-from app.schemas.audit import AuditLogResponse, AuditChainVerificationResponse
+from app.schemas.audit import AuditChainResealRequest, AuditChainResealResponse, AuditLogResponse, AuditChainVerificationResponse
 
 __all__ = [
     "TokenResponse",
@@ -26,6 +26,8 @@ __all__ = [
     "UserLogin",
     "UserResponse",
     "UserRoleUpdate",
+    "AdminUserCreate",
+    "UserAdminUpdate",
     "CaseBase",
     "CaseCreate",
     "CaseResponse",
@@ -43,4 +45,6 @@ __all__ = [
     "DraftSessionResponse",
     "AuditLogResponse",
     "AuditChainVerificationResponse",
+    "AuditChainResealRequest",
+    "AuditChainResealResponse",
 ]

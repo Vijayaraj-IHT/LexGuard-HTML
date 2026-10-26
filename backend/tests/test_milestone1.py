@@ -147,11 +147,11 @@ def test_case_upload_tamper_detection_and_approval():
     6. Verify that cryptographic check catches the tamper (INTEGRITY_VIOLATION).
     7. Verify entire audit trail hash chain remains unbroken.
     """
-    # 1. Login as Chief Registrar (Senior Staff)
+    # 1. Login as ordinary court staff (the eventual uploader)
     client.cookies.clear()
     login_res = client.post(
         "/api/v1/auth/login",
-        json={"email": "staff@lexguard.gov.in", "password": "Admin@Lexguard2026"},
+        json={"email": "staff@court.gov.in", "password": "staff123"},
     )
     assert login_res.status_code == 200
     login_data = login_res.json()
@@ -193,7 +193,18 @@ def test_case_upload_tamper_detection_and_approval():
     assert verify_res.json()["is_valid"] is True
     assert verify_res.json()["status_badge"] == "VERIFIED_UNTAMPERED"
 
-    # 4. Approve case
+    # 4. Approve as a different senior-staff reviewer (segregation of duties)
+    client.cookies.clear()
+    senior_login_res = client.post(
+        "/api/v1/auth/login",
+        json={"email": "staff@lexguard.gov.in", "password": "Admin@Lexguard2026"},
+    )
+    assert senior_login_res.status_code == 200
+    senior_data = senior_login_res.json()
+    headers = {"Authorization": f"Bearer {senior_data['access_token']}"}
+    if senior_data.get("csrf_token"):
+        headers["X-CSRF-Token"] = senior_data["csrf_token"]
+
     approve_res = client.post(
         f"/api/v1/admin/approve/{case_id}",
         json={"status": "published", "review_note": "Verified by Chief Registrar"},

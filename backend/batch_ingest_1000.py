@@ -43,10 +43,10 @@ from app.core.config import settings
 from app.core.database import SessionLocal, engine
 from app.models.case import Case
 from app.models.user import User
-from app.models.audit_log import AuditLog
 from app.services.extraction_service import ExtractionService
 from app.services.embedding_service import embedding_service
-from app.services.crypto_service import compute_sha256, compute_audit_log_hash, GENESIS_HASH
+from app.services.crypto_service import compute_sha256
+from app.services.audit_service import log_audit_event
 
 INCOMING_DIR = BASE_DIR / "incoming_cases"
 CAS_STORAGE_DIR = BASE_DIR / "storage" / "cases"
@@ -147,7 +147,7 @@ def process_single_pdf(pdf_path: Path, db, uploader_id: str, auto_approve: bool 
         existing.page_count = page_count
         existing.file_path = str(cas_path)
         existing.file_hash = h_doc
-        existing.redacted_file_hash = phi_case
+        existing.judicial_seal = phi_case if auto_approve else None
         if emb:
             existing.embedding = emb
         existing.status = status_val
@@ -179,7 +179,7 @@ def process_single_pdf(pdf_path: Path, db, uploader_id: str, auto_approve: bool 
             page_count=page_count,
             file_path=str(cas_path),
             file_hash=h_doc,
-            redacted_file_hash=phi_case,
+            judicial_seal=phi_case if auto_approve else None,
             embedding=emb,
             status=status_val,
             auto_extracted=True,
@@ -188,7 +188,7 @@ def process_single_pdf(pdf_path: Path, db, uploader_id: str, auto_approve: bool 
             approved_at=approved_at,
             source_url="https://mhc.tn.gov.in/judis" if "Madras" in court else "https://judgments.ecourts.gov.in",
             source_verification_state="verified",
-            precedential_status="Good Law",
+            precedential_status="Precedential status not checked",
         )
         db.add(new_case)
         db_case = new_case
@@ -197,30 +197,15 @@ def process_single_pdf(pdf_path: Path, db, uploader_id: str, auto_approve: bool 
     db.commit()
     db.refresh(db_case)
 
-    # 7. Audit log
-    last_log = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).first()
-    prev_hash = last_log.current_hash if last_log else GENESIS_HASH
-    curr_hash = compute_audit_log_hash(
-        previous_hash=prev_hash,
+    # 7. Audit log (canonical writer only)
+    log_audit_event(
+        db=db,
+        action="CASE_BATCH_INGESTED" if not existing else "CASE_BATCH_UPDATED",
         user_id=uploader_id,
         case_id=db_case.id,
-        action="CASE_BATCH_INGESTED" if not existing else "CASE_BATCH_UPDATED",
+        details=f"{action_note}: {case_no} ({title[:60]}). H_doc: {h_doc[:12]}.., Phi_case: {phi_case[:12]}..",
         ip_address="127.0.0.1",
-        timestamp_iso=now_utc,
-        details=f"{action_note}: {case_no}. H_doc: {h_doc[:12]}.., Phi_case: {phi_case[:12]}..",
     )
-    log_entry = AuditLog(
-        case_id=db_case.id,
-        user_id=uploader_id,
-        action="CASE_BATCH_INGESTED" if not existing else "CASE_BATCH_UPDATED",
-        previous_log_hash=prev_hash,
-        current_hash=curr_hash,
-        ip_address="127.0.0.1",
-        timestamp=now_utc,
-        details=f"{action_note}: {case_no} ({title[:60]}).",
-    )
-    db.add(log_entry)
-    db.commit()
 
     return {
         "case_id": db_case.id,

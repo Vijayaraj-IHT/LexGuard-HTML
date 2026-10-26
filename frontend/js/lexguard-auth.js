@@ -1,6 +1,12 @@
 /**
  * LexGuard — Authentication & Session Management (lexguard-auth.js)
  * LexGuard Judicial Repository & Verification Platform
+ *
+ * Authentication is cookie-only in the browser: the JWT lives in the
+ * backend's HttpOnly cookie and is never persisted in Web Storage. Only a
+ * non-sensitive display profile (id/name/email/role/status) is kept in
+ * tab-scoped sessionStorage so navigation can render synchronously. The
+ * backend remains the authority for every permission decision.
  */
 
 (function (window) {
@@ -8,115 +14,150 @@
 
   window.LG = window.LG || {};
 
+  const PROFILE_STORAGE_KEY = (LG.config && LG.config.PROFILE_STORAGE_KEY) || 'lg_profile';
+  const LEGACY_SESSION_KEY = (LG.config && LG.config.SESSION_STORAGE_KEY) || 'lg_session';
+
+  function canonicalRole(role) {
+    const normalized = String(role || '').toLowerCase();
+    if (normalized === 'senior_staff') return 'senior_staff';
+    if (normalized === 'staff' || normalized === 'court_staff' || normalized === 'junior_staff') {
+      return 'court_staff';
+    }
+    return normalized;
+  }
+
+  function sanitizeProfile(data) {
+    if (!data || typeof data !== 'object') return null;
+    return {
+      user_id: data.user_id || data.id || null,
+      name: data.name || 'User',
+      email: data.email || '',
+      role: data.role || 'public',
+      status: data.status || 'active'
+    };
+  }
+
+  // Remove any JWT-bearing session written by older frontend versions.
+  try {
+    window.localStorage.removeItem(LEGACY_SESSION_KEY);
+  } catch (e) {}
+
   LG.session = {
     /**
-     * Retrieve current session object from storage.
+     * Retrieve the non-sensitive display profile, if one is present.
      */
     get: function () {
       try {
-        const raw = localStorage.getItem(LG.config.SESSION_STORAGE_KEY);
-        if (!raw) return null;
-        return JSON.parse(raw);
+        const raw = window.sessionStorage.getItem(PROFILE_STORAGE_KEY);
+        return raw ? sanitizeProfile(JSON.parse(raw)) : null;
       } catch (e) {
-        console.error('Failed to parse session storage:', e);
+        console.error('Failed to parse profile storage:', e);
         return null;
       }
     },
 
     /**
-     * Save session object.
+     * Save only display-profile fields. Tokens are deliberately discarded.
      */
     set: function (sessionData) {
-      if (!sessionData) return;
+      const profile = sanitizeProfile(sessionData);
+      if (!profile) return;
       try {
-        localStorage.setItem(LG.config.SESSION_STORAGE_KEY, JSON.stringify(sessionData));
-        if (sessionData.csrf_token) {
-          LG._csrf = sessionData.csrf_token;
-        }
+        window.sessionStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
+        window.localStorage.removeItem(LEGACY_SESSION_KEY);
       } catch (e) {
-        console.error('Failed to save session:', e);
+        console.error('Failed to save profile:', e);
+      }
+      if (sessionData && sessionData.csrf_token) {
+        // Memory-only convenience for the current page. Subsequent pages
+        // read the double-submit CSRF cookie directly.
+        LG._csrf = sessionData.csrf_token;
       }
     },
 
     /**
-     * Clear session storage.
+     * Clear the display profile and any legacy token-bearing storage.
      */
     clear: function () {
-      localStorage.removeItem(LG.config.SESSION_STORAGE_KEY);
+      try {
+        window.sessionStorage.removeItem(PROFILE_STORAGE_KEY);
+        window.localStorage.removeItem(LEGACY_SESSION_KEY);
+      } catch (e) {}
       LG._csrf = null;
     },
 
     /**
-     * Get active JWT access token.
+     * Backward-compatible accessor. Browser code must not possess the JWT;
+     * authenticated requests rely on the HttpOnly cookie instead.
      */
     token: function () {
-      const s = LG.session.get();
-      return s ? s.access_token : null;
+      return null;
     },
 
     /**
-     * Get active user info object.
+     * Get active user display info.
      */
     user: function () {
-      const s = LG.session.get();
-      if (!s) return null;
+      const profile = LG.session.get();
+      if (!profile) return null;
       return {
-        id: s.user_id,
-        name: s.name || 'User',
-        email: s.email || '',
-        role: s.role || 'public'
+        id: profile.user_id,
+        name: profile.name || 'User',
+        email: profile.email || '',
+        role: profile.role || 'public'
       };
     },
 
     /**
-     * Check if user is authenticated with a non-empty token.
+     * Whether a display profile is present. Protected API calls still fail
+     * closed if the HttpOnly cookie is absent or expired.
      */
     isAuthenticated: function () {
-      return !!LG.session.token();
+      return !!LG.session.get();
     },
 
     /**
-     * Check if user has one of the specified roles.
+     * Check if the display profile has one of the specified roles. Senior
+     * staff inherit ordinary staff UI access, but ordinary/legacy staff do
+     * not satisfy a senior-only requirement.
      */
     hasRole: function (roles) {
       const user = LG.session.user();
       if (!user) return false;
       if (!Array.isArray(roles)) roles = [roles];
-      // Normalize role names (staff, court_staff, senior_staff)
-      const userRole = user.role.toLowerCase();
-      return roles.some(function (r) {
-        const target = r.toLowerCase();
-        if ((target === 'staff' || target === 'court_staff') && (userRole === 'staff' || userRole === 'court_staff' || userRole === 'senior_staff')) {
-          return true;
+
+      const expanded = new Set();
+      roles.forEach(function (role) {
+        const target = String(role || '').toLowerCase();
+        if (target === 'staff' || target === 'court_staff' || target === 'junior_staff') {
+          expanded.add('court_staff');
+          expanded.add('senior_staff');
+        } else {
+          expanded.add(target);
         }
-        return userRole === target;
       });
+      return expanded.has(canonicalRole(user.role));
+    },
+
+    /**
+     * Refresh the display profile from the authoritative /auth/me endpoint.
+     * Returns the jQuery deferred when the API module is available.
+     */
+    hydrate: function () {
+      if (!LG.api || !LG.api.auth || !LG.api.auth.me) return null;
+      return LG.api.auth.me()
+        .done(function (profile) {
+          LG.session.set(profile);
+        })
+        .fail(function () {
+          LG.session.clear();
+        });
     }
   };
 
-  // Automated session bootstrapping from URL parameters
-  (function () {
-    try {
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlToken = urlParams.get('auth_token');
-      const urlRole = urlParams.get('auth_role') || urlParams.get('demo_role');
-      if (urlToken || urlRole) {
-        LG.session.set({
-          access_token: urlToken || 'lexguard-bearer-session',
-          token_type: 'bearer',
-          role: urlRole || 'staff',
-          user_id: urlParams.get('auth_id') || 'staff-001',
-          name: urlParams.get('auth_name') || (urlRole === 'advocate' ? 'Advocate K. Parasaran' : 'Registrar V. Sundaram'),
-          email: urlParams.get('auth_email') || (urlRole === 'advocate' ? 'advocate@bar.in' : 'staff@court.gov.in'),
-          csrf_token: urlParams.get('csrf_token') || 'demo-csrf-token'
-        });
-      }
-    } catch (e) {}
-  })();
-
   /**
-   * Route Guard: Check authentication and role permissions.
-   * Redirects to login or unauthorized page if check fails.
+   * Route Guard: Check profile presence and role for UI routing. Backend
+   * authorization remains authoritative for all protected resources.
    */
   LG.requireAuth = function (allowedRoles) {
     if (!LG.session.isAuthenticated()) {

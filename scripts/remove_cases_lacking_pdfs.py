@@ -13,9 +13,11 @@ import sys
 import json
 import psycopg2
 from pathlib import Path
-from datetime import datetime, timezone
 
 DB_URL = "postgresql://lexguard:lexguard123@localhost:5432/lexguard"
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backend"))
+from app.core.database import SessionLocal
+from app.services.audit_service import log_audit_event
 LEXGUARD_CAS_DIR = Path(r"E:\SEM 5 PROJECT\Lexguard\backend\storage\cases")
 HTML_CAS_DIR = Path(r"E:\SEM 5 PROJECT\LexGuard-HTML\backend\storage\cases")
 
@@ -51,24 +53,20 @@ def main():
     conn.commit()
     print(f"Successfully deleted {deleted_count} cases from 'cases' table.")
     
-    # Record audit entry
-    prev_hash = "0000000000000000000000000000000000000000000000000000000000000000"
-    details_str = f"Purged {deleted_count} cases lacking authentic scanned court PDFs. Retained 100% authentic judicial judgments."
-    import hashlib
-    cur_hash = hashlib.sha256(f"PURGE_UNVERIFIED_CORPUS:{details_str}:{prev_hash}".encode()).hexdigest()
-    cur.execute("""
-        INSERT INTO audit_logs (id, action, details, timestamp, previous_log_hash, current_hash)
-        VALUES (%s, %s, %s, %s, %s, %s);
-    """, (
-        "audit-purge-lacking-pdfs",
-        "PURGE_UNVERIFIED_CORPUS",
-        details_str,
-        datetime.now(timezone.utc),
-        prev_hash,
-        cur_hash
-    ))
-    conn.commit()
-    
+    # Record the purge through the canonical audit writer.
+    details_str = f"Purged {deleted_count} cases lacking authentic scanned court PDFs via maintenance script."
+    audit_db = SessionLocal()
+    try:
+        log_audit_event(
+            db=audit_db,
+            action="PURGE_UNVERIFIED_CORPUS",
+            details=details_str,
+            ip_address="127.0.0.1",
+            user_agent="LexGuard maintenance script",
+        )
+    finally:
+        audit_db.close()
+
     # 3. Clean up generated PDF files from storage
     print("\n--- Cleaning up generated PDF files from storage ---")
     removed_files = 0

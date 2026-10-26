@@ -1,4 +1,5 @@
 from typing import List, Optional, Tuple, Dict, Any
+import html
 import re
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
@@ -104,14 +105,29 @@ def _extract_matched_snippets(text: str, tokens: List[str], max_snippets: int = 
             if tok in line_lower:
                 matched_kws.add(tok)
                 if len(snippets) < max_snippets:
-                    pattern = re.compile(re.escape(tok), re.IGNORECASE)
-                    highlighted = pattern.sub(lambda m: f"<mark>{m.group(0)}</mark>", stripped)
-                    if len(highlighted) > 220:
-                        m_pos = highlighted.lower().find("<mark>")
-                        start_pos = max(0, m_pos - 40)
-                        end_pos = min(len(highlighted), m_pos + 160)
-                        highlighted = ("..." if start_pos > 0 else "") + highlighted[start_pos:end_pos] + ("..." if end_pos < len(highlighted) else "")
-                    snippets.append(f"[Page {current_page}] {highlighted}")
+                    # Select the context window before escaping/highlighting so
+                    # truncation cannot split an entity or a <mark> tag.
+                    excerpt = stripped
+                    prefix = ""
+                    suffix = ""
+                    if len(excerpt) > 220:
+                        match_pos = line_lower.find(tok)
+                        start_pos = max(0, match_pos - 40)
+                        end_pos = min(len(excerpt), match_pos + 160)
+                        prefix = "..." if start_pos > 0 else ""
+                        suffix = "..." if end_pos < len(excerpt) else ""
+                        excerpt = excerpt[start_pos:end_pos]
+
+                    # The frontend intentionally renders <mark>, so every
+                    # character originating in a judgment must be escaped
+                    # before that one trusted tag is inserted.
+                    escaped = html.escape(excerpt, quote=True)
+                    pattern = re.compile(re.escape(html.escape(tok, quote=True)), re.IGNORECASE)
+                    highlighted = pattern.sub(
+                        lambda m: f"<mark>{m.group(0)}</mark>",
+                        escaped,
+                    )
+                    snippets.append(f"[Page {current_page}] {prefix}{highlighted}{suffix}")
     return snippets, list(matched_kws)
 
 
@@ -197,6 +213,7 @@ def search_cases(
                 ratio_decidendi=c.ratio_decidendi,
                 file_hash=c.file_hash,
                 redacted_file_hash=c.redacted_file_hash,
+                judicial_seal=c.judicial_seal,
                 act_tags=c.act_tags or [],
                 section_tags=c.section_tags or [],
                 keyword_tags=c.keyword_tags or [],
@@ -208,7 +225,7 @@ def search_cases(
                 case_type=c.case_type,
                 legal_domain=c.legal_domain,
                 decision_date=str(c.decision_date) if c.decision_date else None,
-                precedential_status=c.precedential_status or "Good Law",
+                precedential_status=c.precedential_status or "Precedential status not checked",
                 cited_by_count=c.cited_by_count or 0,
                 official_citation=c.official_citation,
                 search_mode="Repository Index Browse",
@@ -461,6 +478,7 @@ def search_cases(
                 ratio_decidendi=c.ratio_decidendi,
                 file_hash=c.file_hash,
                 redacted_file_hash=c.redacted_file_hash,
+                judicial_seal=c.judicial_seal,
                 act_tags=c.act_tags or [],
                 section_tags=c.section_tags or [],
                 keyword_tags=c.keyword_tags or [],
@@ -472,7 +490,7 @@ def search_cases(
                 case_type=c.case_type,
                 legal_domain=c.legal_domain,
                 decision_date=str(c.decision_date) if c.decision_date else None,
-                precedential_status=c.precedential_status or "Good Law",
+                precedential_status=c.precedential_status or "Precedential status not checked",
                 cited_by_count=c.cited_by_count or 0,
                 official_citation=c.official_citation,
                 search_mode=case_search_modes.get(c.id, "Hybrid Semantic/Lexical RRF"),

@@ -235,7 +235,7 @@ def main():
                             "citation": matched_db_case.official_citation or clean_cit,
                             "court": matched_db_case.court,
                             "treatment": "Referred / Applied",
-                            "status": matched_db_case.precedential_status or "Good Law",
+                            "status": matched_db_case.precedential_status or "Precedential status not checked",
                             "case_id": matched_db_case.id,
                         })
                         citation_graph[matched_db_case.id].add(c.id)
@@ -247,7 +247,7 @@ def main():
                         "citation": clean_cit,
                         "court": court_guess,
                         "treatment": "Cited / Considered",
-                        "status": "Good Law (External Authority)",
+                        "status": "Precedential status not checked (External Authority)",
                         "case_id": None,
                     })
 
@@ -255,8 +255,8 @@ def main():
         c.precedents_cited = found_precedents
 
         # Ensure sensible default for precedential status
-        if not c.precedential_status or c.precedential_status.lower() in ["precedential status not checked", "none", ""]:
-            c.precedential_status = "Good Law"
+        if not c.precedential_status or c.precedential_status.lower() in ["none", ""]:
+            c.precedential_status = "Precedential status not checked"
 
         if found_precedents:
             cases_with_citations += 1

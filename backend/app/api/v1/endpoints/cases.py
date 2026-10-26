@@ -1,3 +1,5 @@
+import hashlib
+import logging
 import os
 import uuid
 import json
@@ -18,7 +20,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.security import get_current_user, get_optional_current_user, require_role
+from app.core.security import canonical_role, get_current_user, get_optional_current_user, require_role
 from app.models.user import User
 from app.models.case import Case
 from app.models.audit_log import AuditLog
@@ -36,6 +38,7 @@ from app.services.embedding_service import embedding_service
 from app.services.ner_service import ner_service
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 ALLOWED_EXTENSIONS = {".pdf", ".docx"}
 MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024  # 20MB
@@ -192,7 +195,7 @@ async def upload_case(
     db.add(queue_entry)
     db.commit()
 
-    # Immutable Audit Log Entry
+    # Tamper-evident Audit Log Entry
     log_audit_event(
         db=db,
         action="UPLOAD",
@@ -336,7 +339,7 @@ async def upload_case_auto(
     db.add(version_entry)
     db.commit()
 
-    # Log immutable audit event
+    # Log tamper-evident audit event
     log_audit_event(
         db=db,
         action="AUTO_UPLOAD_DOCUMENT",
@@ -379,7 +382,7 @@ def list_cases(
     """
     query = db.query(Case)
 
-    if current_user.role not in ["court_staff", "senior_staff", "staff"]:
+    if canonical_role(current_user.role) not in {"court_staff", "senior_staff"}:
         query = query.filter(Case.status == "published")
     elif status_filter:
         query = query.filter(Case.status == status_filter)
@@ -450,7 +453,7 @@ def list_landmark_precedents(
             "judge": c.judge,
             "legal_domain": c.legal_domain,
             "official_citation": c.official_citation,
-            "precedential_status": c.precedential_status or "Good Law",
+            "precedential_status": c.precedential_status or "Precedential status not checked",
             "cited_by_count": c.cited_by_count or 0,
             "summary": c.summary,
             "layman_summary": c.layman_summary,
@@ -475,7 +478,7 @@ def get_case(
             detail="Case record not found.",
         )
 
-    if case.status != "published" and current_user.role not in ["court_staff", "senior_staff", "staff"]:
+    if case.status != "published" and canonical_role(current_user.role) not in {"court_staff", "senior_staff"}:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This case is pending staff approval and cannot be viewed yet.",
@@ -536,7 +539,7 @@ def update_case_metadata(
     db.commit()
     db.refresh(case)
 
-    # Immutable Audit Log
+    # Tamper-evident Audit Log
     log_audit_event(
         db=db,
         action="UPDATE_METADATA",
@@ -623,7 +626,7 @@ def re_extract_case(
     db.commit()
     db.refresh(case)
 
-    # Log immutable audit event
+    # Log tamper-evident audit event
     log_audit_event(
         db=db,
         action="RE_EXTRACT",
@@ -661,7 +664,7 @@ def view_case_document(
     if not case:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case record not found.")
 
-    if case.status != "published" and current_user.role not in ["court_staff", "senior_staff"]:
+    if case.status != "published" and canonical_role(current_user.role) not in {"court_staff", "senior_staff"}:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Document access restricted.")
 
     integrity_status = "verified"
@@ -769,7 +772,7 @@ def download_case(
     if not case:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case record not found.")
 
-    if case.status != "published" and current_user.role not in ["court_staff", "senior_staff", "staff"]:
+    if case.status != "published" and canonical_role(current_user.role) not in {"court_staff", "senior_staff"}:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access restricted: This case record is not yet published.",
@@ -779,12 +782,37 @@ def download_case(
     if not doc_path or not os.path.exists(doc_path):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Physical document file missing on disk.")
 
+    # Verify before download: never emit X-Lexguard-Verified for bytes that
+    # have not just been hashed. Stream the hash calculation for large PDFs.
+    digest = hashlib.sha256()
+    with open(doc_path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            digest.update(chunk)
+    computed_hash = digest.hexdigest()
+
+    if computed_hash.lower() != (case.file_hash or "").lower():
+        case.status = "quarantined"
+        db.commit()
+        log_audit_event(
+            db=db,
+            action="INTEGRITY_VIOLATION",
+            user_id=current_user.id,
+            case_id=case.id,
+            details="CRITICAL: SHA-256 hash mismatch detected before download! Case quarantined.",
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Document integrity check failed: SHA-256 mismatch detected. File has been quarantined.",
+        )
+
     log_audit_event(
         db=db,
         action="DOWNLOAD_DOCUMENT",
         user_id=current_user.id,
         case_id=case.id,
-        details=f"Downloaded case record: {case.case_no}",
+        details=f"Downloaded verified case record: {case.case_no}",
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
@@ -801,7 +829,7 @@ def download_case(
         filename=filename,
         media_type=media_type,
         headers={
-            "X-Lexguard-SHA256": case.file_hash,
+            "X-Lexguard-SHA256": computed_hash,
             "X-Lexguard-Verified": "true",
         },
     )
@@ -822,7 +850,7 @@ def get_official_case_content(
     if not case:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case record not found.")
 
-    if case.status != "published" and (not current_user or current_user.role not in ["court_staff", "senior_staff", "staff"]):
+    if case.status != "published" and (not current_user or canonical_role(current_user.role) not in {"court_staff", "senior_staff"}):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access restricted: This case is not yet published.")
 
     text_to_parse = case.full_text or case.summary or ""
@@ -885,7 +913,7 @@ def search_keywords_in_case(
     if not case:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case record not found.")
 
-    if case.status != "published" and (not current_user or current_user.role not in ["court_staff", "senior_staff", "staff"]):
+    if case.status != "published" and (not current_user or canonical_role(current_user.role) not in {"court_staff", "senior_staff"}):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access restricted: This case is not yet published.")
 
     text_to_search = case.full_text or case.summary or ""
@@ -1000,7 +1028,7 @@ def get_case_citations_network(
                 "decision_date": other_c.decision_date,
                 "outcome": other_c.outcome,
                 "disposition": other_c.disposition,
-                "precedential_status": other_c.precedential_status or "Good Law",
+                "precedential_status": other_c.precedential_status or "Precedential status not checked",
             })
 
     return {
@@ -1010,7 +1038,7 @@ def get_case_citations_network(
         "court": case.court,
         "year": case.year,
         "official_citation": case.official_citation,
-        "precedential_status": case.precedential_status or "Good Law",
+        "precedential_status": case.precedential_status or "Precedential status not checked",
         "cited_by_count": len(citing_cases),
         "precedents_cited": precedents_cited,
         "cited_by": citing_cases,

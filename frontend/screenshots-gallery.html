@@ -80,7 +80,7 @@
       <div class="d-flex align-items-center gap-2">
         <a href="index.html" class="btn btn-sm btn-outline-danger"><i class="bi bi-house-door me-1"></i>Portal Home</a>
         <a href="search.html" class="btn btn-sm btn-outline-danger"><i class="bi bi-search me-1"></i>Precedents</a>
-        <a href="admin.html?auth_role=staff" class="btn btn-sm btn-gold"><i class="bi bi-speedometer2 me-1"></i>Staff Admin</a>
+        <a href="admin.html" class="btn btn-sm btn-gold"><i class="bi bi-speedometer2 me-1"></i>Staff Admin</a>
       </div>
     </div>
   </nav>
@@ -159,7 +159,7 @@
       { id: "html_00", phase: "phase2", tags: ["search", "auth"], title: "High Court Portal & 10-Service Grid", filename: "html_00_landing.png", desc: "Official Madras High Court e-Courts portal with CNR search hero, trust statistics, and 10 judicial service tiles in Court Red & White theme." },
       { id: "html_01", phase: "phase2", tags: ["auth"], title: "Multi-Role Quick Access Login", filename: "html_01_login.png", desc: "Zero-build Bootstrap 5 login with instant one-click test credentials for Staff, Advocate, Scholar, and Public." },
       { id: "html_02", phase: "phase2", tags: ["auth"], title: "Citizen & Bar Registration", filename: "html_02_register.png", desc: "Pure HTML5/Bootstrap registration form with client-side validation, clean white panels, and crimson accents." },
-      { id: "html_03", phase: "phase2", tags: ["search"], title: "Hybrid Precedent Search & Live DB", filename: "html_03_search_results.png", desc: "Precedent search querying live PostgreSQL database (208 cases) with match confidence percentage and citation copy." },
+      { id: "html_03", phase: "phase2", tags: ["search"], title: "Hybrid Precedent Search & Live DB", filename: "html_03_search_results.png", desc: "Precedent search querying the restored PostgreSQL database (278 cases in the canonical dump) with match confidence percentage and citation copy." },
       { id: "html_04", phase: "phase2", tags: ["review"], title: "Staff Analytics & Approval Queue", filename: "html_04_dashboard_admin.png", desc: "Live Chart.js doughnut & bar charts in crimson palette with one-click verification queue actions on PostgreSQL." },
       { id: "html_05", phase: "phase2", tags: ["search"], title: "Advanced PDF.js Viewer & Dossier", filename: "html_05_case_viewer_pdf.png", desc: "Split-view PDF reader with selectable text layer, thumbnail navigation drawer, keyword search stepper, and print." },
       { id: "html_06", phase: "phase2", tags: ["review"], title: "Split-Screen Staff CIS Review", filename: "html_06_case_review_split.png", desc: "Draggable split-screen reviewer with PDF on the left and live editable CIS fields (FIR, Police Station, Acts) on the right." },
@@ -167,11 +167,11 @@
       { id: "html_08", phase: "phase2", tags: ["compare"], title: "AI Judgment Draft Assistant Studio", filename: "html_08_draft_assistant.png", desc: "Interactive draft studio with draggable split resizer, saved draft sessions modal, and precision statutory audit." },
       { id: "html_09", phase: "phase2", tags: ["statutory"], title: "Major Indian Acts Catalog", filename: "html_09_acts_explorer.png", desc: "Categorized statutory directory covering IPC, CrPC, Evidence Act, BNS, BNSS, and BSA with instant section search." },
       { id: "html_10", phase: "phase2", tags: ["crypto"], title: "SHA-256 Tamper Verification Engine", filename: "html_10_verify_tamper.png", desc: "Web Crypto API SHA-256 client hashing and backend database ledger lookup for tamper detection." },
-      { id: "html_11", phase: "phase2", tags: ["search"], title: "Madras HC Daily Cause List Tracker", filename: "html_11_cause_list.png", desc: "Principal Seat & Madurai Bench court board tracker with live courtroom status and case serial listing." },
-      { id: "html_12", phase: "phase2", tags: ["crypto"], title: "Cryptographic Merkle Audit Ledger", filename: "html_12_audit_ledger.png", desc: "Dedicated Merkle hash-chained ledger viewer with live SHA-256 block hash inspector and chain verification against PostgreSQL." },
+      { id: "html_11", phase: "phase2", tags: ["search"], title: "Madras HC Illustrative Cause Board", filename: "html_11_cause_list.png", desc: "Illustrative board arranging published repository cases by hall and status; not an official cause list." },
+      { id: "html_12", phase: "phase2", tags: ["crypto"], title: "Cryptographic Hash-Chained Audit Ledger", filename: "html_12_audit_ledger.png", desc: "Dedicated hash-chained ledger viewer with live SHA-256 block hash inspector and chain verification against PostgreSQL." },
       { id: "html_13", phase: "phase2", tags: ["search"], title: "Upgraded Case Reader & Keyword Finder", filename: "html_13_case_viewer_upgraded.png", desc: "Binary PDF.js stream reader with integrated in-document keyword extraction, page pills, and official judicial brief export." },
       { id: "html_14", phase: "phase2", tags: ["errors"], title: "Judicial 404 Not Found Portal", filename: "html_14_404_page.png", desc: "Light judicial 404 error page with live case search input, direct links to statutory explorer and staff portal, and route diagnostics." },
-      { id: "html_15", phase: "phase2", tags: ["search"], title: "Live Daily Cause List & Court Board", filename: "html_15_cause_list_live.png", desc: "Principal Seat & Madurai Bench court board tracker querying live PostgreSQL cases with status pills and dossier shortcuts." },
+      { id: "html_15", phase: "phase2", tags: ["search"], title: "Illustrative Cause Board", filename: "html_15_cause_list_live.png", desc: "Illustrative board arranging published repository cases with status pills and dossier shortcuts; not an official cause list." },
       { id: "html_16", phase: "phase2", tags: ["errors"], title: "Graceful 404 Docket Handler in Viewer", filename: "html_16_case_viewer_404.png", desc: "In-line judicial empty state when an invalid or sealed case identifier is requested, preventing hanging spinners." },
 
       // Phase 1 (React)
@@ -186,7 +186,7 @@
       { id: "react_09", phase: "phase1", tags: ["search"], title: "Judicial Case Reader & Dossier", filename: "react_09_case_viewer.png", desc: "Comprehensive case dossier with Coram details, decision dates, disposition badges, and SHA-256 integrity seal." },
       { id: "react_10", phase: "phase1", tags: ["review"], title: "Human-in-the-Loop CIS Review", filename: "react_10_case_review.png", desc: "Court Staff moderation desk verifying extracted CIS docket fields, police station, FIR, and statutory sections." },
       { id: "react_11", phase: "phase1", tags: ["compare"], title: "Multi-Case Comparative Matrix", filename: "react_11_case_compare.png", desc: "Comparative precedent workbench analyzing holding divergence, ratio decidendi, and legal issue concordance." },
-      { id: "react_12", phase: "phase1", tags: ["crypto"], title: "Cryptographic Merkle Audit Ledger", filename: "react_12_audit_ledger.png", desc: "Immutable SHA-256 chained audit logs tracking all case modifications, verifications, and approvals." },
+      { id: "react_12", phase: "phase1", tags: ["crypto"], title: "Cryptographic Hash-Chained Audit Ledger", filename: "react_12_audit_ledger.png", desc: "Tamper-evident SHA-256 chained audit logs tracking all case modifications, verifications, and approvals." },
       { id: "react_13", phase: "phase1", tags: ["review"], title: "Case Ingestion & CIS Extraction", filename: "react_13_case_upload.png", desc: "PDF upload pipeline with automated InLegalBERT NER extraction and cryptographic hashing." },
       { id: "react_14", phase: "phase1", tags: ["errors"], title: "Tailwind & Lucide 404 Recovery Screen", filename: "react_14_404_page.png", desc: "User-friendly React 404 page with route diagnostics, in-card precedent search, and fast navigation links." }
     ];

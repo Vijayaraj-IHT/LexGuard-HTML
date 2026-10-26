@@ -100,7 +100,7 @@ $(document).ready(function () {
           <div class="d-flex justify-content-center flex-wrap gap-3">
             <a href="search.html" class="btn btn-gold"><i class="bi bi-search me-1"></i>Return to Precedent Search</a>
             <a href="acts-explorer.html" class="btn btn-judicial-outline"><i class="bi bi-book-half me-1"></i>Statutory Explorer</a>
-            <a href="admin.html?auth_role=staff" class="btn btn-judicial-outline"><i class="bi bi-speedometer2 me-1"></i>Staff Workstation</a>
+            <a href="admin.html" class="btn btn-judicial-outline"><i class="bi bi-speedometer2 me-1"></i>Staff Workstation</a>
           </div>
         </div>
       `);
@@ -176,7 +176,7 @@ $(document).ready(function () {
     $('#cert-case-title').text(c.title || 'Untitled Judicial Case');
     $('#cert-case-no').text(c.case_no || '—');
     $('#cert-cnr-no').text(c.cnr_number ? ('CNR: ' + c.cnr_number) : (c.cnr ? ('CNR: ' + c.cnr) : 'CNR: Registered Under Judicial Repository'));
-    $('#cert-judge-name').text(c.judge || 'Hon'ble Judges of the Bench');
+    $('#cert-judge-name').text(c.judge || "Hon'ble Judges of the Bench");
     $('#cert-bench-type').text((c.bench_type || 'Judicial Bench') + (c.legal_domain ? (' • ' + c.legal_domain) : ''));
     $('#cert-decision-date').text(LG.utils.formatDate(c.decision_date || c.created_at));
     $('#cert-outcome-badge').text(c.outcome || c.disposition || 'Disposed');
@@ -414,7 +414,7 @@ $(document).ready(function () {
               <div class="p-3 rounded bg-dark border border-success border-opacity-30">
                 <div class="text-secondary small text-uppercase">Precedential Authority</div>
                 <div class="fw-bold text-success fs-6 mt-1">
-                  <i class="bi bi-shield-check me-1"></i>${LG.utils.escapeHtml(res.precedential_status || 'Good Law')}
+                  <i class="bi bi-shield-check me-1"></i>${LG.utils.escapeHtml(res.precedential_status || 'Precedential status not checked')}
                 </div>
               </div>
             </div>
@@ -461,7 +461,7 @@ $(document).ready(function () {
                 <div class="card card-judicial p-3 h-100 border-secondary border-opacity-30">
                   <div class="d-flex align-items-start justify-content-between gap-2 mb-1">
                     <span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-30" style="font-size: 0.72rem;">
-                      <i class="bi bi-check-circle me-1"></i>${LG.utils.escapeHtml(p.status || 'Good Law')}
+                      <i class="bi bi-check-circle me-1"></i>${LG.utils.escapeHtml(p.status || 'Precedential status not checked')}
                     </span>
                     <span class="badge bg-dark border border-secondary text-warning font-mono" style="font-size: 0.72rem;">
                       ${LG.utils.escapeHtml(p.citation || 'Precedent')}
@@ -545,40 +545,6 @@ $(document).ready(function () {
         `);
       }
     });
-  }
-
-const itemsHtml = list.map(function (p) {
-          return `
-            <div class="card card-judicial p-3 mb-2">
-              <div class="d-flex align-items-center justify-content-between">
-                <div>
-                  <a href="case-viewer.html?id=${encodeURIComponent(p.id)}" class="fw-semibold text-light text-decoration-none">
-                    ${LG.utils.escapeHtml(p.title || 'Precedent')}
-                  </a>
-                  <div class="small text-secondary mt-1">
-                    <span class="${LG.utils.courtBadgeClass(p.court)} me-2">${LG.utils.escapeHtml(p.court || '')}</span>
-                    <span>Year: ${p.year || '—'}</span>
-                  </div>
-                </div>
-                <div>
-                  <a href="case-compare.html?case1=${encodeURIComponent(cid)}&case2=${encodeURIComponent(p.id)}" class="btn btn-xs btn-judicial-outline">
-                    <i class="bi bi-columns-gap me-1"></i>Compare
-                  </a>
-                </div>
-              </div>
-            </div>
-          `;
-        }).join('');
-
-        $('#precedents-list').html(itemsHtml);
-      })
-      .fail(function () {
-        $('#precedents-list').html(`
-          <div class="text-secondary small p-3 text-center">
-            Precedent relationship analysis available in Comparator view.
-          </div>
-        `);
-      });
   }
 
   /* -------------------------------------------------------------------------
@@ -782,9 +748,7 @@ const itemsHtml = list.map(function (p) {
     pdfLoaded = true;
 
     const downloadEndpoint = LG.config.API_BASE + '/cases/' + encodeURIComponent(caseId) + '/download';
-    const token = LG.session.token();
     const headers = {};
-    if (token) headers['Authorization'] = 'Bearer ' + token;
 
     if (window.pdfjsLib) {
       $pdfLoading.removeClass('d-none');
@@ -949,70 +913,65 @@ const itemsHtml = list.map(function (p) {
     const modal = new bootstrap.Modal(document.getElementById('caseBriefModal'));
     modal.show();
   });
-  #brief-copy-md-btn.on('click', function () {
+  $('#brief-copy-md-btn').on('click', function () {
     if (!currentCase) return;
     const c = currentCase;
-    const precList = (c.precedents_cited || []).map(p => - **** [] — ** ()).join('
-');
-    const md = # LEXGUARD OFFICIAL JUDICIAL CASE BRIEF
-## 
 
- +
-      **Court:** 
- +
-      **Case Number:** 
- +
-      **Official Citation:** 
- +
-      **CNR Number:** 
- +
-      **Coram:** 
- +
-      **Parties:** 
- +
-      **Decision Date:** 
- +
-      **Precedential Authority:** 
- +
-      **Disposition:** 
+    const precList = (c.precedents_cited || []).map(function (p) {
+      if (typeof p === 'string') return '- ' + p;
+      const citation = p.citation ? ' [' + p.citation + ']' : '';
+      const court = p.court ? ' — ' + p.court : '';
+      const year = p.year ? ' (' + p.year + ')' : '';
+      return '- **' + (p.title || 'Precedent') + '**' + citation + court + year;
+    }).join('\n');
 
- +
-      ---
+    const statutes = (c.section_tags && c.section_tags.length)
+      ? c.section_tags.map(function (section) { return '`' + section + '`'; }).join(', ')
+      : ((c.act_tags && c.act_tags.length) ? c.act_tags.join(', ') : 'General Statutory Principles');
 
-### Statutory Provisions Considered
- +
-      ${(c.section_tags && c.section_tags.length) ? c.section_tags.map(s => '\' + s + '\').join(', ') : (c.act_tags ? c.act_tags.join(', ') : 'General Statutory Principles')}
+    const lines = [
+      '# LEXGUARD JUDICIAL CASE BRIEF',
+      '## ' + (c.title || 'Judicial Precedent'),
+      '',
+      '**Court:** ' + (c.court || '—'),
+      '**Case Number:** ' + (c.case_no || '—'),
+      '**Official Citation:** ' + (c.official_citation || '—'),
+      '**CNR Number:** ' + (c.cnr_number || c.cnr || '—'),
+      '**Coram:** ' + (c.judge || '—'),
+      '**Parties:** ' + (c.parties || '—'),
+      '**Decision Date:** ' + LG.utils.formatDate(c.decision_date || c.created_at),
+      '**Precedential Authority:** ' + (c.precedential_status || 'Precedential status not checked'),
+      '**Disposition:** ' + (c.disposition || c.outcome || '—'),
+      '',
+      '---',
+      '',
+      '### Statutory Provisions Considered',
+      statutes,
+      '',
+      '---',
+      '',
+      '### Key Facts & Procedural Trajectory',
+      c.summary || c.facts || 'Factual matrix and procedural history recorded in the judgment.',
+      '',
+      '---',
+      '',
+      '### Ratio Decidendi & Binding Legal Principle',
+      '> ' + (c.ratio_decidendi || 'Ratio affirmed under binding authority.'),
+      ''
+    ];
 
- +
-      ---
+    if (precList) {
+      lines.push('### Precedents & Authorities Cited', '', precList, '', '---', '');
+    }
 
-### Key Facts & Procedural Trajectory
- +
-      ${c.summary || c.facts || 'Factual matrix and procedural history recorded in official judgment.'}
+    lines.push(
+      '### Cryptographic Integrity Record',
+      '- **SHA-256 Digest:** `' + (c.file_hash || '—') + '`',
+      '- **Integrity Note:** The digest is recorded for repository integrity checking; admissibility remains subject to applicable evidence law and court determination.',
+      '- **Generated:** ' + new Date().toLocaleString('en-IN')
+    );
 
- +
-      ---
-
-### Ratio Decidendi & Binding Legal Principle
- +
-      > 
-
- +
-      (precList ? ### Precedents & Authorities Cited
-
-
----
-
- : '') +
-      ### Cryptographic Authenticity Stamp
- +
-      - **SHA-256 Digest:** \${c.file_hash}\
- +
-      - **Statutory Admissibility:** Admissible electronic record under Section 65B of Indian Evidence Act, 1872 / Section 63 of Bharatiya Sakshya Adhiniyam, 2023.
- +
-      - **LexGuard Verified Ledger Timestamp:** 
-;
-    LG.utils.copyToClipboard(md, 'Comprehensive case brief markdown copied to clipboard!');
+    LG.utils.copyToClipboard(lines.join('\n'), 'Comprehensive case brief markdown copied to clipboard!');
   });
 
   $('#brief-download-json-btn').on('click', function () {
@@ -1137,5 +1096,4 @@ const itemsHtml = list.map(function (p) {
 
   // Initial bookmark status check
   checkBookmarkStatus();
-});
 });

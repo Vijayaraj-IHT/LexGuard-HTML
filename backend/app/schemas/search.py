@@ -34,6 +34,7 @@ class SearchResultItem(BaseModel):
     ratio_decidendi: Optional[str] = None
     file_hash: str
     redacted_file_hash: Optional[str] = None
+    judicial_seal: Optional[str] = None
     act_tags: List[str] = []
     section_tags: List[str] = []
     keyword_tags: List[str] = []
@@ -45,7 +46,7 @@ class SearchResultItem(BaseModel):
     case_type: Optional[str] = None
     legal_domain: Optional[str] = None
     decision_date: Optional[str] = None
-    precedential_status: Optional[str] = "Good Law"
+    precedential_status: Optional[str] = "Precedential status not checked"
     cited_by_count: Optional[int] = 0
     official_citation: Optional[str] = None
     search_mode: Optional[str] = None

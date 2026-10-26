@@ -619,11 +619,9 @@ class ExtractionService:
         data["title"] = title
         confidence["title"] = {"confidence": 0.90, "source": "pass1_composite"}
 
-        # Precedential status default heuristic
-        if data.get("bench_type") in ["Division Bench", "Full Bench"]:
-            data["precedential_status"] = "Good Law"
-        else:
-            data["precedential_status"] = "Precedential status not checked"
+        # Bench size alone does not establish current precedential validity.
+        # Leave this explicitly unchecked until a citator/staff review checks it.
+        data["precedential_status"] = "Precedential status not checked"
 
         return data, confidence
 

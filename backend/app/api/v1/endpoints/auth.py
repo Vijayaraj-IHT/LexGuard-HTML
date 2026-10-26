@@ -63,7 +63,7 @@ def register(
     db.commit()
     db.refresh(user)
 
-    # Record registration in immutable audit trail
+    # Record registration in tamper-evident audit trail
     log_audit_event(
         db=db,
         action="REGISTER",
@@ -154,6 +154,7 @@ def login(
         role=user.role,
         user_id=user.id,
         name=user.name,
+        email=user.email,
         csrf_token=csrf_token,
     )
 

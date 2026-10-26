@@ -7,6 +7,7 @@ from app.core.database import engine, Base, SessionLocal
 from app.api.v1.api import api_router
 from app.models.user import User
 from app.core.security import get_password_hash
+from app.services.crypto_service import verify_csrf_token
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -18,7 +19,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         # Content Security Policy header
@@ -45,7 +45,7 @@ class CSRFValidationMiddleware(BaseHTTPMiddleware):
             if settings.COOKIE_NAME in request.cookies:
                 csrf_header = request.headers.get(settings.CSRF_HEADER_NAME)
                 expected_csrf = request.cookies.get("lexguard_csrf_token")
-                if not csrf_header or not expected_csrf or csrf_header != expected_csrf:
+                if not verify_csrf_token(csrf_header or "", expected_csrf or ""):
                     from fastapi.responses import JSONResponse
                     return JSONResponse(
                         status_code=403,

@@ -1,5 +1,5 @@
 /**
- * LexGuard — Daily Cause List & Court Board Tracker (cause-list.js)
+ * LexGuard — Illustrative Cause Board (cause-list.js)
  * LexGuard Judicial Repository & Verification Platform
  */
 
@@ -38,19 +38,20 @@ $(document).ready(function () {
   ];
 
   /**
-   * Load live cases from backend and synthesize daily cause list.
+   * Load repository cases and arrange them as an illustrative cause board.
+   * This is a demonstration board — not an official court cause list.
    */
   function loadCauseList() {
     $('#cause-list-tbody').html(`
       <tr>
         <td colspan="7" class="text-center py-5 text-secondary">
           <div class="spinner-border spinner-border-sm text-warning me-2" role="status"></div>
-          Fetching live cause board from PostgreSQL...
+          Fetching published repository cases for the illustrative cause board...
         </td>
       </tr>
     `);
 
-    LG.api.cases.search('', { limit: 35 })
+    LG.api.search.query({ query: '', limit: 35 })
       .done(function (data) {
         const cases = data.cases || data.results || data || [];
         if (!Array.isArray(cases) || cases.length === 0) {
@@ -73,7 +74,7 @@ $(document).ready(function () {
             judge: c.judge || 'Hon’ble Bench',
             title: c.title || 'Untitled Precedent',
             caseNo: c.case_no || `WP / ${202600 + idx} / 2026`,
-            cnr: c.cnr || `MCHC01-00${idx + 100}-2026`,
+            cnr: c.cnr_number || c.cnr || 'Not recorded',
             stage: stage,
             status: status
           };
@@ -87,7 +88,7 @@ $(document).ready(function () {
           <tr>
             <td colspan="7" class="text-center py-4 text-warning">
               <i class="bi bi-exclamation-triangle me-2"></i>
-              Unable to synchronize with live PostgreSQL cause list. 
+              Unable to load published cases for this illustrative cause board.
               <button class="btn btn-sm btn-judicial-outline ms-2" id="retry-btn">Retry</button>
             </td>
           </tr>
@@ -185,7 +186,7 @@ $(document).ready(function () {
   $('#filter-bench').on('change', renderTable);
   $('#filter-search').on('input', renderTable);
   $('#btn-refresh-board').on('click', function () {
-    LG.toast('Refreshing live cause list proceedings...', 'info');
+    LG.toast('Refreshing illustrative cause board...', 'info');
     loadCauseList();
   });
 

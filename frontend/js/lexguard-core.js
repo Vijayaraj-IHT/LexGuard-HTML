@@ -11,7 +11,8 @@
   // Core Configuration
   LG.config = {
     API_BASE: 'http://127.0.0.1:8000/api/v1',
-    SESSION_STORAGE_KEY: 'lg_session',
+    PROFILE_STORAGE_KEY: 'lg_profile',
+    SESSION_STORAGE_KEY: 'lg_session', // legacy key, deleted on load; never written
     CSRF_COOKIE_NAME: 'lexguard_csrf_token',
     APP_NAME: 'LexGuard',
     COURT_MADRAS: 'Madras High Court (Principal Seat)',

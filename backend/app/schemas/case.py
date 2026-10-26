@@ -51,7 +51,7 @@ class CaseBase(BaseModel):
     page_count: Optional[int] = 1
     source_url: Optional[str] = None
     source_verification_state: Optional[str] = "unverified"
-    precedential_status: Optional[str] = "Good Law"
+    precedential_status: Optional[str] = "Precedential status not checked"
     auto_extracted: bool = False
 
 
@@ -90,6 +90,7 @@ class CaseResponse(CaseBase):
     id: str
     file_hash: str
     redacted_file_hash: Optional[str] = None
+    judicial_seal: Optional[str] = None
     status: str
     uploaded_by_id: str
     approved_by_id: Optional[str] = None

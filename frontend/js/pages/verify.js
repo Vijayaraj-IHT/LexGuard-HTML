@@ -32,7 +32,7 @@ $(document).ready(function () {
     $resultBox.removeClass('d-none');
     $resultAuthentic.addClass('d-none');
     $resultUnregistered.addClass('d-none');
-    $auditTableBody.html('<tr><td colspan="4" class="text-secondary text-center">Verifying digest against Merkle ledger...</td></tr>');
+    $auditTableBody.html('<tr><td colspan="4" class="text-secondary text-center">Verifying digest against hash-chained ledger...</td></tr>');
 
     LG.api.verification.lookup(hash)
       .done(function (res) {
@@ -47,7 +47,7 @@ $(document).ready(function () {
           $('#matched-bench').text(res.case.judge || 'Hon\'ble Judges');
           $('#matched-view-btn').attr('href', 'case-viewer.html?id=' + encodeURIComponent(res.case.id));
 
-          LG.toast('Cryptographic Seal Verified: 100% Authentic Match', 'success');
+          LG.toast('Digest matches a published repository record.', 'success');
         } else {
           // Unregistered / Tampered
           $resultUnregistered.removeClass('d-none');

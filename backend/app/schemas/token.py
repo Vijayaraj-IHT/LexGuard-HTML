@@ -8,6 +8,7 @@ class TokenResponse(BaseModel):
     role: str
     user_id: str
     name: str
+    email: Optional[str] = None
     csrf_token: Optional[str] = None
 
 

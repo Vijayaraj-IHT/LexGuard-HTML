@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="alternate icon" href="favicon.ico">
-  <title>Daily Cause List &amp; Board Tracker · LexGuard</title>
+  <title>Illustrative Cause Board · LexGuard</title>
 
   <!-- Google Fonts & CDN CSS -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -69,11 +69,11 @@
         <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
           <div>
             <div class="badge badge-court-red px-3 py-1 mb-2 fw-semibold">
-              <i class="bi bi-clock-history me-1"></i>e-Courts Daily Roster
+              <i class="bi bi-clock-history me-1"></i>Illustrative Repository Board
             </div>
-            <h1 class="h3 font-serif fw-bold text-light mb-1">Madras High Court · Daily Cause List &amp; Live Board</h1>
+            <h1 class="h3 font-serif fw-bold text-light mb-1">Madras High Court · Illustrative Cause Board</h1>
             <p class="text-secondary small mb-0">
-              Real-time courtroom proceedings, serial listing, and case dossier access across Principal Seat (Chennai) and Madurai Bench.
+              Demonstration arrangement of published repository cases across Principal Seat (Chennai) and Madurai Bench. This is not an official Madras High Court cause list or a live proceedings feed; hall, stage and status assignments are illustrative.
             </p>
           </div>
           <div class="d-flex flex-wrap align-items-center gap-2">
@@ -104,7 +104,7 @@
             <input type="date" class="form-control form-control-sm  font-mono" id="filter-date" value="2026-10-23">
           </div>
           <div class="col-md-5">
-            <label class="form-label text-secondary small mb-1">Live Filter (Party, Case No, Advocate, CNR)</label>
+            <label class="form-label text-secondary small mb-1">Filter (Party, Case No, Advocate, CNR)</label>
             <div class="input-group input-group-sm">
               <span class="input-group-text bg-dark border-secondary border-opacity-50 text-secondary"><i class="bi bi-filter"></i></span>
               <input type="text" class="form-control " id="filter-search" placeholder="Filter current board serials...">
@@ -113,34 +113,38 @@
         </div>
       </div>
 
-      <!-- Live Court Hall Status Cards -->
+      <div class="alert alert-warning" role="alert">
+        <strong>Not an official cause list:</strong> this page arranges published repository judgments into an illustrative board. Consult the Madras High Court/e-Courts services for the authoritative daily cause list.
+      </div>
+
+      <!-- Illustrative Court Hall Status Cards -->
       <div class="row g-3 mb-3" id="hall-metrics-row">
         <div class="col-6 col-md-3">
           <div class="card card-judicial p-3 text-center">
-            <div class="small text-secondary mb-1">Active Halls</div>
+            <div class="small text-secondary mb-1">Illustrative Halls</div>
             <div class="h4 fw-bold text-success mb-0 font-monospace">5 Halls</div>
-            <div class="text-secondary" style="font-size: 0.72rem;">Live in Session</div>
+            <div class="text-secondary" style="font-size: 0.72rem;">Demonstration assignments</div>
           </div>
         </div>
         <div class="col-6 col-md-3">
           <div class="card card-judicial p-3 text-center">
             <div class="small text-secondary mb-1">Listed Serials</div>
             <div class="h4 fw-bold text-warning mb-0 font-monospace" id="total-serials-count">--</div>
-            <div class="text-secondary" style="font-size: 0.72rem;">Today's Board Items</div>
+            <div class="text-secondary" style="font-size: 0.72rem;">Displayed repository cases</div>
           </div>
         </div>
         <div class="col-6 col-md-3">
           <div class="card card-judicial p-3 text-center">
-            <div class="small text-secondary mb-1">Pronounced / Disposed</div>
+            <div class="small text-secondary mb-1">Illustrative Pronounced</div>
             <div class="h4 fw-bold text-info mb-0 font-monospace" id="disposed-count">--</div>
-            <div class="text-secondary" style="font-size: 0.72rem;">Orders Uploaded</div>
+            <div class="text-secondary" style="font-size: 0.72rem;">Illustrative status count</div>
           </div>
         </div>
         <div class="col-6 col-md-3">
           <div class="card card-judicial p-3 text-center">
-            <div class="small text-secondary mb-1">Pending Next</div>
+            <div class="small text-secondary mb-1">Other Statuses</div>
             <div class="h4 fw-bold text-light mb-0 font-monospace" id="pending-count">--</div>
-            <div class="text-secondary" style="font-size: 0.72rem;">In Queue</div>
+            <div class="text-secondary" style="font-size: 0.72rem;">Illustrative status count</div>
           </div>
         </div>
       </div>
@@ -164,7 +168,7 @@
               <tr>
                 <td colspan="7" class="text-center py-5 text-secondary">
                   <div class="spinner-border spinner-border-sm text-warning me-2" role="status"></div>
-                  Fetching live Madras High Court cause board from PostgreSQL repository...
+                  Fetching published repository cases for the illustrative cause board...
                 </td>
               </tr>
             </tbody>

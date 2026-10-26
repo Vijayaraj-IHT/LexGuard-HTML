@@ -7,7 +7,7 @@ from app.services.crypto_service import (
     verify_csrf_token,
     GENESIS_HASH,
 )
-from app.services.audit_service import log_audit_event
+from app.services.audit_service import log_audit_event, reseal_audit_chain
 from app.services.embedding_service import embedding_service
 from app.services.ner_service import ner_service
 from app.services.local_llm_service import local_llm_service
@@ -23,6 +23,7 @@ __all__ = [
     "verify_csrf_token",
     "GENESIS_HASH",
     "log_audit_event",
+    "reseal_audit_chain",
     "embedding_service",
     "ner_service",
     "local_llm_service",

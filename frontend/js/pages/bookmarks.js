@@ -78,7 +78,7 @@ $(document).ready(function () {
           const courtBadge = LG.utils.courtBadgeClass(c.court);
           const binderName = b.binder_name || 'General Research';
           const citation = c.official_citation || `${c.title || 'Case'}, (${c.year || ''}) ${c.court || ''}`;
-          const precedentialStatus = c.precedential_status || 'Good Law';
+          const precedentialStatus = c.precedential_status || 'Precedential status not checked';
 
           return `
             <div class="lg-case-card mb-3" id="bookmark-card-${b.id}">
@@ -325,7 +325,7 @@ $(document).ready(function () {
                   [${item.index}] ${LG.utils.escapeHtml(item.title)}
                 </h4>
                 <span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-30">
-                  ${LG.utils.escapeHtml(item.precedential_status || 'Good Law')}
+                  ${LG.utils.escapeHtml(item.precedential_status || 'Precedential status not checked')}
                 </span>
               </div>
               <div class="small text-secondary mb-2">

@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 from app.core.database import SessionLocal
 from app.models.case import Case
 from app.models.document_version import DocumentVersion
-from app.models.audit_log import AuditLog
+from app.services.audit_service import log_audit_event
 from app.models.user import User
 
 TARGET_DIRS = [
@@ -694,15 +694,15 @@ Precedential Status: {item['precedential_status']}.
             dv.file_path = rel_path
             dv.file_hash = file_hash
 
-        # Audit Log
-        log_audit = AuditLog(
+        # Audit log (canonical writer only)
+        db.flush()
+        log_audit_event(
+            db=db,
+            action="LANDMARK_SEED",
             user_id=admin_id,
             case_id=case_obj.id,
-            action="LANDMARK_SEED",
             details=f"Registered Supreme Court Landmark Precedent: {item['title']} [{item['official_citation']}]",
-            current_hash=file_hash,
         )
-        db.add(log_audit)
 
         seeded_count += 1
         print(f"[{idx}/{len(LANDMARKS_DATA)}] Seeded: {item['title']} -> {filename} (SHA-256: {file_hash[:16]}...)")

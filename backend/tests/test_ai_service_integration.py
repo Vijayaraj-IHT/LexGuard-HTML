@@ -19,6 +19,15 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+pytest.importorskip(
+    "ai_service.models",
+    reason="standalone ai_service package is not present in this repository",
+)
+pytest.importorskip(
+    "ai_service.schemas",
+    reason="standalone ai_service package is not present in this repository",
+)
+
 from ai_service.models import (
     ner_engine,
     embedding_engine,
