@@ -1,5 +1,5 @@
 /**
- * LexGuard — Cryptographic Merkle Audit Ledger Controller (audit-ledger.js)
+ * LexGuard — Cryptographic System Audit Register Controller (audit-ledger.js)
  * LexGuard Judicial Repository & Verification Platform
  */
 

@@ -167,7 +167,7 @@
                 <li>
                   <a href="audit-ledger.html" class="lg-sidebar-link ${activePage === 'audit' ? 'active' : ''}">
                     <i class="bi bi-diagram-3-fill text-warning"></i>
-                    <span>Merkle Audit Ledger</span>
+                    <span>System Audit Register</span>
                   </a>
                 </li>
               </ul>

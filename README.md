@@ -37,7 +37,7 @@
   * Authentic judicial palette: Deep Crimson (`#991b1b`), Maroon (`#7f1d1d`), and Pristine White (`#ffffff` / `#f8fafc`).
   * Dark charcoal slate typography (`#0f172a`) providing high contrast and compliance with court readability standards.
   * Replaced dark background cards with clean elevated judicial panels and subtle crimson borders (`rgba(185, 28, 28, 0.15)`).
-* **Robust FastAPI & PostgreSQL 17 Backend**:
+* **Robust FastAPI & PostgreSQL Backend**:
   * 208 precedent judgments indexed with InLegalBERT statutory embeddings and full-text vectors.
   * Merkle tree audit ledger with 989 immutable SHA-256 hash-chained records.
   * OWASP A02/A07 defense: SecurityHeadersMiddleware, Double-Submit Cookie CSRF protection, and HttpOnly JWT cookies.
@@ -54,7 +54,7 @@
 6. **Staff CIS Review Workstation** (`case-review.html`): Split-screen human-in-the-loop review with PDF on the left and editable CIS docket fields on the right.
 7. **AI Judgment Draft Studio** (`draft-assistant.html`): Structured judicial drafting environment with session persistence and statutory audit stepper.
 8. **Madras HC Daily Cause List Tracker** (`cause-list.html`): Court board tracker displaying courtroom serials, benches, and live hearing status.
-9. **Cryptographic Merkle Audit Ledger** (`audit-ledger.html`): Real-time blockchain-style hash chain inspector verifying data integrity and tamper seals.
+9. **Cryptographic System Audit Register** (`audit-ledger.html`): Real-time blockchain-style hash chain inspector verifying data integrity and tamper seals.
 10. **Case Ingestion Desk** (`case-upload.html`): PDF ingest pipeline with InLegalBERT entity extraction and automated SHA-256 sealing.
 
 ---
@@ -63,7 +63,7 @@
 
 ### Prerequisites
 * **Python 3.10+**
-* **PostgreSQL 17** (or 14+) with database `lexguard` created
+* **PostgreSQL** (or 14+) with database `lexguard` created
 
 ### 🚀 Windows (1-Click Launcher)
 Simply double-click:
@@ -133,7 +133,7 @@ The database comes pre-seeded with authorized credentials for all four judicial 
 
 | Role | Email | Password | Access Privileges |
 | :--- | :--- | :--- | :--- |
-| **Chief Registrar (Staff)** | `staff@court.gov.in` | `staff123` | CIS Moderation, Merkle Audit Ledger, Ingestion Desk, Analytics |
+| **Chief Registrar (Staff)** | `staff@court.gov.in` | `staff123` | CIS Moderation, System Audit Register, Ingestion Desk, Analytics |
 | **Senior Advocate** | `advocate@bar.in` | `advocate123` | Case Search, Citation Bookmarks, Judgment Export, Precedent Compare |
 | **Legal Scholar** | `scholar@law.edu` | `scholar123` | Statutory Concordance, Landmark Summaries, Ratio Decidendi Analysis |
 | **Citizen / Litigant** | `public@citizen.in` | `public123` | Public Case Status Lookup, Cause List Tracker, SHA-256 Verifier |
@@ -170,7 +170,7 @@ LexGuard-HTML/
 │   ├── requirements.txt          # Minimal Python Dependencies
 │   └── .env.example              # Environment Configuration
 ├── database/                     # Database Assets
-│   ├── lexguard_dump.sql         # Full PostgreSQL 17 Dump (208 cases, 989 logs)
+│   ├── lexguard_dump.sql         # Full PostgreSQL Dump (208 cases, 989 logs)
 │   └── seed_105_cases.py         # Python Seeder Script
 ├── scripts/                      # Utility Scripts
 │   ├── capture_html_red_white.py # Headless Edge Visual Audit Script
