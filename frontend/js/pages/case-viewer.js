@@ -145,15 +145,6 @@ $(document).ready(function () {
   function renderCaseHeader(c) {
     $headerTitle.text(c.title || 'Untitled Case');
     $headerCourt.attr('class', LG.utils.courtBadgeClass(c.court)).text(c.court || 'Court');
-        if (c.precedential_status) {
-      $('#case-header-status-badge').html(`<i class="bi bi-shield-check me-1"></i>${LG.utils.escapeHtml(c.precedential_status)}`).show();
-    }
-    if (c.cited_by_count && c.cited_by_count > 0) {
-      $('#case-header-cited-count-text').text(`${c.cited_by_count} Citations`);
-      $('#case-header-cited-count-badge').removeClass('d-none');
-    } else {
-      $('#case-header-cited-count-badge').addClass('d-none');
-    }
     $headerCaseno.html(`<i class="bi bi-file-earmark-text me-1"></i>Case No: <span class="text-light">${LG.utils.escapeHtml(c.case_no || '—')}</span>`);
     $headerDate.html(`<i class="bi bi-calendar3 me-1"></i>Date: <span class="text-light">${LG.utils.formatDate(c.decision_date || c.created_at)}</span>`);
     $headerBench.html(`<i class="bi bi-person-badge me-1"></i>Bench: <span class="text-light">${LG.utils.escapeHtml(c.judge || 'Hon\'ble Bench')}</span>`);
@@ -170,53 +161,11 @@ $(document).ready(function () {
     } else {
       $sealHash.text('SHA-256 Digest Pending');
     }
-
-    // Populate Digital Seal Certificate Modal
-    $('#cert-court-name').text(c.court || 'High Court of Judicature');
-    $('#cert-case-title').text(c.title || 'Untitled Judicial Case');
-    $('#cert-case-no').text(c.case_no || '—');
-    $('#cert-cnr-no').text(c.cnr_number ? ('CNR: ' + c.cnr_number) : (c.cnr ? ('CNR: ' + c.cnr) : 'CNR: Registered Under Judicial Repository'));
-    $('#cert-judge-name').text(c.judge || 'Hon'ble Judges of the Bench');
-    $('#cert-bench-type').text((c.bench_type || 'Judicial Bench') + (c.legal_domain ? (' • ' + c.legal_domain) : ''));
-    $('#cert-decision-date').text(LG.utils.formatDate(c.decision_date || c.created_at));
-    $('#cert-outcome-badge').text(c.outcome || c.disposition || 'Disposed');
-    $('#cert-sha256-hash').text(c.file_hash || 'SHA-256 Digest Pending');
-    $('#cert-generated-timestamp').text('Generated: ' + new Date().toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'medium' }));
-
   }
 
   /**
    * Render Tab 1: Structure & Overview.
    */
-  
-    // Copy Official / Neutral Citation
-    $('#btn-copy-citation').off('click').on('click', function (e) {
-      e.preventDefault();
-      if (!currentCase) return;
-      const yr = currentCase.decision_date ? new Date(currentCase.decision_date).getFullYear() : (currentCase.year || 2026);
-      const shortId = (currentCase.file_hash || currentCase.id || '').substring(0, 8);
-      const citation = currentCase.official_citation || `${currentCase.title || 'Judgment'}, ${currentCase.case_no || ''} (${currentCase.court || 'Court'}, ${yr}) [LexGuard ID: ${shortId}]`;
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(citation).then(function () {
-          if (window.LG && window.LG.toast) {
-            window.LG.toast.success('Citation copied to clipboard!');
-          }
-        });
-      }
-    });
-
-    // Copy SHA-256 Digest in Modal
-    $('#cert-copy-hash-btn').off('click').on('click', function () {
-      if (currentCase && currentCase.file_hash && navigator.clipboard) {
-        navigator.clipboard.writeText(currentCase.file_hash).then(function () {
-          if (window.LG && window.LG.toast) {
-            window.LG.toast.success('SHA-256 cryptographic seal copied!');
-          }
-        });
-      }
-    });
-
-
   function renderOverviewTab(c) {
     $ratio.html(linkifyLegalText(c.ratio_decidendi || 'Legal principles and ratio decidendi affirmed under judicial consideration.'));
     $summary.html(linkifyLegalText(c.summary || 'Summary under extraction from official court records.'));
@@ -397,157 +346,20 @@ $(document).ready(function () {
   /**
    * Render Tab 4: Precedents & Citator Graph.
    */
-    function loadPrecedentNetwork(cid) {
-    const apiBase = (window.LexGuard && window.LexGuard.API_BASE_URL) || window.API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
-    $.ajax({
-      url: apiBase + '/cases/' + encodeURIComponent(cid) + '/citations',
-      type: 'GET',
-      xhrFields: { withCredentials: true },
-      success: function (res) {
-        if (!res) return;
-        const precedentsCited = res.precedents_cited || [];
-        const citedBy = res.cited_by || [];
-
-        let html = `
-          <div class="row g-3 mb-4">
-            <div class="col-sm-4">
-              <div class="p-3 rounded bg-dark border border-success border-opacity-30">
-                <div class="text-secondary small text-uppercase">Precedential Authority</div>
-                <div class="fw-bold text-success fs-6 mt-1">
-                  <i class="bi bi-shield-check me-1"></i>${LG.utils.escapeHtml(res.precedential_status || 'Good Law')}
-                </div>
-              </div>
+  function loadPrecedentNetwork(cid) {
+    LG.api.comparison.getPrecedents(cid)
+      .done(function (res) {
+        const list = res.precedents || res.results || res;
+        if (!Array.isArray(list) || list.length === 0) {
+          $('#precedents-list').html(`
+            <div class="text-secondary small p-3 text-center border border-secondary border-opacity-15 rounded">
+              <i class="bi bi-info-circle me-1"></i>No upstream or downstream precedent citations indexed for this case yet.
             </div>
-            <div class="col-sm-4">
-              <div class="p-3 rounded bg-dark border border-secondary border-opacity-30">
-                <div class="text-secondary small text-uppercase">Official Law Report Citation</div>
-                <div class="fw-bold font-mono text-warning fs-6 mt-1">
-                  ${LG.utils.escapeHtml(res.official_citation || 'LexGuard Certified Precedent')}
-                </div>
-              </div>
-            </div>
-            <div class="col-sm-4">
-              <div class="p-3 rounded bg-dark border border-warning border-opacity-30">
-                <div class="text-secondary small text-uppercase">Downstream Citations ("Cited In")</div>
-                <div class="fw-bold text-warning fs-6 mt-1">
-                  <i class="bi bi-diagram-3 me-1"></i>Cited by ${citedBy.length} ${citedBy.length === 1 ? 'Judgment' : 'Judgments'}
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-
-        // Section 1: Precedents Cited in this judgment
-        html += `
-          <div class="mb-4">
-            <h6 class="fw-bold text-light text-uppercase border-bottom border-secondary border-opacity-25 pb-2 mb-3">
-              <i class="bi bi-arrow-up-right-circle text-info me-2"></i>Authorities &amp; Precedents Cited in this Judgment (${precedentsCited.length})
-            </h6>
-        `;
-
-        if (precedentsCited.length === 0) {
-          html += `
-            <div class="text-secondary small p-3 text-center border border-secondary border-opacity-15 rounded bg-dark bg-opacity-25">
-              <i class="bi bi-info-circle me-1"></i>No upstream formal judicial citations explicitly extracted for this judgment.
-            </div>
-          `;
-        } else {
-          html += '<div class="row g-2">';
-          precedentsCited.forEach(function (p) {
-            const hasDbCase = !!p.case_id;
-            const targetUrl = hasDbCase ? `case-viewer.html?id=${encodeURIComponent(p.case_id)}` : `search.html?q=${encodeURIComponent(p.citation || p.title)}`;
-            html += `
-              <div class="col-md-6">
-                <div class="card card-judicial p-3 h-100 border-secondary border-opacity-30">
-                  <div class="d-flex align-items-start justify-content-between gap-2 mb-1">
-                    <span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-30" style="font-size: 0.72rem;">
-                      <i class="bi bi-check-circle me-1"></i>${LG.utils.escapeHtml(p.status || 'Good Law')}
-                    </span>
-                    <span class="badge bg-dark border border-secondary text-warning font-mono" style="font-size: 0.72rem;">
-                      ${LG.utils.escapeHtml(p.citation || 'Precedent')}
-                    </span>
-                  </div>
-                  <div class="fw-bold text-light fs-7 my-1">
-                    ${LG.utils.escapeHtml(p.title || 'Judicial Precedent')}
-                  </div>
-                  <div class="small text-secondary mb-2" style="font-size: 0.75rem;">
-                    <i class="bi bi-building me-1"></i>${LG.utils.escapeHtml(p.court || 'Court')} &bull;
-                    <span class="text-info">${LG.utils.escapeHtml(p.treatment || 'Relied upon')}</span>
-                  </div>
-                  <div class="mt-auto pt-2">
-                    <a href="${targetUrl}" class="btn btn-xs ${hasDbCase ? 'btn-gold' : 'btn-judicial-outline'}">
-                      <i class="bi ${hasDbCase ? 'bi-box-arrow-up-right' : 'bi-search'} me-1"></i>
-                      ${hasDbCase ? 'View in LexGuard' : 'Search Case Law'}
-                    </a>
-                  </div>
-                </div>
-              </div>
-            `;
-          });
-          html += '</div>';
+          `);
+          return;
         }
-        html += '</div>';
 
-        // Section 2: Judgments in LexGuard that Cite This Case ("Cited In")
-        html += `
-          <div>
-            <h6 class="fw-bold text-light text-uppercase border-bottom border-secondary border-opacity-25 pb-2 mb-3">
-              <i class="bi bi-arrow-down-left-circle text-warning me-2"></i>Repository Judgments Citing this Ruling ("Cited In") (${citedBy.length})
-            </h6>
-        `;
-
-        if (citedBy.length === 0) {
-          html += `
-            <div class="text-secondary small p-3 text-center border border-secondary border-opacity-15 rounded bg-dark bg-opacity-25">
-              <i class="bi bi-info-circle me-1"></i>No downstream judgments in the current repository subset cite this ruling yet.
-            </div>
-          `;
-        } else {
-          html += '<div class="d-flex flex-column gap-2">';
-          citedBy.forEach(function (cb) {
-            html += `
-              <div class="card card-judicial p-3 border-warning border-opacity-25">
-                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                  <div>
-                    <a href="case-viewer.html?id=${encodeURIComponent(cb.id)}" class="fw-bold text-light text-decoration-none">
-                      ${LG.utils.escapeHtml(cb.title || cb.case_no)}
-                    </a>
-                    <div class="small text-secondary mt-1">
-                      <span class="${LG.utils.courtBadgeClass(cb.court)} me-2">${LG.utils.escapeHtml(cb.court || '')}</span>
-                      <span class="badge bg-secondary me-2">${cb.year || '—'}</span>
-                      <span class="badge badge-gold me-2">${LG.utils.escapeHtml(cb.outcome || 'Decided')}</span>
-                      <span class="font-mono text-light">${LG.utils.escapeHtml(cb.case_no || '')}</span>
-                    </div>
-                  </div>
-                  <div class="d-flex align-items-center gap-2">
-                    <a href="case-viewer.html?id=${encodeURIComponent(cb.id)}" class="btn btn-xs btn-gold">
-                      <i class="bi bi-eye me-1"></i>View Judgment
-                    </a>
-                    <a href="case-compare.html?case1=${encodeURIComponent(cid)}&case2=${encodeURIComponent(cb.id)}" class="btn btn-xs btn-judicial-outline">
-                      <i class="bi bi-columns-gap me-1"></i>Compare
-                    </a>
-                  </div>
-                </div>
-              </div>
-            `;
-          });
-          html += '</div>';
-        }
-        html += '</div>';
-
-        $('#precedents-list').html(html);
-      },
-      error: function () {
-        $('#precedents-list').html(`
-          <div class="text-secondary small p-3 text-center">
-            Unable to load precedent network at this time.
-          </div>
-        `);
-      }
-    });
-  }
-
-const itemsHtml = list.map(function (p) {
+        const itemsHtml = list.map(function (p) {
           return `
             <div class="card card-judicial p-3 mb-2">
               <div class="d-flex align-items-center justify-content-between">
@@ -949,70 +761,12 @@ const itemsHtml = list.map(function (p) {
     const modal = new bootstrap.Modal(document.getElementById('caseBriefModal'));
     modal.show();
   });
-  #brief-copy-md-btn.on('click', function () {
+
+  $('#brief-copy-md-btn').on('click', function () {
     if (!currentCase) return;
     const c = currentCase;
-    const precList = (c.precedents_cited || []).map(p => - **** [] — ** ()).join('
-');
-    const md = # LEXGUARD OFFICIAL JUDICIAL CASE BRIEF
-## 
-
- +
-      **Court:** 
- +
-      **Case Number:** 
- +
-      **Official Citation:** 
- +
-      **CNR Number:** 
- +
-      **Coram:** 
- +
-      **Parties:** 
- +
-      **Decision Date:** 
- +
-      **Precedential Authority:** 
- +
-      **Disposition:** 
-
- +
-      ---
-
-### Statutory Provisions Considered
- +
-      ${(c.section_tags && c.section_tags.length) ? c.section_tags.map(s => '\' + s + '\').join(', ') : (c.act_tags ? c.act_tags.join(', ') : 'General Statutory Principles')}
-
- +
-      ---
-
-### Key Facts & Procedural Trajectory
- +
-      ${c.summary || c.facts || 'Factual matrix and procedural history recorded in official judgment.'}
-
- +
-      ---
-
-### Ratio Decidendi & Binding Legal Principle
- +
-      > 
-
- +
-      (precList ? ### Precedents & Authorities Cited
-
-
----
-
- : '') +
-      ### Cryptographic Authenticity Stamp
- +
-      - **SHA-256 Digest:** \${c.file_hash}\
- +
-      - **Statutory Admissibility:** Admissible electronic record under Section 65B of Indian Evidence Act, 1872 / Section 63 of Bharatiya Sakshya Adhiniyam, 2023.
- +
-      - **LexGuard Verified Ledger Timestamp:** 
-;
-    LG.utils.copyToClipboard(md, 'Comprehensive case brief markdown copied to clipboard!');
+    const md = `# JUDICIAL CASE BRIEF: ${c.case_no}\n\n**Court:** ${c.court}\n**CNR:** ${c.cnr || 'N/A'}\n**Coram:** ${c.judge}\n**Parties:** ${c.parties}\n**Disposition:** ${c.disposition || c.outcome}\n\n## Ratio Decidendi\n> ${c.ratio_decidendi}\n\n## Material Facts & Summary\n${c.summary || c.facts}\n\n---\n*LexGuard Verified SHA-256 Digest: ${c.file_hash}*`;
+    LG.utils.copyToClipboard(md, 'Case brief markdown copied to clipboard!');
   });
 
   $('#brief-download-json-btn').on('click', function () {
@@ -1029,113 +783,19 @@ const itemsHtml = list.map(function (p) {
     window.print();
   });
 
-  // Bookmark & Research Binder Handler
-  let existingBookmarkId = null;
-
-  function checkBookmarkStatus() {
-    if (!LG.session.isAuthenticated() || !caseId) return;
-    LG.api.bookmarks.list('all')
-      .done(function (bookmarks) {
-        if (!Array.isArray(bookmarks)) return;
-        const found = bookmarks.find(b => b.case_id === caseId || (b.case && b.case.id === caseId));
-        if (found) {
-          existingBookmarkId = found.id;
-          $bookmarkBtn.find('i').attr('class', 'bi bi-bookmark-fill text-warning');
-          $bookmarkBtn.attr('title', `Saved in '${found.binder_name || 'General Research'}'`);
-        } else {
-          existingBookmarkId = null;
-          $bookmarkBtn.find('i').attr('class', 'bi bi-bookmark text-warning');
-          $bookmarkBtn.attr('title', 'Save to Research Binder');
-        }
-      });
-  }
-
+  // Bookmark Button Handler
   $bookmarkBtn.on('click', function () {
     if (!LG.session.isAuthenticated()) {
-      LG.toast('Please sign in to save research bookmarks and binders.', 'warning');
+      LG.toast('Please sign in to save research bookmarks.', 'warning');
       return;
     }
-
-    if (!currentCase) return;
-
-    $('#binder-modal-case-title').text(currentCase.title || 'Judicial Precedent');
-    $('#binder-modal-notes').val('');
-    $('#binder-modal-new-input').val('');
-
-    // Load available binders
-    LG.api.bookmarks.getBinders()
-      .done(function (binders) {
-        let opts = '';
-        const names = (binders || []).map(b => b.binder_name);
-        if (!names.includes('General Research')) names.unshift('General Research');
-        names.forEach(function (name) {
-          opts += `<option value="${LG.utils.escapeHtml(name)}">${LG.utils.escapeHtml(name)}</option>`;
-        });
-        $('#binder-modal-select').html(opts);
-
-        // Prepopulate if already bookmarked
-        if (existingBookmarkId) {
-          LG.api.bookmarks.list('all').done(function (bms) {
-            const found = (bms || []).find(b => b.id === existingBookmarkId || b.case_id === caseId);
-            if (found) {
-              if (found.binder_name) $('#binder-modal-select').val(found.binder_name);
-              if (found.notes) $('#binder-modal-notes').val(found.notes);
-              $('#binder-modal-delete-btn').removeClass('d-none');
-              $('#binder-modal-save-btn').html('<i class="bi bi-check-lg me-1"></i>Update Precedent');
-            }
-          });
-        } else {
-          $('#binder-modal-delete-btn').addClass('d-none');
-          $('#binder-modal-save-btn').html('<i class="bi bi-bookmark-fill me-1"></i>Save Precedent');
-        }
-
-        const modal = new bootstrap.Modal(document.getElementById('saveToBinderModal'));
-        modal.show();
-      });
-  });
-
-  // Save / Update Bookmark from Modal
-  $('#binder-modal-save-btn').off('click').on('click', function () {
-    const customBinder = $('#binder-modal-new-input').val().trim();
-    const binder = customBinder || $('#binder-modal-select').val() || 'General Research';
-    const notes = $('#binder-modal-notes').val().trim();
-
-    LG.api.bookmarks.add(caseId, notes, binder)
-      .done(function (res) {
-        LG.toast(`Precedent saved to binder '${binder}'!`, 'success');
-        existingBookmarkId = res.id;
-        $bookmarkBtn.find('i').attr('class', 'bi bi-bookmark-fill text-warning');
-        $bookmarkBtn.attr('title', `Saved in '${binder}'`);
-        const modalEl = document.getElementById('saveToBinderModal');
-        const modal = bootstrap.Modal.getInstance(modalEl);
-        if (modal) modal.hide();
-      })
-      .fail(function () {
-        LG.toast('Failed to save bookmark.', 'danger');
-      });
-  });
-
-  // Delete Bookmark from Modal
-  $('#binder-modal-delete-btn').off('click').on('click', function () {
-    if (!existingBookmarkId) return;
-    if (!confirm('Remove this case from your research binders?')) return;
-
-    LG.api.bookmarks.remove(existingBookmarkId)
+    LG.api.bookmarks.add(caseId, 'Saved from Case Viewer')
       .done(function () {
-        LG.toast('Precedent removed from research binders.', 'info');
-        existingBookmarkId = null;
-        $bookmarkBtn.find('i').attr('class', 'bi bi-bookmark text-warning');
-        $bookmarkBtn.attr('title', 'Save to Research Binder');
-        const modalEl = document.getElementById('saveToBinderModal');
-        const modal = bootstrap.Modal.getInstance(modalEl);
-        if (modal) modal.hide();
+        LG.toast('Case saved to your bookmarks!', 'success');
+        $bookmarkBtn.find('i').attr('class', 'bi bi-bookmark-fill text-warning');
       })
       .fail(function () {
-        LG.toast('Failed to remove bookmark.', 'danger');
+        LG.toast('Case is already in your bookmarks or error occurred.', 'info');
       });
   });
-
-  // Initial bookmark status check
-  checkBookmarkStatus();
-});
 });
