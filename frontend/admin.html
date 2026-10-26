@@ -40,8 +40,8 @@
           </p>
         </div>
         <div class="d-flex align-items-center gap-2">
-          <span class="badge badge-gold fs-7 px-3 py-2">
-            <i class="bi bi-person-badge-fill me-1"></i>Registrar Privilege
+          <span class="badge badge-gold fs-7 px-3 py-2" id="admin-privilege-badge">
+            <i class="bi bi-person-badge-fill me-1"></i>Staff Privilege
           </span>
           <button type="button" class="btn btn-sm btn-judicial-outline" id="refresh-admin-btn">
             <i class="bi bi-arrow-clockwise me-1"></i>Refresh
@@ -57,7 +57,7 @@
               <i class="bi bi-journal-bookmark-fill"></i>
             </div>
             <div>
-              <div class="lg-metric-value" id="kpi-total-cases">176</div>
+              <div class="lg-metric-value" id="kpi-total-cases">—</div>
               <div class="lg-metric-label">Total Judgments</div>
             </div>
           </div>
@@ -69,7 +69,7 @@
               <i class="bi bi-shield-fill-check"></i>
             </div>
             <div>
-              <div class="lg-metric-value" id="kpi-published-cases">173</div>
+              <div class="lg-metric-value" id="kpi-published-cases">—</div>
               <div class="lg-metric-label">Sealed &amp; Published</div>
             </div>
           </div>
@@ -110,6 +110,11 @@
         <li class="nav-item" role="presentation">
           <button class="nav-link text-light fw-semibold" id="tab-queue-btn" data-bs-toggle="tab" data-bs-target="#tab-admin-queue" type="button" role="tab">
             <i class="bi bi-card-checklist me-1 text-warning"></i>Approval Queue <span class="badge bg-warning text-dark ms-1" id="queue-badge-count">0</span>
+          </button>
+        </li>
+        <li class="nav-item d-none" id="users-tab-item" role="presentation">
+          <button class="nav-link text-light fw-semibold" id="tab-users-btn" data-bs-toggle="tab" data-bs-target="#tab-admin-users" type="button" role="tab">
+            <i class="bi bi-people-fill me-1 text-danger"></i>User Administration
           </button>
         </li>
         <li class="nav-item" role="presentation">
@@ -159,25 +164,25 @@
               <div class="col-md-3">
                 <div class="p-3 bg-dark rounded border border-secondary border-opacity-25">
                   <div class="text-secondary mb-1">Audit Trail Integrity:</div>
-                  <div class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i>SHA-256 Hash-Chained</div>
+                  <div class="fw-bold text-warning" id="posture-audit"><i class="bi bi-hourglass-split me-1"></i>Verification not run</div>
                 </div>
               </div>
               <div class="col-md-3">
                 <div class="p-3 bg-dark rounded border border-secondary border-opacity-25">
                   <div class="text-secondary mb-1">Composite Seal:</div>
-                  <div class="text-success fw-bold font-mono">Phi_case Enabled</div>
+                  <div class="text-success fw-bold font-mono">Phi_case · dedicated judicial_seal</div>
                 </div>
               </div>
               <div class="col-md-3">
                 <div class="p-3 bg-dark rounded border border-secondary border-opacity-25">
-                  <div class="text-secondary mb-1">OWASP A07 Defense:</div>
-                  <div class="text-success fw-bold"><i class="bi bi-lock-fill me-1"></i>Encrypted Session &bull; Strict CSRF Protection</div>
+                  <div class="text-secondary mb-1">Session Defense:</div>
+                  <div class="text-success fw-bold"><i class="bi bi-lock-fill me-1"></i>HttpOnly Cookie &bull; CSRF Double-Submit</div>
                 </div>
               </div>
               <div class="col-md-3">
                 <div class="p-3 bg-dark rounded border border-secondary border-opacity-25">
-                  <div class="text-secondary mb-1">InLegalBERT Embeddings:</div>
-                  <div class="text-success fw-bold"><i class="bi bi-cpu-fill me-1"></i>100% Dense Vectors</div>
+                  <div class="text-secondary mb-1">Deployment Readiness:</div>
+                  <div class="fw-bold text-warning" id="posture-readiness"><i class="bi bi-hourglass-split me-1"></i>Checking dependencies…</div>
                 </div>
               </div>
             </div>
@@ -223,7 +228,80 @@
           </div>
         </div>
 
-        <!-- TAB 3: Hash-Chained Audit Ledger -->
+        <!-- TAB 3: Senior-Staff User Administration -->
+        <div class="tab-pane fade" id="tab-admin-users" role="tabpanel">
+          <div class="card card-judicial p-4 shadow">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+              <div>
+                <h3 class="h5 fw-bold text-light mb-0">User &amp; Role Administration</h3>
+                <p class="text-secondary small mb-0">Senior-staff only. Provision accounts, change roles, or suspend access; every action is audit-logged.</p>
+              </div>
+              <button type="button" class="btn btn-sm btn-gold" id="open-create-user-btn">
+                <i class="bi bi-person-plus-fill me-1"></i>Provision User
+              </button>
+            </div>
+
+            <div class="row g-2 mb-3">
+              <div class="col-md-5">
+                <label class="form-label small text-secondary fw-semibold" for="users-search-input">Search name, email or credential</label>
+                <input type="search" class="form-control" id="users-search-input" placeholder="Search users…">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small text-secondary fw-semibold" for="users-role-filter">Role</label>
+                <select class="form-select" id="users-role-filter">
+                  <option value="">All roles</option>
+                  <option value="senior_staff">Senior Staff</option>
+                  <option value="court_staff">Court Staff</option>
+                  <option value="staff">Staff (legacy)</option>
+                  <option value="junior_staff">Junior Staff</option>
+                  <option value="advocate">Advocate</option>
+                  <option value="scholar">Legal Scholar</option>
+                  <option value="public">Citizen / Public</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small text-secondary fw-semibold" for="users-status-filter">Status</label>
+                <select class="form-select" id="users-status-filter">
+                  <option value="">All statuses</option>
+                  <option value="active">Active</option>
+                  <option value="pending_verification">Pending verification</option>
+                  <option value="suspended">Suspended</option>
+                </select>
+              </div>
+              <div class="col-md-1 d-flex align-items-end">
+                <button type="button" class="btn btn-judicial-outline w-100" id="refresh-users-btn" title="Refresh users">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-dark table-hover small border border-secondary border-opacity-25 align-middle mb-0">
+                <thead>
+                  <tr class="text-secondary border-bottom border-secondary border-opacity-50">
+                    <th>User</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Credential</th>
+                    <th>Created</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="users-table-body">
+                  <tr>
+                    <td colspan="6" class="text-center py-4 text-secondary">
+                      <div class="spinner-border spinner-border-sm text-warning me-2"></div>
+                      Loading users…
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="small text-secondary mt-2" id="users-result-count"></div>
+          </div>
+        </div>
+
+        <!-- TAB 4: Hash-Chained Audit Ledger -->
         <div class="tab-pane fade" id="tab-admin-audit" role="tabpanel">
           <div class="card card-judicial p-4 shadow">
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
@@ -232,15 +310,37 @@
                 <p class="text-secondary small mb-0">Chronological hash-chained records designed to make unauthorized changes detectable.</p>
               </div>
 
-              <!-- Real-Time Audit Chain Verifier Button -->
-              <button type="button" class="btn btn-sm btn-gold" id="verify-chain-btn">
-                <i class="bi bi-shield-check me-1"></i>Verify Audit Chain Segments
-              </button>
+              <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-sm btn-outline-danger d-none" id="open-reseal-btn">
+                  <i class="bi bi-arrow-repeat me-1"></i>Reseal (Senior)
+                </button>
+                <button type="button" class="btn btn-sm btn-gold" id="verify-chain-btn">
+                  <i class="bi bi-shield-check me-1"></i>Verify Audit Chain Segments
+                </button>
+              </div>
             </div>
 
             <!-- Chain Status Banner -->
             <div id="chain-status-banner" class="alert alert-dark small mb-3 border border-secondary border-opacity-25 d-none">
               <!-- Dynamically populated verification status -->
+            </div>
+
+            <div id="chain-segments-wrap" class="d-none mb-3">
+              <h4 class="h6 fw-bold text-light mb-2"><i class="bi bi-layers me-1 text-warning"></i>Segment Results</h4>
+              <div class="table-responsive">
+                <table class="table table-dark table-sm border border-secondary border-opacity-25 align-middle mb-0">
+                  <thead>
+                    <tr class="text-secondary">
+                      <th>Segment</th>
+                      <th>Status</th>
+                      <th>Records</th>
+                      <th>Broken At</th>
+                      <th>Message</th>
+                    </tr>
+                  </thead>
+                  <tbody id="chain-segments-body"></tbody>
+                </table>
+              </div>
             </div>
 
             <!-- Audit Logs Table -->
@@ -272,6 +372,162 @@
 
     </div>
   </main>
+
+  <!-- Create User Modal -->
+  <div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <form class="modal-content bg-dark text-light border border-secondary border-opacity-50" id="create-user-form">
+        <div class="modal-header border-bottom border-secondary border-opacity-25">
+          <h5 class="modal-title font-serif fw-bold text-warning" id="createUserModalLabel">
+            <i class="bi bi-person-plus me-2"></i>Provision LexGuard Account
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold" for="create-user-name">Full name</label>
+              <input class="form-control" id="create-user-name" required minlength="2" maxlength="150" autocomplete="name">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold" for="create-user-email">Email</label>
+              <input class="form-control" id="create-user-email" type="email" required autocomplete="email">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold" for="create-user-password">Temporary password</label>
+              <input class="form-control" id="create-user-password" type="password" required minlength="8" maxlength="128" autocomplete="new-password">
+              <div class="form-text text-secondary">Share through an approved channel; it is never written to the audit log.</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold" for="create-user-credential">Credential ID (optional)</label>
+              <input class="form-control" id="create-user-credential" maxlength="100" autocomplete="off">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold" for="create-user-role">Role</label>
+              <select class="form-select" id="create-user-role" required>
+                <option value="court_staff" selected>Court Staff</option>
+                <option value="senior_staff">Senior Staff</option>
+                <option value="junior_staff">Junior Staff</option>
+                <option value="advocate">Advocate</option>
+                <option value="scholar">Legal Scholar</option>
+                <option value="public">Citizen / Public</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold" for="create-user-status">Status</label>
+              <select class="form-select" id="create-user-status" required>
+                <option value="active" selected>Active</option>
+                <option value="pending_verification">Pending verification</option>
+                <option value="suspended">Suspended</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-top border-secondary border-opacity-25">
+          <button type="button" class="btn btn-sm btn-judicial-outline" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-gold" id="create-user-submit-btn">
+            <i class="bi bi-person-check me-1"></i>Create Account
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit User Modal -->
+  <div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <form class="modal-content bg-dark text-light border border-secondary border-opacity-50" id="edit-user-form">
+        <div class="modal-header border-bottom border-secondary border-opacity-25">
+          <h5 class="modal-title font-serif fw-bold text-warning" id="editUserModalLabel">
+            <i class="bi bi-person-gear me-2"></i>Update Account
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <input type="hidden" id="edit-user-id">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold" for="edit-user-name">Full name</label>
+              <input class="form-control" id="edit-user-name" required minlength="2" maxlength="150">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold" for="edit-user-email">Email (read-only)</label>
+              <input class="form-control" id="edit-user-email" type="email" readonly>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold" for="edit-user-role">Role</label>
+              <select class="form-select" id="edit-user-role" required>
+                <option value="court_staff">Court Staff</option>
+                <option value="staff">Staff (legacy ordinary)</option>
+                <option value="junior_staff">Junior Staff</option>
+                <option value="senior_staff">Senior Staff</option>
+                <option value="advocate">Advocate</option>
+                <option value="scholar">Legal Scholar</option>
+                <option value="public">Citizen / Public</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold" for="edit-user-status">Status</label>
+              <select class="form-select" id="edit-user-status" required>
+                <option value="active">Active</option>
+                <option value="pending_verification">Pending verification</option>
+                <option value="suspended">Suspended</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label small fw-semibold" for="edit-user-credential">Credential ID</label>
+              <input class="form-control" id="edit-user-credential" maxlength="100" autocomplete="off">
+            </div>
+          </div>
+          <div class="alert alert-dark border border-warning border-opacity-25 small mt-3 mb-0">
+            Backend guards prevent self-demotion/self-suspension and removal of the last active senior-staff account.
+          </div>
+        </div>
+        <div class="modal-footer border-top border-secondary border-opacity-25">
+          <button type="button" class="btn btn-sm btn-judicial-outline" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-gold" id="edit-user-submit-btn">
+            <i class="bi bi-check-lg me-1"></i>Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Audit Reseal Modal -->
+  <div class="modal fade" id="resealModal" tabindex="-1" aria-labelledby="resealModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <form class="modal-content bg-dark text-light border border-danger border-opacity-50" id="reseal-form">
+        <div class="modal-header border-bottom border-secondary border-opacity-25">
+          <h5 class="modal-title font-serif fw-bold text-danger" id="resealModalLabel">
+            <i class="bi bi-shield-exclamation me-2"></i>Reseal Audit Chain
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="alert alert-warning small">
+            <strong>Governance action:</strong> this archives the current segment and appends one
+            <span class="font-mono">CHAIN_RESEALED</span> genesis event in a new segment. It does
+            <strong>not</strong> edit, delete, or recompute historical audit rows; archived invalid
+            segments remain visible in verification results.
+          </div>
+          <label class="form-label small fw-semibold" for="reseal-reason">Disclosed reason (minimum 10 characters)</label>
+          <textarea class="form-control" id="reseal-reason" rows="4" minlength="10" maxlength="1000" required placeholder="Phase-0 disclosed remediation of the legacy audit segment after migration…"></textarea>
+          <div class="form-check mt-3">
+            <input class="form-check-input" type="checkbox" id="reseal-confirm">
+            <label class="form-check-label small" for="reseal-confirm">
+              I confirm the Phase-0 migration has run and historical rows must be retained unchanged.
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer border-top border-secondary border-opacity-25">
+          <button type="button" class="btn btn-sm btn-judicial-outline" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-danger" id="reseal-submit-btn" disabled>
+            <i class="bi bi-arrow-repeat me-1"></i>Append Reseal Event
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- Review / Approve Modal -->
   <div class="modal fade" id="reviewModal" tabindex="-1" aria-labelledby="reviewModalLabel" aria-hidden="true">

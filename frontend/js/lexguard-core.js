@@ -8,9 +8,37 @@
 
   window.LG = window.LG || {};
 
+  function resolveApiBase() {
+    const override = window.LEXGUARD_API_BASE_URL || window.API_BASE_URL;
+    if (override) {
+      return String(override).replace(/\/+$/, '');
+    }
+
+    // Local two-server development uses the static frontend on a different
+    // port. In the Phase-1 single-service deployment, FastAPI serves both
+    // the frontend and API, so the API is intentionally same-origin. That
+    // also makes HttpOnly-cookie authentication work without cross-site
+    // cookie exceptions.
+    const host = window.location.hostname;
+    const port = window.location.port;
+    const localStaticPorts = ['3000', '5173', '5174', '8080', '8888'];
+    if (
+      window.location.protocol === 'file:' ||
+      ((host === '127.0.0.1' || host === 'localhost') && localStaticPorts.includes(port))
+    ) {
+      return 'http://127.0.0.1:8000/api/v1';
+    }
+    return window.location.origin + '/api/v1';
+  }
+
+  const API_BASE = resolveApiBase();
+  window.API_BASE_URL = API_BASE;
+  window.LexGuard = window.LexGuard || {};
+  window.LexGuard.API_BASE_URL = API_BASE;
+
   // Core Configuration
   LG.config = {
-    API_BASE: 'http://127.0.0.1:8000/api/v1',
+    API_BASE: API_BASE,
     PROFILE_STORAGE_KEY: 'lg_profile',
     SESSION_STORAGE_KEY: 'lg_session', // legacy key, deleted on load; never written
     CSRF_COOKIE_NAME: 'lexguard_csrf_token',
@@ -176,8 +204,10 @@
       switch (role) {
         case 'staff':
         case 'court_staff':
-        case 'senior_staff':
+        case 'junior_staff':
           return '<span class="badge badge-gold"><i class="bi bi-shield-check me-1"></i>Court Staff</span>';
+        case 'senior_staff':
+          return '<span class="badge bg-danger"><i class="bi bi-shield-fill-check me-1"></i>Senior Staff</span>';
         case 'advocate':
           return '<span class="badge bg-primary"><i class="bi bi-briefcase me-1"></i>Advocate</span>';
         case 'scholar':
@@ -195,8 +225,11 @@
       switch (role) {
         case 'staff':
         case 'court_staff':
-        case 'senior_staff':
           return 'Court Staff / Registrar';
+        case 'junior_staff':
+          return 'Junior Court Staff';
+        case 'senior_staff':
+          return 'Senior Staff / Chief Registrar';
         case 'advocate':
           return 'Advocate / Legal Counsel';
         case 'scholar':

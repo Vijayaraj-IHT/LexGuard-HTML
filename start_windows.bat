@@ -54,7 +54,7 @@ echo ===========================================================================
 echo   ✅ LEXGUARD SERVICES ARE RUNNING!
 echo   - High Court Portal:  http://127.0.0.1:8888/index.html
 echo   - Case Search:        http://127.0.0.1:8888/search.html
-echo   - Staff Workstation:  http://127.0.0.1:8888/admin.html?auth_role=staff
+echo   - Staff Workstation:  http://127.0.0.1:8888/admin.html
 echo   - Visual Showcase:    http://127.0.0.1:8888/screenshots-gallery.html
 echo   - FastAPI Swagger UI: http://127.0.0.1:8000/docs
 echo.

@@ -1,0 +1,61 @@
+# LexGuard Phase-1 free/low-cost deployment blueprint.
+#
+# Topology: ONE Render Python web service serves both FastAPI (/api/v1) and
+# the zero-build frontend (/), backed by an external Neon PostgreSQL database.
+# Keeping the UI and API same-origin avoids cross-site cookie/CORS failures.
+#
+# Before the first deploy:
+#   1. Create a Neon database (Singapore/ap-southeast-1 is a good India-adjacent
+#      default) and restore database/database_dump.sql into it.
+#   2. When Render prompts for DATABASE_URL, paste Neon's pooled connection
+#      string. RUN_MIGRATIONS=true applies the idempotent Phase-0 migration at
+#      boot; the disclosed audit reseal remains a separate senior action.
+# See DEPLOYMENT.md for the full runbook and free-tier limitations.
+
+services:
+  - type: web
+    name: lexguard
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r backend/requirements-prod.txt
+    startCommand: bash backend/start.sh
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: RUN_MIGRATIONS
+        value: true
+      - key: SERVE_FRONTEND
+        value: true
+      - key: FRONTEND_DIR
+        value: ../frontend
+      - key: ENABLE_API_DOCS
+        value: false
+      - key: COOKIE_SECURE
+        value: true
+      - key: COOKIE_SAMESITE
+        value: lax
+      - key: STORAGE_DIR
+        value: ./storage/cases
+      - key: DB_POOL_SIZE
+        value: 3
+      - key: DB_MAX_OVERFLOW
+        value: 2
+      - key: USE_PGVECTOR
+        value: false
+      - key: USE_LOCAL_LLM
+        value: false
+      - key: USE_MOCK_LLM
+        value: true
+      - key: ANTHROPIC_API_KEY
+        sync: false

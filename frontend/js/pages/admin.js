@@ -12,8 +12,21 @@ $(document).ready(function () {
   }
 
   const canDecideCases = LG.session.hasRole(['senior_staff']);
+  const isSeniorAdmin = canDecideCases;
+  const currentAdmin = LG.session.user() || {};
   let doughnutChart = null;
   let barChart = null;
+  let adminUsers = [];
+  let adminUsersById = new Map();
+  let usersLoaded = false;
+
+  if (isSeniorAdmin) {
+    $('#users-tab-item').removeClass('d-none');
+    $('#open-reseal-btn').removeClass('d-none');
+    $('#admin-privilege-badge').html('<i class="bi bi-person-badge-fill me-1"></i>Senior Registrar Privilege');
+  } else {
+    $('#admin-privilege-badge').html('<i class="bi bi-person-badge-fill me-1"></i>Court Staff Privilege');
+  }
 
   const $kpiTotalCases = $('#kpi-total-cases');
   const $kpiPublishedCases = $('#kpi-published-cases');
@@ -25,7 +38,17 @@ $(document).ready(function () {
   const $auditLogsTableBody = $('#audit-logs-table-body');
   const $verifyChainBtn = $('#verify-chain-btn');
   const $chainStatusBanner = $('#chain-status-banner');
+  const $chainSegmentsWrap = $('#chain-segments-wrap');
+  const $chainSegmentsBody = $('#chain-segments-body');
   const $refreshBtn = $('#refresh-admin-btn');
+  const $postureAudit = $('#posture-audit');
+  const $postureReadiness = $('#posture-readiness');
+
+  const $usersTableBody = $('#users-table-body');
+  const $usersSearchInput = $('#users-search-input');
+  const $usersRoleFilter = $('#users-role-filter');
+  const $usersStatusFilter = $('#users-status-filter');
+  const $usersResultCount = $('#users-result-count');
 
   // Review Modal Elements
   const $reviewModal = new bootstrap.Modal(document.getElementById('reviewModal'));
@@ -35,6 +58,60 @@ $(document).ready(function () {
   const $modalReviewNote = $('#modal-review-note');
   const $modalApproveBtn = $('#modal-approve-btn');
   const $modalRejectBtn = $('#modal-reject-btn');
+
+  const createUserModalEl = document.getElementById('createUserModal');
+  const editUserModalEl = document.getElementById('editUserModal');
+  const resealModalEl = document.getElementById('resealModal');
+  const $createUserModal = createUserModalEl ? new bootstrap.Modal(createUserModalEl) : null;
+  const $editUserModal = editUserModalEl ? new bootstrap.Modal(editUserModalEl) : null;
+  const $resealModal = resealModalEl ? new bootstrap.Modal(resealModalEl) : null;
+
+  function apiErrorMessage(xhr, fallback) {
+    try {
+      const detail = xhr && xhr.responseJSON ? xhr.responseJSON.detail : null;
+      if (typeof detail === 'string' && detail) return detail;
+      if (Array.isArray(detail) && detail.length) {
+        return detail.map(function (item) { return item.msg || JSON.stringify(item); }).join('; ');
+      }
+      if (detail) return JSON.stringify(detail);
+    } catch (e) {}
+    return fallback;
+  }
+
+  function setPosture($el, state, html) {
+    if (!$el.length) return;
+    const classes = {
+      ok: 'fw-bold text-success',
+      warn: 'fw-bold text-warning',
+      bad: 'fw-bold text-danger'
+    };
+    $el.attr('class', classes[state] || classes.warn).html(html);
+  }
+
+  function loadSystemReadiness() {
+    if (!LG.api.system || !LG.api.system.readiness) return;
+    LG.api.system.readiness()
+      .done(function (res) {
+        const checks = res.checks || {};
+        setPosture(
+          $postureReadiness,
+          'ok',
+          '<i class="bi bi-check-circle-fill me-1"></i>Ready · DB/schema/storage OK'
+        );
+        $postureReadiness.attr('title', 'Checks: ' + JSON.stringify(checks));
+      })
+      .fail(function (xhr) {
+        const res = xhr.responseJSON || {};
+        const checks = res.checks || {};
+        const failed = Object.keys(checks).filter(function (key) { return !checks[key]; });
+        setPosture(
+          $postureReadiness,
+          'bad',
+          '<i class="bi bi-exclamation-octagon-fill me-1"></i>Not ready' +
+            (failed.length ? ': ' + LG.utils.escapeHtml(failed.join(', ')) : '')
+        );
+      });
+  }
 
   /**
    * Load Analytics KPIs and Chart.js visualizations.
@@ -223,8 +300,8 @@ $(document).ready(function () {
         loadAnalytics();
         loadAuditLogs();
       })
-      .fail(function () {
-        LG.toast('Failed to approve case record.', 'danger');
+      .fail(function (xhr) {
+        LG.toast(apiErrorMessage(xhr, 'Failed to approve case record.'), 'danger');
       });
   });
 
@@ -246,8 +323,192 @@ $(document).ready(function () {
         loadApprovalQueue();
         loadAnalytics();
       })
-      .fail(function () {
-        LG.toast('Failed to reject submission.', 'danger');
+      .fail(function (xhr) {
+        LG.toast(apiErrorMessage(xhr, 'Failed to reject submission.'), 'danger');
+      });
+  });
+
+  /**
+   * Senior-staff user administration.
+   */
+  function renderUsers() {
+    const query = ($usersSearchInput.val() || '').toLowerCase().trim();
+    const visible = adminUsers.filter(function (user) {
+      if (!query) return true;
+      return [user.name, user.email, user.credential_id || '', user.role, user.status]
+        .join(' ')
+        .toLowerCase()
+        .includes(query);
+    });
+
+    $usersResultCount.text(
+      'Showing ' + visible.length + ' of ' + adminUsers.length + ' loaded account(s).'
+    );
+
+    if (!visible.length) {
+      $usersTableBody.html(
+        '<tr><td colspan="6" class="text-center py-4 text-secondary">No users match the current filters.</td></tr>'
+      );
+      return;
+    }
+
+    const rows = visible.map(function (user) {
+      const isSelf = String(user.id) === String(currentAdmin.id || '');
+      return `
+        <tr>
+          <td>
+            <div class="fw-bold text-light">${LG.utils.escapeHtml(user.name)}${isSelf ? ' <span class="badge bg-warning text-dark ms-1">You</span>' : ''}</div>
+            <div class="small text-secondary">${LG.utils.escapeHtml(user.email)}</div>
+          </td>
+          <td>
+            ${LG.utils.getRoleBadge(user.role)}
+            <div class="small text-secondary font-mono mt-1">${LG.utils.escapeHtml(user.role)}</div>
+          </td>
+          <td><span class="${LG.utils.statusBadgeClass(user.status)}">${LG.utils.escapeHtml(user.status)}</span></td>
+          <td class="text-secondary font-mono small">${LG.utils.escapeHtml(user.credential_id || '—')}</td>
+          <td class="text-secondary">${LG.utils.formatDate(user.created_at)}</td>
+          <td class="text-end">
+            <button type="button" class="btn btn-xs btn-judicial-outline edit-user-btn" data-user-id="${LG.utils.escapeHtml(user.id)}">
+              <i class="bi bi-person-gear me-1"></i>Edit
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    $usersTableBody.html(rows);
+  }
+
+  function loadUsers() {
+    if (!isSeniorAdmin) return;
+
+    const params = { limit: 500 };
+    const role = $usersRoleFilter.val();
+    const userStatus = $usersStatusFilter.val();
+    if (role) params.role = role;
+    if (userStatus) params.status = userStatus;
+
+    $usersTableBody.html(
+      '<tr><td colspan="6" class="text-center py-4 text-secondary">' +
+      '<div class="spinner-border spinner-border-sm text-warning me-2"></div>Loading users…</td></tr>'
+    );
+
+    LG.api.admin.getUsers(params)
+      .done(function (users) {
+        adminUsers = Array.isArray(users) ? users : [];
+        adminUsersById = new Map(adminUsers.map(function (user) { return [String(user.id), user]; }));
+        usersLoaded = true;
+        renderUsers();
+      })
+      .fail(function (xhr) {
+        usersLoaded = false;
+        $usersTableBody.html(
+          '<tr><td colspan="6" class="text-center text-danger py-4">' +
+          LG.utils.escapeHtml(apiErrorMessage(xhr, 'Failed to load users.')) +
+          '</td></tr>'
+        );
+      });
+  }
+
+  function openEditUser(user) {
+    if (!user || !$editUserModal) return;
+    const isSelf = String(user.id) === String(currentAdmin.id || '');
+
+    $('#edit-user-id').val(user.id);
+    $('#edit-user-name').val(user.name || '');
+    $('#edit-user-email').val(user.email || '');
+    $('#edit-user-role').val(user.role || 'public').prop('disabled', isSelf);
+    $('#edit-user-status').val(user.status || 'active').prop('disabled', isSelf);
+    $('#edit-user-credential').val(user.credential_id || '');
+    $editUserModal.show();
+  }
+
+  $('#tab-users-btn').on('shown.bs.tab', function () {
+    if (!usersLoaded) loadUsers();
+  });
+  $('#refresh-users-btn').on('click', loadUsers);
+  $usersRoleFilter.on('change', loadUsers);
+  $usersStatusFilter.on('change', loadUsers);
+  $usersSearchInput.on('input', renderUsers);
+  $usersTableBody.on('click', '.edit-user-btn', function () {
+    openEditUser(adminUsersById.get(String($(this).data('user-id'))));
+  });
+
+  $('#open-create-user-btn').on('click', function () {
+    if (!$createUserModal) return;
+    $('#create-user-form')[0].reset();
+    $('#create-user-role').val('court_staff');
+    $('#create-user-status').val('active');
+    $createUserModal.show();
+  });
+
+  $('#create-user-form').on('submit', function (event) {
+    event.preventDefault();
+    const $submit = $('#create-user-submit-btn').prop('disabled', true);
+    const credential = $('#create-user-credential').val().trim();
+
+    LG.api.admin.createUser({
+      name: $('#create-user-name').val().trim(),
+      email: $('#create-user-email').val().trim(),
+      password: $('#create-user-password').val(),
+      role: $('#create-user-role').val(),
+      status: $('#create-user-status').val(),
+      credential_id: credential || null
+    })
+      .done(function () {
+        if ($createUserModal) $createUserModal.hide();
+        LG.toast('Account provisioned and audit-logged.', 'success');
+        loadUsers();
+        loadAnalytics();
+        loadAuditLogs();
+      })
+      .fail(function (xhr) {
+        LG.toast(apiErrorMessage(xhr, 'Failed to provision account.'), 'danger');
+      })
+      .always(function () {
+        $submit.prop('disabled', false);
+      });
+  });
+
+  $('#edit-user-form').on('submit', function (event) {
+    event.preventDefault();
+    const userId = $('#edit-user-id').val();
+    const original = adminUsersById.get(String(userId)) || {};
+    const next = {
+      name: $('#edit-user-name').val().trim(),
+      role: $('#edit-user-role').val(),
+      status: $('#edit-user-status').val(),
+      credential_id: $('#edit-user-credential').val().trim() || null
+    };
+    const updates = {};
+    Object.keys(next).forEach(function (field) {
+      const previous = field === 'credential_id' ? (original[field] || null) : original[field];
+      if (next[field] !== previous) updates[field] = next[field];
+    });
+
+    if (!Object.keys(updates).length) {
+      LG.toast('No account changes to save.', 'info');
+      if ($editUserModal) $editUserModal.hide();
+      return;
+    }
+
+    const $submit = $('#edit-user-submit-btn').prop('disabled', true);
+    LG.api.admin.updateUser(userId, updates)
+      .done(function (updated) {
+        if ($editUserModal) $editUserModal.hide();
+        if (String(userId) === String(currentAdmin.id || '')) {
+          LG.session.set(updated);
+        }
+        LG.toast('Account updated and audit-logged.', 'success');
+        loadUsers();
+        loadAnalytics();
+        loadAuditLogs();
+      })
+      .fail(function (xhr) {
+        LG.toast(apiErrorMessage(xhr, 'Failed to update account.'), 'danger');
+      })
+      .always(function () {
+        $submit.prop('disabled', false);
       });
   });
 
@@ -268,6 +529,8 @@ $(document).ready(function () {
           else if (log.action === 'REJECT' || log.action === 'INTEGRITY_VIOLATION') actionBadge = 'badge bg-danger';
           else if (log.action === 'LOGIN') actionBadge = 'badge bg-primary';
           else if (log.action === 'DRAFT_ANALYZE') actionBadge = 'badge bg-info text-dark';
+          else if (log.action === 'CHAIN_RESEALED') actionBadge = 'badge bg-warning text-dark';
+          else if (log.action === 'USER_CREATED' || log.action === 'USER_UPDATED') actionBadge = 'badge bg-info text-dark';
 
           return `
             <tr>
@@ -287,8 +550,38 @@ $(document).ready(function () {
       });
   }
 
+  function renderChainSegments(segments, activeSegment) {
+    if (!Array.isArray(segments) || !segments.length) {
+      $chainSegmentsWrap.addClass('d-none');
+      $chainSegmentsBody.empty();
+      return;
+    }
+
+    const rows = segments.map(function (segment) {
+      const isActive = segment.segment === activeSegment;
+      const label = segment.is_valid
+        ? (isActive ? 'Active · Valid' : 'Archived · Valid')
+        : (isActive ? 'Active · Invalid' : 'Archived · Invalid/Superseded');
+      const badge = segment.is_valid
+        ? 'badge bg-success'
+        : (isActive ? 'badge bg-danger' : 'badge bg-warning text-dark');
+      return `
+        <tr>
+          <td class="font-mono text-light">${segment.segment}</td>
+          <td><span class="${badge}">${label}</span></td>
+          <td class="text-light">${segment.total_records != null ? segment.total_records : '—'}</td>
+          <td class="text-secondary font-mono small">${segment.broken_at_index != null ? 'index ' + segment.broken_at_index : '—'}</td>
+          <td class="text-secondary">${LG.utils.escapeHtml(segment.message || segment.reason || '')}</td>
+        </tr>
+      `;
+    }).join('');
+
+    $chainSegmentsBody.html(rows);
+    $chainSegmentsWrap.removeClass('d-none');
+  }
+
   /**
-   * Verify Entire Cryptographic Audit Chain.
+   * Verify the hash-chained audit ledger by segment.
    */
   $verifyChainBtn.on('click', function () {
     $chainStatusBanner.removeClass('d-none alert-success alert-danger alert-warning').addClass('alert-dark')
@@ -301,8 +594,10 @@ $(document).ready(function () {
           return !segment.is_valid && segment.segment !== res.active_segment;
         });
         const safeMessage = LG.utils.escapeHtml(res.message || 'Verification finished.');
+        renderChainSegments(segments, res.active_segment);
 
         if (res.is_valid && archivedInvalid.length === 0) {
+          setPosture($postureAudit, 'ok', '<i class="bi bi-check-circle-fill me-1"></i>Active segment verified');
           $chainStatusBanner.removeClass('alert-dark alert-danger alert-warning').addClass('alert-success')
             .html(`
               <div class="d-flex align-items-center gap-2">
@@ -315,6 +610,7 @@ $(document).ready(function () {
             `);
           LG.toast('Active audit segment verified.', 'success');
         } else if (res.is_valid) {
+          setPosture($postureAudit, 'warn', '<i class="bi bi-exclamation-triangle-fill me-1"></i>Active valid · archived invalid disclosed');
           $chainStatusBanner.removeClass('alert-dark alert-success alert-danger').addClass('alert-warning')
             .html(`
               <div class="d-flex align-items-center gap-2">
@@ -327,6 +623,7 @@ $(document).ready(function () {
             `);
           LG.toast('Active segment valid; archived invalid segment retained for disclosure.', 'warning');
         } else {
+          setPosture($postureAudit, 'bad', '<i class="bi bi-x-octagon-fill me-1"></i>Active audit segment invalid');
           $chainStatusBanner.removeClass('alert-dark alert-success alert-warning').addClass('alert-danger')
             .html(`
               <div class="d-flex align-items-center gap-2">
@@ -340,9 +637,56 @@ $(document).ready(function () {
           LG.toast('Audit chain invalid. Contact a senior administrator.', 'danger');
         }
       })
-      .fail(function () {
+      .fail(function (xhr) {
+        renderChainSegments([], null);
+        setPosture($postureAudit, 'bad', '<i class="bi bi-x-octagon-fill me-1"></i>Verification request failed');
         $chainStatusBanner.removeClass('alert-dark alert-success alert-warning').addClass('alert-danger')
-          .text('Failed to execute cryptographic verification.');
+          .text(apiErrorMessage(xhr, 'Failed to execute cryptographic verification.'));
+      });
+  });
+
+  function syncResealSubmitState() {
+    const reasonReady = ($('#reseal-reason').val() || '').trim().length >= 10;
+    const confirmed = $('#reseal-confirm').is(':checked');
+    $('#reseal-submit-btn').prop('disabled', !(reasonReady && confirmed));
+  }
+
+  $('#open-reseal-btn').on('click', function () {
+    if (!$resealModal) return;
+    $('#reseal-form')[0].reset();
+    syncResealSubmitState();
+    $resealModal.show();
+  });
+  $('#reseal-reason').on('input', syncResealSubmitState);
+  $('#reseal-confirm').on('change', syncResealSubmitState);
+
+  $('#reseal-form').on('submit', function (event) {
+    event.preventDefault();
+    const reason = $('#reseal-reason').val().trim();
+    const $submit = $('#reseal-submit-btn').prop('disabled', true);
+
+    LG.api.admin.resealAuditChain(reason)
+      .done(function (res) {
+        if ($resealModal) $resealModal.hide();
+        $chainStatusBanner.removeClass('d-none alert-dark alert-danger alert-warning').addClass('alert-success')
+          .html(
+            '<strong>Audit chain resealed.</strong> Active segment is now ' +
+            LG.utils.escapeHtml(res.segment) +
+            '; genesis hash ' +
+            LG.utils.escapeHtml(LG.utils.truncateHash(res.current_hash, 8)) +
+            '. Historical rows were retained unchanged.'
+          );
+        LG.toast('Audit chain resealed into a new disclosed segment.', 'success');
+        loadAuditLogs();
+        loadAnalytics();
+        $verifyChainBtn.trigger('click');
+      })
+      .fail(function (xhr) {
+        LG.toast(apiErrorMessage(xhr, 'Failed to reseal audit chain.'), 'danger');
+      })
+      .always(function () {
+        syncResealSubmitState();
+        if (!$('#reseal-reason').val()) $submit.prop('disabled', true);
       });
   });
 
@@ -351,6 +695,8 @@ $(document).ready(function () {
     loadAnalytics();
     loadApprovalQueue();
     loadAuditLogs();
+    loadSystemReadiness();
+    if (isSeniorAdmin && usersLoaded) loadUsers();
     LG.toast('Workstation data refreshed.', 'info');
   });
 
@@ -358,4 +704,5 @@ $(document).ready(function () {
   loadAnalytics();
   loadApprovalQueue();
   loadAuditLogs();
+  loadSystemReadiness();
 });

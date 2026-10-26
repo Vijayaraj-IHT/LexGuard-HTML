@@ -14,11 +14,13 @@ engine_kwargs = {
     "echo": False,
 }
 if not settings.DATABASE_URL.startswith("sqlite"):
+    # Bounded defaults are suitable for a single free Render instance plus a
+    # Neon free/launch database. Operators can raise them via environment.
     engine_kwargs.update({
-        "pool_size": 10,
-        "max_overflow": 20,
-        "pool_recycle": 1800,
-        "pool_timeout": 30,
+        "pool_size": settings.DB_POOL_SIZE,
+        "max_overflow": settings.DB_MAX_OVERFLOW,
+        "pool_recycle": settings.DB_POOL_RECYCLE,
+        "pool_timeout": settings.DB_POOL_TIMEOUT,
     })
 
 engine = create_engine(

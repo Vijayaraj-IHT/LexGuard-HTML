@@ -78,6 +78,9 @@ backend/
 ```bash
 pip install -r requirements.txt
 ```
+For a production/free-hosting install without the heavy local ML stack, use
+`pip install -r requirements-prod.txt` instead (add `requirements-ml.txt`
+only on a workstation or paid/GPU host that should run local models).
 
 ### 2. Configure Environment
 Copy `.env.example` to `.env`:
@@ -90,7 +93,8 @@ cp .env.example .env
 python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 - Interactive Swagger UI: [http://127.0.0.1:8000/api/v1/docs](http://127.0.0.1:8000/api/v1/docs)
-- Health Check: [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
+- Health Check (liveness): [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
+- Readiness Check (DB/schema/storage): [http://127.0.0.1:8000/ready](http://127.0.0.1:8000/ready)
 
 ### 4. Phase-0 Migration for a Restored Legacy Dump
 After restoring `database/database_dump.sql`, apply the idempotent schema/backfill migration, then have an active senior-staff operator perform the disclosed reseal:
@@ -103,7 +107,14 @@ python ../scripts/reseal_audit_chain.py \
 ```
 The restored 1,393-row legacy segment is known invalid (first broken link at replay index 31). The migration labels it segment 0, backfills `seq`, and converts audit user/case foreign keys to `ON DELETE RESTRICT`; it does not rewrite hashes. The reseal appends a genesis `CHAIN_RESEALED` event in a new segment.
 
-### 5. Running the Test Suite
+### 5. Phase-1 Production / Single-Service Mode
+`SERVE_FRONTEND=true` makes FastAPI also serve `../frontend` from the same
+origin as `/api/v1` (the Render topology in `../render.yaml`); see
+`../DEPLOYMENT.md` for the Neon + Render runbook. The production start
+command is `./start.sh`, which optionally runs the Phase-0 migration when
+`RUN_MIGRATIONS=true` before starting Uvicorn on `$PORT`.
+
+### 6. Running the Test Suite
 The suite is isolated by `tests/conftest.py`: it forces a fresh temporary SQLite database and storage directory, then resets and reseeds deterministic demo users/cases before each test.
 ```bash
 pytest -q

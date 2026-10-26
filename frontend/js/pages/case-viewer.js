@@ -398,7 +398,7 @@ $(document).ready(function () {
    * Render Tab 4: Precedents & Citator Graph.
    */
     function loadPrecedentNetwork(cid) {
-    const apiBase = (window.LexGuard && window.LexGuard.API_BASE_URL) || window.API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
+    const apiBase = LG.config.API_BASE;
     $.ajax({
       url: apiBase + '/cases/' + encodeURIComponent(cid) + '/citations',
       type: 'GET',

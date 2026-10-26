@@ -1,0 +1,8 @@
+# Optional local ML stack. Install in addition to requirements-prod.txt on a
+# workstation or paid/GPU host when real SentenceTransformer / InLegalBERT /
+# local-LLM inference is required. Do not use on the Render free instance.
+sentence-transformers>=3.0.0
+transformers>=4.44.0
+torch>=2.2.0
+accelerate>=0.30.0
+pymupdf>=1.24.0

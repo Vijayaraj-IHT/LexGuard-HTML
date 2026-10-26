@@ -2,15 +2,21 @@ import uuid
 from datetime import datetime, timezone
 from sqlalchemy import Column, String, Integer, Text, JSON, DateTime, ForeignKey, Boolean, Date
 from sqlalchemy.orm import relationship
+from app.core.config import settings
 from app.core.database import Base
 
 
-# Support pgvector when on PostgreSQL with extension installed, fallback to JSON
-try:
-    from pgvector.sqlalchemy import Vector
-    VectorColumnType = Vector(384)
-except Exception:
-    VectorColumnType = JSON
+# JSON is the canonical/portable embedding storage (including the shipped
+# dump). Native pgvector is opt-in via USE_PGVECTOR=true for databases whose
+# column was actually created as vector(384).
+VectorColumnType = JSON
+if settings.USE_PGVECTOR:
+    try:
+        from pgvector.sqlalchemy import Vector
+
+        VectorColumnType = Vector(384)
+    except Exception:
+        VectorColumnType = JSON
 
 
 class Case(Base):

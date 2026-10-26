@@ -40,7 +40,7 @@ $(document).ready(function () {
       </div>
     `);
 
-    $.getJSON('http://127.0.0.1:8000/api/v1/statutes/acts')
+    LG.api.statutes.getActs()
       .done(function (acts) {
         liveActsData = acts || [];
         renderCatalog();
@@ -58,7 +58,7 @@ $(document).ready(function () {
           <div class="card card-judicial text-center p-4">
             <i class="bi bi-exclamation-triangle text-danger fs-3 mb-2"></i>
             <h5 class="text-light">Failed to load codified statutes</h5>
-            <p class="text-secondary small">Please ensure the backend daemon on port 8000 is active.</p>
+            <p class="text-secondary small">Please ensure the LexGuard API is reachable.</p>
           </div>
         `);
       });
@@ -174,7 +174,7 @@ $(document).ready(function () {
 
     statuteModal.show();
 
-    $.getJSON(`http://127.0.0.1:8000/api/v1/statutes/${encodeURIComponent(actCode)}/${encodeURIComponent(secNo)}`)
+    LG.api.statutes.getSection(actCode, secNo)
       .done(function (data) {
         $('#modal-section-title').text(`Section ${data.section_no}: ${data.section_title}`);
         $('#modal-act-title').text(data.act_title);

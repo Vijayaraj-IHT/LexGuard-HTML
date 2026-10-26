@@ -308,7 +308,45 @@
     },
 
     /* -------------------------------------------------------------------------
-       7. Staff Administration & Hash-Chained Audit Ledger (/admin)
+       7. System Health (/health, /ready)
+       ------------------------------------------------------------------------- */
+    system: {
+      health: function () {
+        return apiRequest({
+          url: LG.config.API_BASE.replace(/\/api\/v1\/?$/, '') + '/health',
+          method: 'GET'
+        });
+      },
+
+      readiness: function () {
+        return apiRequest({
+          url: LG.config.API_BASE.replace(/\/api\/v1\/?$/, '') + '/ready',
+          method: 'GET'
+        });
+      }
+    },
+
+    /* -------------------------------------------------------------------------
+       8. Statutory Acts & Sections (/statutes)
+       ------------------------------------------------------------------------- */
+    statutes: {
+      getActs: function () {
+        return apiRequest({
+          url: '/statutes/acts',
+          method: 'GET'
+        });
+      },
+
+      getSection: function (actCode, sectionNo) {
+        return apiRequest({
+          url: '/statutes/' + encodeURIComponent(actCode) + '/' + encodeURIComponent(sectionNo),
+          method: 'GET'
+        });
+      }
+    },
+
+    /* -------------------------------------------------------------------------
+       9. Staff Administration & Hash-Chained Audit Ledger (/admin)
        ------------------------------------------------------------------------- */
     admin: {
       getQueue: function (statusFilter) {
@@ -386,7 +424,7 @@
     },
 
     /* -------------------------------------------------------------------------
-       8. Saved Bookmarks (/bookmarks)
+       10. Saved Bookmarks (/bookmarks)
        ------------------------------------------------------------------------- */
     bookmarks: {
       list: function (binder) {

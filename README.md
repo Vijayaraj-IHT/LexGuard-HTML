@@ -142,6 +142,28 @@ Open your browser to: **`http://127.0.0.1:8888/index.html`**
 
 ---
 
+## 🚀 Phase-1 Deployment (Render + Neon, free tier)
+
+Phase 1 adds a production-ready single-service topology: one Render Python
+web service serves both the FastAPI API and this zero-build frontend from the
+same origin, backed by Neon PostgreSQL. Same-origin serving keeps the
+HttpOnly-cookie session and CSRF protection working without cross-site
+exceptions, and `backend/requirements-prod.txt` excludes the heavy local ML
+stack so the free instance can build and boot.
+
+1. Restore `database/database_dump.sql` into a Neon database.
+2. Create a Render Blueprint from this repo ([`render.yaml`](render.yaml)) and
+   supply Neon's pooled `DATABASE_URL` when prompted.
+3. The start script runs the idempotent Phase-0 migration, then Uvicorn.
+4. A senior-staff operator performs the disclosed audit reseal (Admin →
+   Audit Ledger → **Reseal (Senior)**, or the CLI above).
+5. Smoke-check `/health` (liveness) and `/ready` (database/schema/storage).
+
+Full runbook, environment table, and free-tier limitations (spin-down and
+ephemeral uploads): **[`DEPLOYMENT.md`](DEPLOYMENT.md)**.
+
+---
+
 ## 🔑 Demo Access Personas
 
 The database comes pre-seeded with authorized credentials for all four judicial roles:
@@ -183,7 +205,10 @@ LexGuard-HTML/
 ├── backend/                      # FastAPI Python Backend
 │   ├── app/                      # Models, Endpoints, Services, Security
 │   ├── storage/cases/            # Judgment PDF corpus for the 278-record canonical dump
-│   ├── requirements.txt          # Minimal Python Dependencies
+│   ├── requirements.txt          # Full local dependency set (incl. optional ML)
+│   ├── requirements-prod.txt     # Lightweight production dependencies (Render)
+│   ├── requirements-ml.txt       # Optional local ML stack
+│   ├── start.sh                  # Production start command (migration gate + Uvicorn)
 │   └── .env.example              # Environment Configuration
 ├── database/                     # Database Assets
 │   ├── database_dump.sql         # Canonical PostgreSQL dump (278 cases, 1,393 legacy audit logs)
@@ -192,6 +217,8 @@ LexGuard-HTML/
 ├── scripts/                      # Utility Scripts
 │   ├── capture_html_red_white.py # Headless Edge Visual Audit Script
 │   └── find_404_errors.py        # Route Integrity Validator
+├── render.yaml                   # Phase-1 Render Blueprint (free web service)
+├── DEPLOYMENT.md                 # Render + Neon deployment runbook
 ├── start_windows.bat             # 1-Click Windows Launcher
 ├── start_linux.sh                # 1-Click Linux Launcher
 ├── index.html                    # Root Portal Redirect
