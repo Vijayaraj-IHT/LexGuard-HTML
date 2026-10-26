@@ -204,6 +204,11 @@
           url: '/cases/' + encodeURIComponent(caseId) + '/citations',
           method: 'GET'
         });
+      },
+
+      search: function (query, params) {
+        const payload = Object.assign({ query: query || '', limit: 20, offset: 0 }, params || {});
+        return LG.api.search.query(payload);
       }
     },
 
