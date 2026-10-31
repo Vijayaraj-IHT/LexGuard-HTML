@@ -13,7 +13,7 @@ from app.models.case import Case
 from app.models.audit_log import AuditLog
 from app.schemas.verification import HashLookupResponse, HashLookupRequest, MatchedCaseSummary
 from app.services.crypto_service import verify_sha256, verify_sha256_stream
-from app.services.audit_service import log_audit_event
+from app.services.audit_service import log_audit_event, check_audit_entry
 from app.core.rate_limit import rate_limit
 
 router = APIRouter()
@@ -67,13 +67,28 @@ def _execute_hash_lookup(hash_str: str, request: Request, db: Session, current_u
     h_meta = hashlib.sha256(meta_str.encode("utf-8")).hexdigest()
     h_text = hashlib.sha256((matched_case.full_text or "").encode("utf-8")).hexdigest()
 
-    # Query latest audit log entry for this case to expose tamper-evident blockchain block link
-    latest_audit = (
+    # Latest audit entries for this case, each checked locally (see check_audit_entry).
+    recent_entries = (
         db.query(AuditLog)
         .filter(AuditLog.case_id == matched_case.id)
         .order_by(AuditLog.timestamp.desc())
-        .first()
+        .limit(10)
+        .all()
     )
+    audit_trail = []
+    for e in recent_entries:
+        checks = check_audit_entry(db, e)
+        audit_trail.append({
+            "id": e.id,
+            "action": e.action,
+            "timestamp": e.timestamp.isoformat() if e.timestamp else None,
+            "details": e.details,
+            "current_hash": e.current_hash,
+            "previous_hash": e.previous_log_hash,
+            "recomputed_ok": checks["recomputed_ok"],
+            "link_ok": checks["link_ok"],
+        })
+    latest_audit = recent_entries[0] if recent_entries else None
     audit_event_dict = None
     if latest_audit:
         audit_event_dict = {
@@ -83,6 +98,13 @@ def _execute_hash_lookup(hash_str: str, request: Request, db: Session, current_u
             "action": latest_audit.action,
             "timestamp": latest_audit.timestamp.isoformat() if latest_audit.timestamp else None,
         }
+    # The label states exactly what was checked: the latest entries, locally, not the full chain.
+    if not audit_trail:
+        audit_label = "No audit entries recorded for this record"
+    elif all(a["recomputed_ok"] and a["link_ok"] for a in audit_trail):
+        audit_label = f"Latest {len(audit_trail)} audit entries verified (local check; full chain: see audit ledger)"
+    else:
+        audit_label = "Audit entry failed local verification"
 
     # Log lookup in audit trail with privacy preservation
     log_audit_event(
@@ -124,9 +146,12 @@ def _execute_hash_lookup(hash_str: str, request: Request, db: Session, current_u
         message="Cryptographic match confirmed against a registered, published judicial document.",
         case=matched_summary,
         hash_label="SHA-256 matched",
-        audit_label="Audit chain verified",
+        audit_label=audit_label,
         audit_event=audit_event_dict,
-        integrity_status="VERIFIED_OFFICIAL_RECORD",
+        audit_trail=audit_trail,
+        # REGISTRY_MATCH: the digest equals the registered digest. The file on disk is NOT
+        # re-read here; use /verification/documents/{id}/stream or /cases/{id}/verify-integrity.
+        integrity_status="REGISTRY_MATCH",
     )
 
 
@@ -186,11 +211,15 @@ def stream_verified_document(
         )
 
     # Determine file to serve
+    # Redacted renditions are not implemented. redacted_file_hash holds the composite seal,
+    # not a file digest, so it must never be used as an expected file hash.
+    if current_user and current_user.role in ["scholar", "public"] and case.redacted_file_path:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Redacted renditions are not implemented for this record.",
+        )
     file_path = case.file_path
     expected_hash = case.file_hash
-    if current_user and current_user.role in ["scholar", "public"] and case.redacted_file_path:
-        file_path = case.redacted_file_path
-        expected_hash = case.redacted_file_hash or case.file_hash
 
     resolved_path = resolve_case_file_path(file_path)
     if not resolved_path or not os.path.exists(resolved_path):

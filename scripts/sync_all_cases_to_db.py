@@ -29,6 +29,8 @@ SQLITE_DB_FILE = BACKEND_DIR / "lexguard.db"
 NEW_CASES_ANALYSIS_FILE = PROJECT_ROOT / "new_51_cases_analysis.json"
 
 sys.path.append(str(BACKEND_DIR))
+from app.services.audit_service import build_audit_entry  # single audit-chain writer
+from app.services.crypto_service import normalize_timestamp
 try:
     import pdfplumber
     from app.services.text_sanitizer import TextSanitizerService
@@ -446,6 +448,7 @@ def main():
     cur.execute("DELETE FROM audit_logs;")
     prev_hash = "0" * 64
     audit_rows = pg_tables.get("audit_logs", {}).get("rows", [])
+    # (prev_hash is recomputed below from timestamp order, not insertion order)
     for a in audit_rows:
         cur.execute(
             "INSERT INTO audit_logs (id, user_id, case_id, action, details, ip_address, user_agent, timestamp, previous_log_hash, current_hash) "
@@ -453,23 +456,41 @@ def main():
             (a.get("id"), a.get("user_id"), a.get("case_id"), a.get("action"), a.get("details"),
              a.get("ip_address"), a.get("user_agent"), a.get("timestamp"), a.get("previous_log_hash"), a.get("current_hash"))
         )
-        prev_hash = a.get("current_hash") or prev_hash
 
-    # Add audit entries for each newly ingested case
+    # Chain head = newest entry by timestamp (verification order), not insertion order.
+    if audit_rows:
+        head = sorted(audit_rows, key=lambda a: normalize_timestamp(a.get("timestamp") or "1970-01-01T00:00:00"))[-1]
+        prev_hash = head.get("current_hash") or "0" * 64
+    else:
+        prev_hash = "0" * 64
+
+    # Add audit entries for each newly ingested case.
+    # The event timestamp is the moment it is written (never earlier than the head),
+    # so the chain stays valid in timestamp order. Hash and stored values come from
+    # the same builder, so they cannot diverge.
     for c in list(cases_by_id.values())[-newly_ingested:] if newly_ingested > 0 else []:
         log_id = str(uuid.uuid4())
         action = "AUTO_INGEST_PDF"
-        ts = c.get("created_at")
         details = f"Ingested authentic judgment PDF: {c['case_no']} - {c['title'][:60]}"
-        payload = f"{prev_hash}|{staff_user_id}|{c['id']}|{action}|127.0.0.1|{ts}|{details}"
-        curr_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
-
+        recorded_at = datetime.now(timezone.utc)
+        entry = build_audit_entry(
+            prev_hash,
+            action=action,
+            user_id=staff_user_id,
+            case_id=c["id"],
+            ip_address="127.0.0.1",
+            details=details,
+            user_agent="LexGuard Automated Ingestion Daemon",
+            timestamp=recorded_at,
+        )
         cur.execute(
             "INSERT INTO audit_logs (id, user_id, case_id, action, details, ip_address, user_agent, timestamp, previous_log_hash, current_hash) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (log_id, staff_user_id, c["id"], action, details, "127.0.0.1", "LexGuard Automated Ingestion Daemon", ts, prev_hash, curr_hash)
+            (log_id, staff_user_id, c["id"], action, details, "127.0.0.1",
+             "LexGuard Automated Ingestion Daemon", recorded_at.isoformat(sep=" "),
+             entry["previous_log_hash"], entry["current_hash"])
         )
-        prev_hash = curr_hash
+        prev_hash = entry["current_hash"]
 
     conn.commit()
     conn.close()

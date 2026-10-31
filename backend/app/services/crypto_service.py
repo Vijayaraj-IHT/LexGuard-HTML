@@ -3,14 +3,12 @@ import hmac
 import secrets
 import os
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Any
 from app.core.config import settings
 
 # Genesis hash for the initial block in the audit trail chain
 GENESIS_HASH = "0" * 64
 
-# In-memory mtime/size cache: (canonical_path, mtime_ns, size_bytes) -> sha256_hex
-_file_hash_cache: Dict[Tuple[str, int, int], str] = {}
 
 
 def compute_sha256(data: bytes) -> str:
@@ -21,22 +19,21 @@ def compute_sha256(data: bytes) -> str:
 
 
 def compute_sha256_stream(file_path_or_stream: Any, chunk_size: int = 65536) -> str:
-    """Computes SHA-256 in 64 KB chunks, using in-memory stat cache if a path is provided."""
+    """
+    Computes SHA-256 in chunks, reading the bytes every time.
+
+    No digest cache: a cache keyed on (path, mtime, size) was shown to accept a
+    same-size tampered file whose mtime had been restored with os.utime().
+    Integrity checks must always re-read the content.
+    """
     if isinstance(file_path_or_stream, (str, Path)):
         p = Path(file_path_or_stream)
         if p.exists():
-            st = p.stat()
-            cache_key = (str(p.resolve()), st.st_mtime_ns, st.st_size)
-            if cache_key in _file_hash_cache:
-                return _file_hash_cache[cache_key]
-
             hasher = hashlib.sha256()
             with open(p, "rb") as f:
                 while chunk := f.read(chunk_size):
                     hasher.update(chunk)
-            digest = hasher.hexdigest().lower()
-            _file_hash_cache[cache_key] = digest
-            return digest
+            return hasher.hexdigest().lower()
 
     # If stream / file-like object
     hasher = hashlib.sha256()
@@ -64,18 +61,28 @@ def verify_sha256_stream(file_path_or_stream: Any, expected_hash: str, chunk_siz
 
 
 def normalize_timestamp(ts: Any) -> str:
-    """Normalizes any timestamp representation (datetime or str) to standard ISO seconds in UTC."""
-    from datetime import timezone as _tz
-    if hasattr(ts, "astimezone"):
-        try:
-            ts_utc = ts.astimezone(_tz.utc)
-            return ts_utc.strftime("%Y-%m-%dT%H:%M:%S")
-        except Exception:
-            pass
+    """
+    Normalizes any timestamp representation to ISO seconds in UTC.
+
+    Convention (fixes a timezone-dependent verification bug): a timezone-naive
+    value is interpreted as UTC. Previously it was interpreted as the server's
+    local time, so the same audit chain verified differently on different
+    machines (measured: 720 vs 755 mismatches under TZ=UTC vs Asia/Kolkata).
+    """
+    from datetime import datetime as _dt, timezone as _tz
+    if isinstance(ts, _dt):
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=_tz.utc)
+        return ts.astimezone(_tz.utc).strftime("%Y-%m-%dT%H:%M:%S")
     if hasattr(ts, "strftime"):
         return ts.strftime("%Y-%m-%dT%H:%M:%S")
     s = str(ts).strip()
-    return s.split(".")[0].split("+")[0].replace("Z", "").replace(" ", "T")
+    # Parse offset-aware ISO strings properly (the old code dropped the offset).
+    try:
+        parsed = _dt.fromisoformat(s.replace("Z", "+00:00").replace(" ", "T", 1))
+        return normalize_timestamp(parsed)
+    except ValueError:
+        return s.split(".")[0].split("+")[0].replace("Z", "").replace(" ", "T")
 
 
 def compute_audit_log_hash(
@@ -151,6 +158,29 @@ def verify_audit_chain(logs: List[Any]) -> Dict[str, Any]:
         "broken_at_id": None,
         "message": "All audit trail records are cryptographically verified and intact.",
     }
+
+
+def compute_h_meta(case_no: Any, court: Any, judge: Any, disposition: Any, year: Any) -> str:
+    """H_meta = SHA-256(case_no|court|judge|disposition|year). Format is part of the sealed record."""
+    meta_str = f"{case_no}|{court}|{judge or ''}|{disposition or ''}|{year}"
+    return hashlib.sha256(meta_str.encode("utf-8")).hexdigest()
+
+
+def compute_h_text(full_text: Optional[str]) -> str:
+    """H_text = SHA-256(full_text). A missing text hashes the empty string (flagged elsewhere)."""
+    return hashlib.sha256((full_text or "").encode("utf-8")).hexdigest()
+
+
+def compute_judicial_seal(h_doc: str, h_meta: str, h_text: str, approved_at_iso: str) -> str:
+    """
+    Composite judicial seal Phi_case = SHA-256(H_doc | H_meta | H_text | T_approved).
+
+    The formula is frozen: changing it would invalidate every seal already
+    issued. Callers must pass T_approved exactly as `datetime.isoformat()`
+    produced it at approval time.
+    """
+    payload = f"{h_doc}|{h_meta}|{h_text}|{approved_at_iso}"
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def generate_csrf_token() -> str:

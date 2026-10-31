@@ -15,6 +15,10 @@ import psycopg2
 from pathlib import Path
 from datetime import datetime, timezone
 
+# Shared audit-chain builder (run from the repo; backend/ must be importable).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
+from app.services.audit_service import build_audit_entry  # noqa: E402
+
 DB_URL = "postgresql://lexguard:lexguard123@localhost:5432/lexguard"
 LEXGUARD_CAS_DIR = Path(r"E:\SEM 5 PROJECT\Lexguard\backend\storage\cases")
 HTML_CAS_DIR = Path(r"E:\SEM 5 PROJECT\LexGuard-HTML\backend\storage\cases")
@@ -51,21 +55,28 @@ def main():
     conn.commit()
     print(f"Successfully deleted {deleted_count} cases from 'cases' table.")
     
-    # Record audit entry
-    prev_hash = "0000000000000000000000000000000000000000000000000000000000000000"
+    # Record audit entry, chained from the real ledger head through the shared builder.
+    # (Previously: hard-coded genesis parent and a different hash formula, which forked the chain.)
+    cur.execute("SELECT current_hash FROM audit_logs ORDER BY timestamp DESC LIMIT 1;")
+    head_row = cur.fetchone()
+    head_hash = head_row[0] if head_row else None
     details_str = f"Purged {deleted_count} cases lacking authentic scanned court PDFs. Retained 100% authentic judicial judgments."
-    import hashlib
-    cur_hash = hashlib.sha256(f"PURGE_UNVERIFIED_CORPUS:{details_str}:{prev_hash}".encode()).hexdigest()
+    entry = build_audit_entry(
+        head_hash,
+        action="PURGE_UNVERIFIED_CORPUS",
+        details=details_str,
+        timestamp=datetime.now(timezone.utc),
+    )
     cur.execute("""
         INSERT INTO audit_logs (id, action, details, timestamp, previous_log_hash, current_hash)
         VALUES (%s, %s, %s, %s, %s, %s);
     """, (
         "audit-purge-lacking-pdfs",
-        "PURGE_UNVERIFIED_CORPUS",
-        details_str,
-        datetime.now(timezone.utc),
-        prev_hash,
-        cur_hash
+        entry["action"],
+        entry["details"],
+        entry["timestamp"],
+        entry["previous_log_hash"],
+        entry["current_hash"],
     ))
     conn.commit()
     

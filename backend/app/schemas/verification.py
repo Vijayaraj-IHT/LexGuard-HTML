@@ -38,4 +38,5 @@ class HashLookupResponse(BaseModel):
     hash_label: Optional[str] = None
     audit_label: Optional[str] = None
     audit_event: Optional[Dict[str, Any]] = None
+    audit_trail: Optional[List[Dict[str, Any]]] = None
     integrity_status: Optional[str] = "UNREGISTERED"

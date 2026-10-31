@@ -236,8 +236,10 @@ $(document).ready(function () {
         LG.toast('NLP CIS re-extraction complete!', 'success');
         loadCase();
       })
-      .fail(function () {
-        LG.toast('Failed to re-extract CIS metadata.', 'danger');
+      .fail(function (xhr) {
+        // 409 = record is published and sealed; show the server's explanation.
+        var detail = xhr && xhr.responseJSON && xhr.responseJSON.detail;
+        LG.toast(detail || 'Failed to re-extract CIS metadata.', 'danger');
       })
       .always(function () {
         $btnReextract.prop('disabled', false).html('<i class="bi bi-arrow-repeat me-1"></i>Re-extract NLP');
@@ -275,8 +277,10 @@ $(document).ready(function () {
       .done(function () {
         LG.toast('Metadata modifications saved successfully.', 'success');
       })
-      .fail(function () {
-        LG.toast('Failed to save metadata modifications.', 'danger');
+      .fail(function (xhr) {
+        // 409 = record is published and sealed; show the server's explanation.
+        var detail = xhr && xhr.responseJSON && xhr.responseJSON.detail;
+        LG.toast(detail || 'Failed to save metadata modifications.', 'danger');
       })
       .always(function () {
         $btnSaveMeta.prop('disabled', false).html('<i class="bi bi-save me-1"></i>Save Edits');
@@ -301,8 +305,10 @@ $(document).ready(function () {
           window.location.href = 'admin.html';
         }, 1200);
       })
-      .fail(function () {
-        LG.toast('Failed to approve and seal case.', 'danger');
+      .fail(function (xhr) {
+        // 403 = maker-checker (uploader cannot publish their own submission).
+        var detail = xhr && xhr.responseJSON && xhr.responseJSON.detail;
+        LG.toast(detail || 'Failed to approve and seal case.', 'danger');
       });
   });
 
