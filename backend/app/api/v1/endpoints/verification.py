@@ -5,14 +5,14 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from app.core.config import settings, resolve_case_pdf_path
+from app.core.config import resolve_case_pdf_path
 from app.core.database import get_db
-from app.core.security import get_optional_current_user, get_current_user
+from app.core.security import get_optional_current_user
 from app.models.user import User
 from app.models.case import Case
 from app.models.audit_log import AuditLog
 from app.schemas.verification import HashLookupResponse, HashLookupRequest, MatchedCaseSummary
-from app.services.crypto_service import verify_sha256, verify_sha256_stream
+from app.services.crypto_service import verify_sha256_stream
 from app.services.audit_service import log_audit_event, check_audit_entry
 from app.core.rate_limit import rate_limit
 

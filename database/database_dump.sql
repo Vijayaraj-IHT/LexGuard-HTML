@@ -2680,6 +2680,7 @@ aa35cee2-2207-4a25-8587-25aae86f50ee	Arjun Sundaram	advocate_11e235@barcouncil.i
 f32bcb94-62f5-4066-8b88-11abd4463dd5	Arjun Sundaram	advocate_781e52@barcouncil.in	$2b$12$Ai9QVxUJouTF3STguXFexOD.BQPkuEOe9hY.sfBke9F4iDVPvUA0C	advocate	active	BAR-TN-2024-998	2026-10-26 18:47:43.886651+05:30	2026-10-26 18:47:43.950203+05:30	\N	\N
 c5e4ab68-d502-4ac9-bfe2-f5d517160b05	Citizen User	public@citizen.in	$2b$12$Q7yxtajvUowfGcmdvtU4MeAvSx8ZbqPlTTNEWyPuxWQjcsgFVDydW	public	active	\N	2026-10-12 00:57:33.412274+05:30	2026-10-26 21:03:10.282503+05:30	6b7a9e502a9c6ae11cd855d4b8c71451c2d55e4111ab8c1deeed9a9642d3e0a7	2026-10-26 21:18:10.281385+05:30
 500f8fcc-7c3a-48db-ad75-8442bd16a886	Senior Advocate	advocate@bar.in	$2b$12$D38k32PyRW3kAHa2MSxP9epQUxnH6jzfUyVtEWtdQHxGNw2AuN9jS	advocate	active	BAR-DL-2024-9912	2026-10-12 00:57:33.412263+05:30	2026-10-26 21:03:10.326373+05:30	76594d9ee595711f03f135a3863dc6fb439b5bdebd60d99cc57abe596d8135ea	2026-10-26 21:18:10.325992+05:30
+00000000-0000-0000-0000-000000000001	LexGuard Automated Ingestion Service	system.ingestion@lexguard.gov.in	/iV.8OhlQknuq6NvXdc606hjqO5SROKaerPmRbnYe22	staff	active	SYS-AUTO-001	2026-10-31 23:00:00+05:30	2026-10-31 23:00:00+05:30	\N	\N
 \.
 
 

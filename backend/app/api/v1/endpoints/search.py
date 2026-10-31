@@ -13,7 +13,6 @@ from app.schemas.search import (
     SearchResultItem,
 )
 from app.services.local_llm_service import local_llm_service
-from app.services.claude_service import claude_service
 from app.services.embedding_service import embedding_service
 from app.services.audit_service import log_audit_event
 
