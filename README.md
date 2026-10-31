@@ -37,6 +37,12 @@
   * Authentic judicial palette: Deep Crimson (`#991b1b`), Maroon (`#7f1d1d`), and Pristine White (`#ffffff` / `#f8fafc`).
   * Dark charcoal slate typography (`#0f172a`) providing high contrast and compliance with court readability standards.
   * Replaced dark background cards with clean elevated judicial panels and subtle crimson borders (`rgba(185, 28, 28, 0.15)`).
+* **Case-File Pattern Engine (drafting-template aware ingestion)**:
+  * Recognises 8 registry drafting templates across Madras (Principal Seat & Madurai Bench), Chhattisgarh, Patna and Punjab & Haryana from caption/layout signals alone — deterministic, offline, no model download.
+  * Each template loads its own **key set** (14 anchor categories: identity, forum, dates, coram, parties, counsel, relief, facts, issues, reasoning, operative, signature, noise, statute style) instead of one global regex bundle.
+  * Layout-aware text recovery repairs double-drawn/clipped text layers (P&H), strips JUDIS watermarks and page clocks, and flags scans for OCR.
+  * Case facts are lifted with a candidate-and-score strategy (explicit heading → profile anchors → paragraph runs → post-caption body) and returned with a structured fact sheet (dates, crime numbers, places, offences, custody, arrest, amounts).
+  * See [`docs/CASE_FILE_PATTERNS.md`](docs/CASE_FILE_PATTERNS.md) and [`docs/pattern_analysis/case_pattern_report.md`](docs/pattern_analysis/case_pattern_report.md).
 * **Robust FastAPI & PostgreSQL Backend**:
   * 208 precedent judgments indexed with InLegalBERT statutory embeddings and full-text vectors.
   * Merkle tree audit ledger with 989 immutable SHA-256 hash-chained records.
@@ -174,7 +180,11 @@ LexGuard-HTML/
 │   └── seed_105_cases.py         # Python Seeder Script
 ├── scripts/                      # Utility Scripts
 │   ├── capture_html_red_white.py # Headless Edge Visual Audit Script
+│   ├── analyse_case_file_patterns.py # Case-file drafting-pattern corpus sweep
 │   └── find_404_errors.py        # Route Integrity Validator
+├── docs/
+│   ├── CASE_FILE_PATTERNS.md     # Pattern families, key sets & facts strategies
+│   └── pattern_analysis/         # Generated pattern report (JSON + Markdown)
 ├── start_windows.bat             # 1-Click Windows Launcher
 ├── start_linux.sh                # 1-Click Linux Launcher
 ├── index.html                    # Root Portal Redirect

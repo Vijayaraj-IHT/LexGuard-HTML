@@ -296,7 +296,7 @@ async def upload_case_auto(
         keyword_tags=extracted.get("keyword_tags") or [],
         summary=extracted.get("summary"),
         outcome=extracted.get("outcome"),
-        facts=extracted.get("prayer") or extracted.get("facts"),
+        facts=extracted.get("facts") or extracted.get("prayer"),
         ratio_decidendi=extracted.get("ratio_decidendi"),
         disposition=extracted.get("disposition") or extracted.get("outcome"),
         full_text=extracted.get("full_text"),

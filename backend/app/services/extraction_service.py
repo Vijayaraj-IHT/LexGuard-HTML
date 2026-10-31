@@ -171,14 +171,26 @@ class ExtractionService:
         if not os.path.exists(pdf_path):
             raise FileNotFoundError(f"PDF file not found at: {pdf_path}")
 
-        import pdfplumber
-
+        # Layout-aware text recovery.  The pattern service repairs registries
+        # whose text layer is drawn as clipped/duplicated runs (P&H) and flags
+        # scans that need OCR; pdfplumber stays as the fallback extractor.
+        layout = None
         raw_pages: List[str] = []
-        with pdfplumber.open(pdf_path) as pdf:
-            page_count = len(pdf.pages)
-            for idx, p in enumerate(pdf.pages):
-                page_text = p.extract_text() or ""
-                raw_pages.append(page_text.strip())
+        try:
+            from app.services.case_pattern_service import extract_pdf_text
+
+            _, layout, meta = extract_pdf_text(pdf_path)
+            raw_pages = [page for page in (meta.get("pages") or [])]
+            if not raw_pages or not any(p.strip() for p in raw_pages):
+                raise ValueError("pattern extractor returned no text layer")
+        except Exception as exc:  # pragma: no cover - defensive fallback
+            logger.warning("Pattern-aware extraction unavailable (%s); falling back to pdfplumber", exc)
+            import pdfplumber
+
+            with pdfplumber.open(pdf_path) as pdf:
+                for p in pdf.pages:
+                    raw_pages.append((p.extract_text() or "").strip())
+        page_count = len(raw_pages)
 
         full_text = "\n\n".join(
             f"--- PAGE {i + 1} ---\n{text}" for i, text in enumerate(raw_pages)
@@ -195,6 +207,12 @@ class ExtractionService:
             full_text=full_text,
             page_count=page_count,
             first_three_pages=first_three_pages,
+        )
+
+        # 1b. Pattern layer: identify the registry drafting template, load its
+        #     key set, and use it to harden identity fields and lift the facts.
+        data, confidence = cls._apply_pattern_layer(
+            data, confidence, full_text=full_text, raw_pages=raw_pages, layout=layout
         )
 
         # 2. Pass 2: Acts, Sections & NER via 450-token sliding window and dual cross-referencing
@@ -624,6 +642,225 @@ class ExtractionService:
             data["precedential_status"] = "Good Law"
         else:
             data["precedential_status"] = "Precedential status not checked"
+
+        return data, confidence
+
+    # ------------------------------------------------------------------ pattern
+    @classmethod
+    def _apply_pattern_layer(
+        cls,
+        data: Dict[str, Any],
+        confidence: Dict[str, Dict[str, Any]],
+        full_text: str,
+        raw_pages: List[str],
+        layout: Any = None,
+    ) -> Tuple[Dict[str, Any], Dict[str, Dict[str, Any]]]:
+        """
+        Apply the case-file pattern key set on top of the generic Pass-1 regexes.
+
+        The layer is additive and non-destructive:
+
+        * always records the detected profile, its evidence and key coverage,
+        * only *overrides* a Pass-1 field when the Pass-1 value is empty, a
+          placeholder, or was produced with low confidence,
+        * always fills ``facts`` / ``fact_sheet`` from the profile's fact
+          strategy (Pass 1 has no facts extraction at all).
+
+        Any failure here is logged and swallowed — ingestion must not break
+        because one document's layout is unrecognised.
+        """
+        try:
+            from app.services.case_pattern_service import CasePatternService
+
+            detection = CasePatternService.detect(full_text, layout, raw_pages)
+            cleaned = CasePatternService.clean_text(full_text, layout, detection)
+            key_hits = CasePatternService.shortlist_keys(cleaned, detection)
+            sections = CasePatternService.map_sections(cleaned, detection)
+            facts_result = CasePatternService.extract_case_facts(cleaned, detection, sections)
+
+            def hit(category: str, key: str) -> Optional[Dict[str, Any]]:
+                for entry in key_hits.get(category, []):
+                    if entry["key"] == key:
+                        return entry
+                return None
+
+            def value(category: str, key: str) -> Optional[str]:
+                entry = hit(category, key)
+                if not entry:
+                    return None
+                return (entry.get("group") or entry.get("match") or "").strip() or None
+
+            coverage = sum(len(v) for v in key_hits.values())
+            declared = sum(len(v) for v in CasePatternService.key_set_for(detection.profile_id).values())
+
+            data["pattern_profile"] = detection.profile_id
+            data["pattern_label"] = detection.label
+            data["pattern_confidence"] = detection.confidence
+            data["pattern_key_set"] = detection.key_set_id
+            data["pattern_matched_signals"] = detection.matched_signals
+            data["pattern_runner_up"] = detection.runner_up
+            data["text_quality"] = detection.text_quality
+            data["layout_signals"] = list(detection.layout_signals)
+            data["key_coverage"] = {
+                "found": coverage, "declared": declared,
+                "ratio": round(coverage / declared, 3) if declared else 0.0,
+            }
+            confidence["pattern"] = {
+                "confidence": detection.confidence, "source": "pattern_profile",
+            }
+
+            # ── Court & bench (template tells us the registry, CNR-free) ────
+            generic_court = (
+                not data.get("court")
+                or confidence.get("court", {}).get("confidence", 0) < 0.9
+                or data.get("court") == "Madras High Court"
+            )
+            if detection.confidence >= 0.55 and generic_court and detection.court not in ("", None):
+                data["court"] = detection.court
+                data["bench"] = detection.seat or data.get("bench")
+                confidence["court"] = {"confidence": max(0.9, detection.confidence), "source": "pattern_profile"}
+                confidence["bench"] = {"confidence": 0.9 if detection.seat else 0.6, "source": "pattern_profile"}
+
+            # ── Identity ───────────────────────────────────────────────────
+            if not data.get("cnr"):
+                cnr = value("identity", "cnr")
+                if cnr:
+                    data["cnr"] = cnr
+                    confidence["cnr"] = {"confidence": 0.95, "source": "pattern_key_set"}
+            neutral = value("identity", "neutral_citation")
+            if neutral:
+                data["neutral_citation"] = neutral
+
+            if not data.get("case_no") or data.get("case_no") == "Case No. Not Extracted":
+                for key in ("case_no", "case_no_alt", "case_no"):
+                    candidate = value("identity", key)
+                    if candidate:
+                        data["case_no"] = re.sub(r"\s+", " ", candidate).strip(" .,-")
+                        confidence["case_no"] = {"confidence": 0.9, "source": "pattern_key_set"}
+                        year_match = re.search(r"(\d{4})", candidate)
+                        if year_match:
+                            data["year"] = int(year_match.group(1))
+                        break
+
+            # ── Dates ──────────────────────────────────────────────────────
+            dates = data.setdefault("dates", {})
+            if not dates.get("date_pronounced"):
+                for key in ("decision_date", "pronounced_on"):
+                    raw_date = value("dates", key)
+                    parsed = cls._normalize_date_string(raw_date) if raw_date else None
+                    if parsed:
+                        dates["date_pronounced"] = parsed
+                        confidence["dates"] = {"confidence": 0.92, "source": "pattern_key_set"}
+                        break
+            if not dates.get("date_reserved"):
+                raw_date = value("dates", "reserved_on")
+                parsed = cls._normalize_date_string(raw_date) if raw_date else None
+                if parsed:
+                    dates["date_reserved"] = parsed
+
+            # ── Coram ──────────────────────────────────────────────────────
+            existing_judge = data.get("judge")
+            if existing_judge and existing_judge != "Hon'ble Court":
+                cleaned_parts = [p for p in (
+                    CasePatternService._clean_judge_name(part)
+                    for part in str(existing_judge).split(",")
+                ) if p]
+                if cleaned_parts:
+                    data["judge"] = ", ".join(f"Hon'ble {name}" for name in cleaned_parts)
+            if not data.get("judge") or data.get("judge") == "Hon'ble Court":
+                judge_hit = value("coram", "judge") or value("coram", "judge_short")
+                name = CasePatternService._clean_judge_name(judge_hit)
+                if name:
+                    data["judge"] = f"Hon'ble {name}"
+                    confidence["judge"] = {"confidence": 0.9, "source": "pattern_key_set"}
+
+            # ── Caption-derived identity overrides ─────────────────────────
+            # A caption-scoped hit beats a body hit: body text cites *other*
+            # cases, so an unanchored search can return the wrong case number.
+            caption_case = None
+            for key in ("case_no", "case_no_alt"):
+                entry = hit("identity", key)
+                if entry and entry.get("in_caption"):
+                    caption_case = (entry.get("group") or entry.get("match") or "").strip()
+                    if caption_case:
+                        break
+            if caption_case and (not data.get("case_no")
+                                 or data.get("case_no") == "Case No. Not Extracted"
+                                 or data.get("case_no") != caption_case):
+                current = (data.get("case_no") or "")
+                current_year = re.search(r"(\d{4})", current)
+                caption_year = re.search(r"(\d{4})", caption_case)
+                year_mismatch = bool(current_year and caption_year and current_year.group(1) != caption_year.group(1))
+                low_conf = confidence.get("case_no", {}).get("confidence", 0) < 0.95
+                # The caption is authoritative: a body hit is usually a cited
+                # case, so a differing caption number always wins.
+                if low_conf or year_mismatch or current != caption_case:
+                    data["case_no"] = re.sub(r"\s+", " ", caption_case).strip(" .,-")
+                    confidence["case_no"] = {"confidence": 0.93, "source": "pattern_caption"}
+                    if caption_year:
+                        data["year"] = int(caption_year.group(1))
+
+            # A pass-1 "petitioner" that actually sits inside the coram block is
+            # a wrapped judge-name tail (e.g. JUSTICE K. GOVINDARAJAN / THILAKAVADI).
+            current_petitioner = str(data.get("petitioner") or "").strip()
+            if current_petitioner and len(current_petitioner.split()) <= 2:
+                coram_noise = re.search(
+                    r"(?i)JUSTICE[^\n]*\n[^\n]{0,20}" + re.escape(current_petitioner),
+                    cleaned,
+                )
+                if coram_noise:
+                    data["petitioner"] = None
+
+            parties_need_help = (
+                not data.get("petitioner")
+                or "Petitioner / Appellant" in str(data.get("petitioner"))
+                or "___" in str(data.get("parties"))
+                or str(data.get("petitioner", "")).strip(" _-") == ""
+                or bool(re.match(r"^\s*(?:A|O\.A|W\.P|CRL|C\.M|CONT|WP|CWP|CWJC)\b.*\bof\s+\d{4}",
+                                 str(data.get("petitioner", ""))))
+                or str(data.get("petitioner", "")).strip().upper() in CasePatternService._STOPWORD_NAMES
+                or "Petitioner / Appellant" == str(data.get("petitioner", "")).strip()
+                or bool(re.match(r"(?i)^\s*(?:case|crime)\b", str(data.get("petitioner", ""))))
+            )
+            if parties_need_help:
+                caption_parties = CasePatternService.extract_caption_parties(cleaned, detection)
+                petitioner = caption_parties.get("petitioner")
+                respondent = caption_parties.get("respondent")
+                if petitioner:
+                    data["petitioner"] = petitioner
+                    data["parties"] = f"{petitioner} v. {respondent or data.get('respondent') or 'Respondent'}"
+                    confidence["parties"] = {"confidence": 0.85, "source": "pattern_caption"}
+                if respondent:
+                    data["respondent"] = respondent
+
+            # ── Party strings: strip registry bullets/numbering ────────────
+            for field_name in ("petitioner", "respondent"):
+                current = data.get(field_name)
+                if isinstance(current, str) and current:
+                    tidied = re.sub(r"^[\s*\u2022]*(?:\d+\s*)?[-\u2013\.\)]\s*", "", current).strip(" .,;-")
+                    if tidied and tidied != current:
+                        data[field_name] = tidied
+            if data.get("petitioner") and data.get("respondent"):
+                data["parties"] = f"{data['petitioner']} v. {data['respondent']}"
+
+            # ── Facts + structured fact sheet ──────────────────────────────
+            if facts_result.get("facts"):
+                data["facts"] = facts_result["facts"]
+                data["fact_sheet"] = facts_result["fact_sheet"]
+                data["facts_strategy"] = facts_result["facts_strategy"]
+                confidence["facts"] = {
+                    "confidence": facts_result["confidence"], "source": "pattern_facts",
+                }
+            if sections.get("relief") and not data.get("prayer"):
+                data["prayer"] = sections["relief"]["text"][:4000]
+            if sections.get("operative"):
+                data.setdefault("operative_text", sections["operative"]["text"][:2500])
+            data["section_map"] = {k: v["length"] for k, v in sections.items() if k != "units"}
+
+        except Exception as exc:  # pragma: no cover - never break ingestion
+            logger.warning("Case pattern layer skipped: %s", exc)
+            data.setdefault("pattern_profile", None)
+            data["pattern_error"] = f"{type(exc).__name__}: {exc}"
 
         return data, confidence
 
