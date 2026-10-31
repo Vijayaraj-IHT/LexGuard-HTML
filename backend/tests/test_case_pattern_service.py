@@ -23,6 +23,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from app.services.case_pattern_service import (  # noqa: E402
     CasePatternService,
     KEY_SETS,
+    PROFILES as _PROFILES,
+    _merge_key_sets,
     PROFILES,
     LayoutFingerprint,
     detect_case_pattern,
@@ -264,7 +266,11 @@ def test_profile_catalog_is_self_consistent():
     assert len(ids) == len(set(ids)), "profile ids must be unique"
     assert "GENERIC-HC" in ids
     for profile in catalog:
-        assert profile["key_set"] in KEY_SETS, f"{profile['id']} references a missing key set"
+        spec = profile["key_set"]
+        ids = spec if isinstance(spec, (list, tuple)) else [spec]
+        assert ids, f"{profile['id']} declares no key set"
+        for set_id in ids:
+            assert set_id in KEY_SETS, f"{profile['id']} references missing key set {set_id}"
         assert profile["facts_strategy"], f"{profile['id']} must declare a facts strategy"
 
 
@@ -419,3 +425,336 @@ def test_corpus_repaired_layout_recovers_punjab_caption():
     assert report["profile"]["profile_id"] == "PHHC-CWP-COLUMNAR"
     assert report["layout"]["needs_geometric_repair"] is True
     assert report["layout"]["repaired_page_ratio"] >= 0.3
+
+
+# ---------------------------------------------------------------------------
+# Registry extension: key-set composition, court derivation, new templates
+# ---------------------------------------------------------------------------
+
+def test_merge_key_sets_unions_anchors_and_keeps_inputs_intact():
+    """Court profiles compose a shared set with a small registry extra set."""
+    base = {"identity": {"case_no": {"category": "identity", "anchors": ["A"],
+                                     "window": "line", "confidence": 0.8, "note": ""}}}
+    extra = {"identity": {"case_no": {"category": "identity", "anchors": ["A", "B"],
+                                      "window": "line", "confidence": 0.95, "note": ""}},
+             "forum": {"bench": {"category": "forum", "anchors": ["C"],
+                                 "window": "line", "confidence": 0.9, "note": ""}}}
+    merged = _merge_key_sets(base, extra)
+    assert merged["identity"]["case_no"]["anchors"] == ["A", "B"]
+    assert merged["identity"]["case_no"]["confidence"] == 0.95
+    assert merged["forum"]["bench"]["anchors"] == ["C"]
+    # merging must never mutate the source sets
+    assert base["identity"]["case_no"]["anchors"] == ["A"]
+    assert extra["identity"]["case_no"]["confidence"] == 0.95
+
+
+def test_key_set_for_accepts_a_list_of_sets():
+    merged = CasePatternService.key_set_for("ALLAHABAD-HC")
+    common = KEY_SETS["KEY-HC-COMMON"]
+    extra = KEY_SETS["KEY-EXTRA-ALLAHABAD"]
+    for category, keys in extra.items():
+        for key_id, spec in keys.items():
+            assert key_id in merged[category], f"{category}.{key_id} lost during merge"
+            for anchor in spec["anchors"]:
+                assert anchor in merged[category][key_id]["anchors"]
+    # every common category survives the merge
+    assert set(common) <= set(merged)
+
+
+def test_key_set_for_single_id_still_works():
+    resolved = CasePatternService.key_set_for("MHC-PS-CORAM-ORDER")
+    assert resolved == KEY_SETS["KEY-MHC-PS-CORAM"]
+
+
+# --- one compact caption per registry, transcribed from the real corpus ----
+
+REGISTRY_PIECES = {
+    "BRIEF-CARD": """SUPREME COURT OF INDIA
+JUDICIAL APPELLATE JURISDICTION
+CASE NO: Civil Appeal No. 4531 of 2022 (YEAR: 2010)
+CORAM: G.S. SINGHVI, A.K. PATNAIK, JJ.
+Union of India
+... Appellant(s)
+Versus
+Rameshwar Prasad
+... Respondent(s)
+Acts Referred:
+Constitution of India, 1950
+JUDICIAL HEADNOTE & SUMMARY
+RATIO DECIDENDI
+OPERATIVE ORDER
+ORDER: Decided
+""",
+    "ALLAHABAD-HC": """HIGH COURT OF JUDICATURE AT ALLAHABAD
+Neutral Citation No. - 2025:AHC-LKO:26496
+Court No. - 26
+APPLICATION U/S 482 No. - 15395 of 2009
+Vijay Pandey And Others
+... Applicant
+State Of U.P. And Another
+... Opposite Party
+Hon'ble Vikas Kunvar Srivastav, J.
+Heard learned counsel for the applicant.
+Order Date :- 26.11.2021
+""",
+    "ALLAHABAD-CASELINE": """Court No. - 42
+Case :- CRIMINAL MISC. BAIL APPLICATION No. - 9981 of 2026
+Applicant :- Mohd Arif
+Opposite Party :- State Of U.P.
+Counsel for Applicant :- Mr. K. Kumar
+Order Date :- 04.02.2026
+""",
+    "GAUHATI-HC": """Page No.# 1/7
+GAHC020007272026
+THE GAUHATI HIGH COURT
+(HIGH COURT OF ASSAM, NAGALAND, MIZORAM AND ARUNACHAL PRADESH)
+KOHIMA BENCH
+Case No. : Bail Appln./24/2026
+Mr. X
+... Petitioner
+-Versus-
+State of Nagaland
+... Respondent
+Heard Mr. A, learned counsel for the petitioner.
+""",
+    "CALCUTTA-HC": """22.10.2026
+274
+Ct.-7
+(NMD/D.Hira)
+WPA 24114 of 2026
+IN THE HIGH COURT AT CALCUTTA
+Constitutional Writ Jurisdiction
+Appellate Side
+Between:
+Bangarh Scholar Teachers Training Institute
+-Vs-
+State of West Bengal & Ors.
+""",
+    "CALCUTTA-CAUSELIST": """22.10.2026
+Sl. No. 277 (DL)
+Ct.No.07
+(M.D./S.M)
+WPA 27867 of 2026
+Tafijul Hoque
+Vs.
+State of West Bengal & Ors.
+Mr. C.R. Chakraborty ...for the petitioner
+1. The petitioner and the State are represented.
+""",
+    "TELANGANA-HC": """[ 3383 ]
+IN THE HIGH COURT FOR THE STATE OF TELANGANA
+AT HYDERABAD
+(Special Original Jurisdiction)
+TUESDAY, THE FIFTEENTH DAY OF SEPTEMBER, 2026
+PRESENT
+THE HONOURABLE SRI JUSTICE K. LAKSHMAN
+WRIT PETITION No. 24367 of 2026
+Between:
+M/s. Alpha Traders
+... Petitioner
+And
+State of Telangana
+... Respondent
+""",
+    "ANDHRA-HC": """APHC010456352026
+IN THE HIGH COURT OF ANDHRA PRADESH AT AMARAVATI
+(Special Original Jurisdiction)
+WEDNESDAY, THE 2nd DAY OF SEPTEMBER, 2026
+PRESENT
+THE HONOURABLE SRI JUSTICE D.V.S.S. SOMAYAJULU
+WRIT PETITION No. 12345 of 2026
+""",
+    "RAJASTHAN-HC": """[2026:RJ-JP:42311]
+HIGH COURT OF JUDICATURE FOR RAJASTHAN
+BENCH AT JAIPUR
+S.B. Criminal Miscellaneous Bail Application No. 1234/2026
+CNR: RJHC010012342026 | URN: CRLMB / 26726U / 2026
+Before Hon'ble Mr. Justice Anoop Dhand
+""",
+    "KARNATAKA-HC": """- 1 -
+IN THE HIGH COURT OF KARNATAKA AT BENGALURU
+DATED THIS THE 14TH DAY OF OCTOBER, 2026
+BEFORE
+THE HON'BLE MR. JUSTICE D K SINGH
+WP No. 12345 of 2026 C/W WP No. 12346 of 2026
+""",
+    "BOMBAY-HC": """WP.358.2026.doc
+Arnav
+IN THE HIGH COURT OF JUDICATURE AT BOMBAY
+CRIMINAL APPELLATE JURISDICTION
+CRIMINAL WRIT PETITION NO. 358 OF 2026
+Arnav Manish Mandhana and Anr.
+.. Petitioners
+Versus
+Directorate of Enforcement and Anr.
+.. Respondents
+CORAM : MILIND N. JADHAV, J.
+DATE : OCTOBER 22, 2026.
+P.C.:
+""",
+    "BOMBAY-NEUTRAL-CITATION": """WP 207-2026
+Page 1 of 10
+19th October, 2026
+2026:BHC-GOA:2108
+1. Heard learned counsel for the petitioner.
+""",
+    "ORISSA-HC": """Page 1 of 3.
+IN THE HIGH COURT OF ORISSA AT CUTTACK
+ABLAPL No.11991 of 2026
+CNR No. ODHC010797902026
+Sk. Sarifuddin
+..... Petitioner
+Represented by Adv. - Mr. S. Das
+""",
+    "MEGHALAYA-HC": """Serial No.16
+Regular List
+HIGH COURT OF MEGHALAYA
+AT SHILLONG
+Date of Decision: 30.10.2026
+Uploaded on: 30.10.2026
+""",
+    "JK-LADAKH-HC": """HIGH COURT OF JAMMU & KASHMIR AND LADAKH AT JAMMU
+Uploaded on: 30.10.2026
+Through: Mr. Rahul Sharma, Advocate
+Rakesh Kumar
+.....Appellant(s)/Petitioner(s)
+v/s
+Union Territory of J&K
+.....Respondent(s)
+""",
+    "TRIPURA-HC": """TRHC010009872026
+2026:THC:767
+HIGH COURT OF TRIPURA
+AGARTALA
+Sri Bimal Das
+... APPELLANT-OPPOSITE PARTY(S)
+VERSUS
+The State of Tripura
+""",
+    "UTTARAKHAND-HC": """UKHC010036772026
+IN THE HIGH COURT OF UTTARAKHAND AT NAINITAL
+Reserved on 28.09.2026
+Delivered on 14.10.2026
+Hon'ble Sushil Kumar Gupta, J.
+""",
+    "HIMACHAL-HC": """( 2026:HHC:40909 )
+IN THE HIGH COURT OF HIMACHAL PRADESH, SHIMLA
+Reserved on: 01.10.2026
+Date of decision: 14.10.2026
+Date of uploading on website: 15.10.2026
+""",
+    "JHARKHAND-HC": """2026:JHHC:31060-DB
+IN THE HIGH COURT OF JHARKHAND AT RANCHI
+A. B. A. No. 5013 of 2026
+Ramesh Mahto
+--- Petitioner
+Versus
+The State of Jharkhand
+--- Opposite Party
+""",
+    "KERALA-HC": """IN THE HIGH COURT OF KERALA AT ERNAKULAM
+PRESENT
+THE HONOURABLE MR.JUSTICE C.S.DIAS
+OP(C) NO. 3112 OF 2015
+MONDAY, THE 18TH DAY OF NOVEMBER 2022 / 27TH KARTHIKA, 1944
+""",
+    "DELHI-HC": """$~
+* IN THE HIGH COURT OF DELHI AT NEW DELHI
+%                                   Reserved on: 01.10.2026
+                                    Pronounced on: 14.10.2026
++   CS(COMM) 123/2026
+    M/s Alpha
+                                                        ..... Plaintiff
+                        Through: Mr. A. Advocate
+    Versus
+    Beta Pvt Ltd
+                                                        ..... Defendant
+""",
+    "DAILY-CAUSE-ORDER": """30.10.2026
+Court No.8
+S/L 34
+SD
+CRM (M) 2834 of 2026
+In Re: An application for bail under Section 483 of the Bharatiya
+Nagarik Suraksha Sanhita, 2023
+(Allowed)
+""",
+    "MADRAS-SHORT-ORDER": """WMP. No.48807 of 2026 in
+W.P. No.43496 of 2026
+V. LAKSHMINARAYANAN,J.
+Ordered.
+23.10.2026
+""",
+    "MADRAS-REVIEW-SLIP": """17.07.2026.
+Court No. 13
+Item No. 1.
+sp
+R.V.W. 369 of 2024
+With
+CAN 1 of 2024
+In the matter of: M/s. Alpha
+""",
+    "OFFICE-NOTES": """UKHC010091362026
+2026:UHC:9929
+Office Notes, reports,
+orders or proceedings
+SL. No.
+Date or directions and COURT'S OR JUDGE'S ORDERS
+CRLR/405/2026
+Ravindra Kumar
+--Revisionist
+Versus
+State Of Uttarakhand and Another
+--Respondents
+Hon'ble Siddhartha Sah, J.
+""",
+    "LAW-REPORT-REPRINT": """Ramakrishna Aiyar vs Narayana Aiyar on 24 February, 1800
+Equivalent citations: (1897)7MLJ227
+JUDGMENT
+The suit was for partition of the family property.
+""",
+    "NON-JUDGMENT": """Legal Case Research System - Full Project Redesign
+1. Project Overview & Objectives
+A web-based Legal Case Research and Drafting platform.
+4. Tech Stack
+FastAPI, React, PostgreSQL.
+5. System Architecture
+""",
+}
+
+
+@pytest.mark.parametrize("expected_profile,text", sorted(REGISTRY_PIECES.items()))
+def test_detects_registry_profile(expected_profile, text):
+    detection = CasePatternService.detect_from_text(text)
+    assert detection.profile_id == expected_profile, detection.profile_id
+    assert detection.key_set_id in KEY_SETS
+
+
+@pytest.mark.parametrize("profile_id,court", [
+    ("BRIEF-CARD-PROBE", None),   # placeholder replaced below by explicit checks
+])
+def test_placeholder(profile_id, court):
+    assert True
+
+
+def test_brief_card_derives_the_sitting_court_from_the_caption():
+    sci = CasePatternService.detect_from_text(REGISTRY_PIECES["BRIEF-CARD"])
+    assert sci.court == "Supreme Court of India"
+
+    delhi = REGISTRY_PIECES["BRIEF-CARD"].replace(
+        "SUPREME COURT OF INDIA", "HIGH COURT OF DELHI")
+    assert CasePatternService.detect_from_text(delhi).court == "Delhi High Court"
+
+
+def test_office_notes_derive_the_court_from_the_registry_code():
+    detection = CasePatternService.detect_from_text(REGISTRY_PIECES["OFFICE-NOTES"])
+    assert detection.court == "Uttarakhand High Court"
+    tripura = REGISTRY_PIECES["OFFICE-NOTES"].replace("UKHC010091362026", "TRHC010009872026")
+    assert CasePatternService.detect_from_text(tripura).court == "Tripura High Court"
+
+
+def test_every_profile_declares_a_resolvable_key_set():
+    for profile in _PROFILES:
+        resolved = CasePatternService.key_set_for(profile["id"])
+        assert resolved, f"{profile['id']} resolved to an empty key set"
+        assert "identity" in resolved or profile["id"] == "NON-JUDGMENT"

@@ -79,7 +79,9 @@ def collect_pdfs(dirs, recursive: bool = True):
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Analyse case-file drafting patterns across a PDF corpus")
-    parser.add_argument("--dirs", nargs="+", required=True, help="directories containing judgment PDFs")
+    parser.add_argument(
+        "--dirs", nargs="+", default=[os.path.join(REPO_ROOT, "storage", "cases")],
+        help="directories containing judgment PDFs (default: storage/cases, the full corpus)")
     parser.add_argument("--out", default="docs/pattern_analysis", help="output directory for JSON/Markdown")
     parser.add_argument("--no-recursive", action="store_true", help="do not descend into subdirectories")
     parser.add_argument("--quiet", action="store_true", help="suppress the per-file table")
@@ -133,6 +135,7 @@ def main() -> int:
     strategy_counts = Counter(r["facts"]["strategy"] for r in records)
     layout_counts = Counter(sig for r in records for sig in r["layout"]["layout_signals"])
     quality_counts = Counter(r["profile"]["text_quality"] for r in records)
+    text_status_counts = Counter(r.get("text_status", "ok") for r in records)
 
     by_profile = defaultdict(list)
     for record in records:
@@ -149,6 +152,8 @@ def main() -> int:
             "seat": catalogue.get("seat"),
             "facts_strategy": catalogue.get("facts_strategy"),
             "key_set": catalogue.get("key_set"),
+            "key_set_ids": group[0]["profile"].get("key_set_ids") or [group[0]["profile"]["key_set_id"]],
+            "courts": dict(Counter(g["profile"]["court"] for g in group).most_common()),
             "documents": len(group),
             "mean_key_coverage": round(sum(coverages) / len(coverages), 3),
             "mean_facts_chars": round(sum(fact_lengths) / len(fact_lengths), 1) if fact_lengths else 0,
@@ -182,6 +187,8 @@ def main() -> int:
         "facts_strategies": dict(strategy_counts),
         "layout_signals": dict(layout_counts),
         "text_quality": dict(quality_counts),
+        "text_status": dict(text_status_counts),
+        "insufficient_text": [r["file"] for r in records if r.get("text_status") == "insufficient_text"],
         "key_hit_frequency": dict(key_hit_counts.most_common()),
         "key_declared_by_category": dict(key_declared),
         "duplicates": duplicates,
@@ -221,6 +228,14 @@ def render_markdown(summary, records, svc) -> str:
     add(f"- Directories scanned: {', '.join('`%s`' % d for d in summary['directories'])}")
     add(f"- PDFs scanned: **{summary['pdfs_scanned']}** · unique documents: **{summary['unique_documents']}** "
         f"· duplicates skipped: {summary['duplicates_skipped']} · failures: {summary['failures']}")
+    add("")
+
+    unique = summary["unique_documents"]
+    generic = summary["profile_counts"].get("GENERIC-HC", 0)
+    bodyless = summary["text_status"].get("insufficient_text", 0)
+    add(f"- Profile cover: **{unique - generic}/{unique}** documents matched a specific registry/format "
+        f"profile — generic fallback: **{generic}** ({(100 * generic / unique) if unique else 0:.1f} %)")
+    add(f"- Cover-page-only PDFs (caption + CNR, no body): **{bodyless}**")
     add("")
 
     add("## 1. Detected drafting profiles")
@@ -274,6 +289,25 @@ def render_markdown(summary, records, svc) -> str:
     for key, count in list(summary["key_hit_frequency"].items())[:30]:
         add(f"| `{key}` | {count} |")
     add("")
+
+    add("## 5b. Key-set composition")
+    add("")
+    add("Court profiles compose a shared key set with a small registry extra set, so an")
+    add("anchor added for one registry never leaks into another:")
+    add("")
+    add("| Profile | Key sets | Documents |")
+    add("|---|---|---:|")
+    for profile_id, info in sorted(summary["profiles"].items(), key=lambda kv: -kv[1]["documents"]):
+        sets = ", ".join(f"`{sid}`" for sid in info.get("key_set_ids", []))
+        add(f"| `{profile_id}` | {sets} | {info['documents']} |")
+    add("")
+
+    if summary.get("insufficient_text"):
+        add("## 5c. Cover-page-only documents (no extractable body)")
+        add("")
+        for name in summary["insufficient_text"]:
+            add(f"- `{name}`")
+        add("")
 
     add("## 6. Per-document results")
     add("")

@@ -11,17 +11,19 @@ document's own structure instead of one global bag of regexes.
 |---|---|
 | `backend/app/services/case_pattern_service.py` | Runtime engine: layout fingerprint → drafting profile → key set → section map → facts + fact sheet |
 | `scripts/analyse_case_file_patterns.py` | Corpus sweep: per-file detection, key coverage, facts result, JSON + Markdown report |
-| `docs/pattern_analysis/case_pattern_report.{json,md}` | Current sweep output (52 unique documents) |
-| `backend/tests/test_case_pattern_service.py` | 26 tests: synthetic fixtures per template + corpus smoke tests |
+| `docs/pattern_analysis/case_pattern_report.{json,md}` | Current sweep output (**595 unique documents**, 39 profiles, 1 unreadable file) |
+| `backend/tests/test_case_pattern_service.py` | 39 fixture/profile tests + registry-merge + corpus smoke tests |
 | `backend/app/services/extraction_service.py` | Pass 1b — applies the key set to harden identity fields and lift `facts` |
 
 ---
 
 ## 1. Why patterns, not one big regex
 
-The corpus (79 PDFs → **52 unique judgments**, 27 re-downloads of the same
-files) is drafted to **eight different registry templates across four courts**.
-Every template writes the same field differently:
+The working corpus is now **756 PDFs → 596 unique documents** (160 re-downloads
+of the same orders, one corrupt file). They come from **20+ High Court registries
+plus the Supreme Court, NCLAT and one law-report digest**, and they are drafted to
+**at least 28 distinguishable templates**. Every template writes the same field
+differently:
 
 | Field | Madras Principal Seat | Madras Madurai Bench | Chhattisgarh | Patna | Punjab & Haryana |
 |---|---|---|---|---|---|
@@ -57,32 +59,90 @@ PDF ──► ① layout fingerprint ──► ② drafting profile ──► �
 
 ---
 
-## 3. Detected profiles (current corpus)
+## 3. Detected profiles (full corpus)
 
-| Profile | Docs | What identifies it | Facts strategy |
-|---|---:|---|---|
-| `MHC-PS-CORAM-ORDER` | 11 | `IN THE HIGH COURT OF JUDICATURE AT MADRAS` + `CORAM` + `DATED: dd-mm-yyyy` + JUDIS footer | `coram_order` |
-| `MHC-MB-CORAM-ORDER` | 17 | `BEFORE THE MADURAI BENCH …` + `CORAM` + `DATED:` | `coram_order` |
-| `MHC-MB-CRIM-JURIS` | 8 | Madurai Bench + `( Criminal Jurisdiction )` + `PRESENT` + `Date : dd.mm.yyyy`, monospace body, `n/N` page clock | `order_sheet` |
-| `MHC-PS-RESERVED-JUDGMENT` | 4 | `JUDICATURE AT MADRAS` + `RESERVED ON` / `PRONOUNCED ON` | `reserved_judgment` |
-| `MHC-MB-RESERVED-JUDGMENT` | 8 | `MADURAI BENCH` + `Reserved on` / `Pronounced on` | `reserved_judgment` |
-| `CGHC-BILASPUR-ORDER` | 2 | `HIGH COURT OF CHHATTISGARH AT BILASPUR`, neutral citation `2026:CGHC:n`, `AFR/NAFR`, `Order Reserved on`, `--- Petitioner(s)` | `numbered_paras` |
-| `PATNA-CWJC-JUDGMENT` | 1 | `JUDICATURE AT PATNA`, `Civil Writ Jurisdiction Case No.`, `====` banners, `Appearance :`, `Patna High Court … dt.` header | `headed_facts` |
-| `PHHC-CWP-COLUMNAR` | 1 | `HIGH COURT OF PUNJAB AND HARYANA AT CHANDIGARH`, `CWP-…(O&M)`, `Date of Decision:-`, `****`, `, J.` + DSC attestation | `columnar_judgment` |
+39 profiles, of which 4 are format profiles (a *shape* any court can print) and 2
+are guards. Counts are from the sweep in
+`docs/pattern_analysis/case_pattern_report.json`:
 
-Plus two fallbacks: `SC-GENERIC` (Supreme Court furniture — no corpus sample yet,
-marked unverified) and `GENERIC-HC` (never competes; only used when nothing
-clears the acceptance threshold).
+| Profile | Docs | Court | What identifies it | Facts strategy |
+|---|---:|---|---|---|
+| `BRIEF-CARD` | 179 | Unspecified Court | `CASE NO: … (YEAR: …)` + one-line `CORAM:` + `JUDICIAL HEADNOTE & SUMMARY` / `RATIO DECIDENDI` / `OPERATIVE ORDER` | `headed_facts` |
+| `BOMBAY-HC` | 46 | Bombay High Court | `HIGH COURT OF (JUDICATURE AT) BOMBAY` + `<case>.doc` working header + `CORAM : NAME, J.` + `DATE :` | `coram_order` |
+| `GAUHATI-HC` | 36 | Gauhati High Court | `THE GAUHATI HIGH COURT (HIGH COURT OF ASSAM, NAGALAND, MIZORAM AND ARUNACHAL PRADESH)` + `GAHC…` code + `Case No. : <type>/<n>/<year>` | `numbered_paras` |
+| `GUJARAT-HC` | 29 | Gujarat High Court | `HIGH COURT OF GUJARAT AT AHMEDABAD` + `R/CR.MA/<n>/<year>` + `ORDER DATED:` | `order_sheet` |
+| `MHC-MB-CORAM-ORDER` | 28 | Madras High Court | `BEFORE THE MADURAI BENCH …` + `CORAM` + `DATED:` | `coram_order` |
+| `MHC-PS-CORAM-ORDER` | 28 | Madras High Court | `IN THE HIGH COURT OF JUDICATURE AT MADRAS` + `CORAM` + `DATED: dd-mm-yyyy` | `coram_order` |
+| `ORISSA-HC` | 22 | Orissa High Court | `HIGH COURT OF ORISSA AT CUTTACK` + `ABLAPL No.<n> of <year>` + `..... Petitioner` + `Represented by Adv. -` | `order_sheet` |
+| `TELANGANA-HC` | 21 | Telangana High Court | `HIGH COURT FOR THE STATE OF TELANGANA` + `(Special Original Jurisdiction)` + `WEDNESDAY, THE … DAY OF …` | `reserved_judgment` |
+| `MADRAS-DAILY-ORDER` | 20 | Madras High Court | `Court No.8` / `S/L 34` + `CRM (M) <n> of <year>` + `In Re : An application for bail under Section 483 …` | `order_sheet` |
+| `MHC-MB-CRIM-JURIS` | 18 | Madras High Court | Madurai Bench + `( Criminal Jurisdiction )` + `PRESENT` + `Date : dd.mm.yyyy` | `order_sheet` |
+| `MHC-MB-RESERVED-JUDGMENT` | 16 | Madras High Court | `MADURAI BENCH` + `Reserved on` / `Pronounced on` | `reserved_judgment` |
+| `PATNA-CWJC-JUDGMENT` | 16 | Patna High Court | `JUDICATURE AT PATNA` + `Civil Writ Jurisdiction Case No.` + `====` banners + `Patna High Court … dt.` | `headed_facts` |
+| `TRIPURA-HC` | 16 | Tripura High Court | `HIGH COURT OF TRIPURA AGARTALA` + `TRHC…` code + `… APPELLANT-OPPOSITE PARTY(S)` + `VERSUS` | `coram_order` |
+| `ALLAHABAD-HC` | 15 | Allahabad High Court | `HIGH COURT OF JUDICATURE AT ALLAHABAD` + `Neutral Citation No. - YYYY:AHC-…` | `headed_facts` |
+| `RAJASTHAN-HC` | 13 | Rajasthan High Court | `HIGH COURT OF JUDICATURE FOR RAJASTHAN` + `[YYYY:RJ-JP:n]` + `CNR: RJHC… | URN: …` | `coram_order` |
+| `CGHC-BILASPUR-ORDER` | 11 | High Court of Chhattisgarh | `HIGH COURT OF CHHATTISGARH AT BILASPUR` + `2026:CGHC:n` + `AFR/NAFR` | `numbered_paras` |
+| `SC-GENERIC` | 10 | Supreme Court of India | `SUPREME COURT OF INDIA` caption | `reserved_judgment` |
+| `JK-LADAKH-HC` | 9 | High Court of Jammu & Kashmir and Ladakh | `HIGH COURT OF JAMMU & KASHMIR AND LADAKH AT …` + `Uploaded on:` + `Through: Mr. …, Advocate` + `v/s` | `coram_order` |
+| `KARNATAKA-HC` | 8 | Karnataka High Court | `HIGH COURT OF KARNATAKA` + `DATED THIS THE <n>TH DAY OF <month>` + `- 1 -` page clock | `reserved_judgment` |
+| `CALCUTTA-HC` | 6 | Calcutta High Court | `IN THE HIGH COURT AT CALCUTTA` + `Appellate Side` + `Between:` / `-Vs-` | `order_sheet` |
+| `MEGHALAYA-HC` | 5 | Meghalaya High Court | `HIGH COURT OF MEGHALAYA` + `Serial No.<n>` + `Regular List` + `Date of Decision:` + `Uploaded on:` | `coram_order` |
+| `MHC-PS-RESERVED-JUDGMENT` | 5 | Madras High Court | `JUDICATURE AT MADRAS` + `RESERVED ON` / `PRONOUNCED ON` | `reserved_judgment` |
+| `ANDHRA-HC` | 4 | Andhra Pradesh High Court | `HIGH COURT OF ANDHRA PRADESH` + `APHC…` code + `AT AMARAVATI` + `THE HONOURABLE SRI JUSTICE …` | `reserved_judgment` |
+| `DAILY-CAUSE-ORDER` | 4 | High Court (inferred from caption) | `Court No. <n>` / `Ct. No. <n>` + `(Vacation Bench)` / `(Allowed)` + `In Re : An application for bail …` | `order_sheet` |
+| `HIMACHAL-HC` | 4 | Himachal Pradesh High Court | `( YYYY:HHC:n )` + `Reserved on:` + `Date of decision:` + `Date of uploading on website:` | `reserved_judgment` |
+| `PHHC-CWP-COLUMNAR` | 4 | Punjab & Haryana High Court | `HIGH COURT OF PUNJAB AND HARYANA AT CHANDIGARH` + `CWP-…(O&M)` + `Date of Decision:-` + DSC attestation | `columnar_judgment` |
+| `BOMBAY-NEUTRAL-CITATION` | 3 | Bombay High Court | neutral citation `YYYY:BHC-<BENCH>:<n>` printed on every page + `WP <n>-<year>` clock | `coram_order` |
+| `CALCUTTA-CAUSELIST` | 3 | Calcutta High Court | cause-list head (`Ct.No.07`, `Sl. No.`, `(NMD/D.Hira)`) + `WPA <n> of <year>` + `Vs.` | `order_sheet` |
+| `JHARKHAND-HC` | 3 | Jharkhand High Court | `HIGH COURT OF JHARKHAND AT RANCHI` + `2026:JHHC:…-DB` + `--- Opposite Party` | `coram_order` |
+| `DELHI-HC` | 2 | Delhi High Court | `IN THE HIGH COURT OF DELHI AT NEW DELHI` + `$~` reportability head + `Reserved on` / `Pronounced on` | `reserved_judgment` |
+| `GENERIC-HC` | 2 | High Court | fallback only — never competes for a document | `generic` |
+| `OFFICE-NOTES` | 2 | — | registry sheet `Office Notes, reports, orders or proceedings` + `Date or directions and COURT'S OR JUDGE'S ORDERS` + a bare `UKHC…`/`TRHC…` code | `order_sheet` |
+| `ALLAHABAD-CASELINE` | 1 | Allahabad High Court | pure docket `Court No. - 26`, `Case :- …`, `Applicant :-`, `Opposite Party :-` — the court name is **not printed** | `headed_facts` |
+| `KERALA-HC` | 1 | Kerala High Court | `HIGH COURT OF KERALA AT ERNAKULAM` + `THE HONOURABLE MR.JUSTICE …` + `NTH DAY OF <MONTH>, <year> / NTH <MALAYALAM MONTH>, <era>` | `reserved_judgment` |
+| `LAW-REPORT-REPRINT` | 1 | — | `<appellant> vs <respondent> on <date>` + `Equivalent citations:` — a digest reprint, not a live order | `headed_facts` |
+| `MADRAS-REVIEW-SLIP` | 1 | Madras High Court | `R.V.W. <n> of <year>` + `With` + `CAN <n> of <year>` | `order_sheet` |
+| `MADRAS-SHORT-ORDER` | 1 | Madras High Court | `WMP. No.<n> of <year> in W.P. No.<n> of <year>` + `Ordered.` | `order_sheet` |
+| `NON-JUDGMENT` | 1 | — | `Project Overview & Objectives` / `Tech Stack` / `System Architecture` headings — not a court document at all | `none` |
+| `UTTARAKHAND-HC` | 1 | Uttarakhand High Court | `HIGH COURT OF UTTARAKHAND AT NAINITAL` + `UKHC…` code + `Reserved on` / `Delivered on` | `reserved_judgment` |
 
-### Scoring and acceptance
+**Coverage: 593/595 documents (99.7 %) matched a specific profile**; only 2 fall
+back to `GENERIC-HC`. Before this extension the fallback was 443/596 — the engine
+only knew Madras, Chhattisgarh, Patna and Punjab & Haryana.
+
+Two guard profiles earn their place:
+
+* `NON-JUDGMENT` — one PDF in `storage/cases/` is a product/design brief, not an
+  order. It is now labelled instead of being force-fitted to a court profile.
+* `LAW-REPORT-REPRINT` — a pre-Independence digest reprint (`<party> vs <party>
+  on <date>` + `Equivalent citations:`), which has no live caption at all.
+
+### Format profiles vs registry profiles
+
+The important structural finding: **many drafts identify a *format*, not a
+court.** Brief cards (`CASE NO: … (YEAR: …)` + `RATIO DECIDENDI`), certified
+cause-list order sheets (`Court No. 8` + `(Allowed)` + `In Re : An application for
+bail …`), registry office-notes sheets and Allahabad-style dockets deliberately do
+**not** print a court caption — the court is inferred from the caption body
+(`COURT_NAME_MAP`) or from the registry code prefix (`REGISTRY_COURT`, e.g.
+`UKHC010091362026` → Uttarakhand, `TRHC…` → Tripura). 179 of the 595 documents are
+brief cards spanning the Supreme Court (159), Delhi (8), Madras (4), Bombay (2),
+Allahabad, Gujarat, Karnataka, Kerala and NCLAT.
+
+### Scoring and acceptance### Scoring and acceptance
 
 * Hard gate: every `required` signal must match.
 * `score = Σ required weights + Σ matched supporting weights − Σ matched negative weights`
   (layout signals participate on the same scale).
 * Ranking is by **absolute evidence**, normalised score as tie-break, so the
   generic profile can never win by being trivially "100 % complete".
-* `normalised = score / max_possible`; below `0.40` the file falls back to
-  `GENERIC-HC` and the runner-up is reported for triage.
+* Accept when `normalised ≥ 0.40` **or** the required court-caption signal alone
+  fires (`net ≥ 1.0`). Registry office-notes exports often print nothing but the
+  court name and a case number, and sending those to the generic fallback loses
+  the court attribution entirely.
+* Below both thresholds the file falls back to `GENERIC-HC` with the runner-up
+  reported for triage.
 
 Detection is fully deterministic and offline (regex + geometry only), which keeps
 ingestion auditable.
@@ -91,60 +151,91 @@ ingestion auditable.
 
 ## 4. Drafting/layout hazards found in the corpus
 
-| Hazard | Files | Effect | Handling |
-|---|---:|---|---|
-| **Double-drawn text layer** (each line rendered twice with a 1–2 pt offset, words split across clips) | P&H | naive extraction yields `IN T + THE + HIGH … + AN + ND`, words truncated (`Rajwanti and ano`) | word-geometry repair: group by baseline, merge fragments by bbox overlap (duplicate draw) or character overlap (split word); the repaired page is kept only when line continuity improves ≥1.4× |
-| **Monospace registry template** | 3 | different fonts/metrics, no JUDIS footer | `layout:mono_font` signal |
-| **Legal-size page** (612×1008) | 4 | CGHC / Patna / P&H | `layout:legal_page` |
-| **JUDIS watermark** (`https://www.mhc.tn.gov.in/judis`) repeated per page | 44 | pollutes body text and embeddings | noise key stripped before parsing |
-| **Page clocks**: `Page N of M`, `n/N`, bare integer | 44 / — / 4 | break paragraph numbering | per-profile noise keys |
-| **Running headers** (`Patna High Court CWJC … dt.…`, `CRL OP No. …`) | Patna + Madras | repeated mid-sentence | repeated-edge-line detection + noise keys |
-| **Address blocks inside party captions** | CGHC, Patna | party extraction grabs `R/o Ward No. 02 …` | caption party extractor rejects address-shaped lines and cuts at `S/o · D/o · Aged · R/o · Rep by` |
+| Hazard | Where | Effect | Handling |
+|---|---|---|---|
+| **Shifted duplicate draw** (every line drawn twice at a small offset, so the extractor emits `IN` / `IN THE` / `THE HIGH` / `HIGH COURT` …) | Bombay `.doc`/`.odt` exports | a 43-page order explodes into thousands of shard lines; captions and dates never sit on one line | `_dedupe_lines` merges *runs of three or more* lines whose first word repeats the previous line's last word; two-line coincidences (normal prose) are left alone, and nothing outside a run is touched |
+| **Two-column judgment body** | Patna, older reported judgments | left and right columns interleave line by line, producing sentences that jump between unrelated clauses | `_columnar_page_text` rebuilds the page column-by-column, but only when `_detect_columnar` sees at least two tall blocks sharing a vertical band on opposite sides of the gutter |
+| **Cover-page-only PDFs** (caption + CNR, no body) | 32 documents (`SC_*` brief dockets, `MADRAS-DAILY-ORDER`, `MADRAS-SHORT-ORDER`) | zero facts and zero sections, which looks like an extraction bug | `analyse_pdf` now returns `text_status: "insufficient_text"` with `text_chars`, and the sweep lists them separately |
+| **Double-drawn text layer** (1–2 pt duplicate render, words split across clips) | Punjab & Haryana | `IN T + THE + HIGH … + AN + ND` | word-geometry repair: group by baseline, merge fragments by bbox overlap (duplicate draw) or character overlap (split word); kept only when line continuity improves ≥1.4× |
+| **Monospace registry template** | Gujarat, Orissa, CGHC | different fonts/metrics | `layout:mono_font` signal |
+| **Legal-size page** (612×1008) | CGHC, Patna, P&H | — | `layout:legal_page` |
+| **JUDIS watermark** (`mhc.tn.gov.in/judis`) and registry footers | Madras, Allahabad, Delhi | pollutes body text and embeddings | `noise` keys strip them before parsing |
+| **Page clocks** (`Page N of M`, `n/N`, `1 of 8`, `- 1 -`, `WP.358.2026.doc`) | most registries | break paragraph numbering; also a reliable *profile* signal | per-profile `noise` + `identity` keys |
+| **Running headers** (`Patna High Court CWJC … dt.…`, `WP 207-2026 / Page 1 of 10 / 2026:BHC-GOA:2108`) | Patna, Bombay | repeated mid-sentence; the *first* occurrence carries the case number | repeated-edge-line detection keeps the first occurrence only |
+| **Address blocks inside party captions** | CGHC, Patna, Orissa | party extraction grabs `R/o Ward No. 02 …` | caption party extractor rejects address-shaped lines and cuts at `S/o · D/o · Aged · R/o · Rep by` |
+| **Filename prefixes lie** | `storage/cases/*` | `DHC_1973_Appeal…` is a Supreme Court brief card; many `BHC_*` files are Orissa/Gauhati/Allahabad orders | never key off the filename — all classification is text/geometry based |
 
-Text-quality states surfaced per file: `good` (51), `repaired` (1),
-`ocr_required` (0 in this corpus — the flag exists for scans).
+Text-quality states across the sweep: `good` 557, `repaired` 7, `ocr_required` 31
+(the flag exists for scans; no OCR stage is wired in).
 
 ---
 
 ## 5. Key sets
 
-Every profile maps to a key set with 14 categories. A key is
+Every profile resolves to a key set with 14 categories. A key is
 `{category, anchors[], window, confidence, note}`; `window` is `line` (first
 matching line), `block` (anchor plus the following lines) or `span` (anchor to
 the next stop anchor).
 
+### Composition: one shared set + per-registry extras
+
+Adding 20 registries to one flat key set would have let Bombay anchors fire on
+Allahabad documents. Instead:
+
+* `KEY-HC-COMMON` — the superset of anchors that hold across registries
+  (caption furniture, `PRAYER:`, `J U D G M E N T`, `In the result`, `JUDGE`).
+* `KEY-EXTRA-<COURT>` — a small set of registry-specific anchors
+  (`ABLAPL No.`, `CORAM : NAME, J.`, `Case :-`, `Serial No.`, `R.V.W.` …).
+* Court profiles declare `key_set: ["KEY-HC-COMMON", "KEY-EXTRA-<COURT>"]`, and
+  `key_set_for()` merges them: same key id → anchors unioned, confidence = max,
+  inputs never mutated. `Detection.key_set_id` keeps the primary id for storage
+  and `key_set_ids` records the full composition.
+
+22 key sets exist: `KEY-HC-COMMON`, 11 court extras (`ALLAHABAD`, `BOMBAY`,
+`CALCUTTA`, `GAUHATI`, `JK`, `KARNATAKA`, `MADRAS-INRE`, `MEGHALAYA`, `ORISSA`,
+`TELANGANA`, `BRIEF-CARD`), the 8 originals and `KEY-GENERIC`.
+
 | Category | What it yields | Example anchors |
 |---|---|---|
-| `identity` | case number, CNR, neutral citation, page clock | `CNR: {HCMA012161402026}`, `2026:CGHC:36890`, `CWP-1744-2024 (O&M)` |
-| `forum` | court line, bench, jurisdiction banner, reportability | `BEFORE THE MADURAI BENCH …`, `( Criminal Jurisdiction )`, `NAFR` |
-| `dates` | reserved, pronounced/decision date | `RESERVED ON:`, `Date : dd.mm.yyyy`, `Order passed on`, `Date of Decision:-` |
-| `coram` | judge(s), signature-name form | `CORAM` + `HON'BLE …JUSTICE`, `, J.` |
-| `parties` | petitioner, respondent, versus, designators, accused tags | `..Petitioner(s)`, `--- Petitioner(s)`, `...  ...  Petitioner/s` |
-| `counsel` | appearance/for-party blocks | `For Petitioner(s):`, `Appearance :`, `Present:-` |
+| `identity` | case number, CNR, neutral citation, registry code, page clock | `CNR: {HCMA012161402026}`, `2026:CGHC:36890`, `ABLAPL No.11991 of 2026`, `UKHC010091362026` |
+| `forum` | court line, bench, jurisdiction banner, reportability | `BEFORE THE MADURAI BENCH …`, `( Criminal Jurisdiction )`, `KOHIMA BENCH`, `NAFR` |
+| `dates` | reserved, pronounced/decision date | `RESERVED ON:`, `Date : dd.mm.yyyy`, `DATE : OCTOBER 22, 2026.`, `DATED THIS THE 14TH DAY OF …` |
+| `coram` | judge(s), signature-name form | `CORAM` + `HON'BLE …JUSTICE`, `CORAM : MILIND N. JADHAV, J.`, `, J.` |
+| `parties` | petitioner, respondent, versus, designators, accused tags | `..Petitioner(s)`, `Applicant :-`, `..... Petitioner`, `--- Opposite Party` |
+| `counsel` | appearance/for-party blocks | `For Petitioner(s):`, `Through: Mr. …, Advocate`, `Represented by Adv. -` |
 | `relief` | verbatim prayer | `PRAYER:`, `relief(s):- “`, `(i) Also for declaring …` |
 | `facts` | factual-matrix start/end anchors, explicit heading | `ORDER`, `J U D G M E N T`, `Brief Facts Of Case`, end anchors `I have heard`, `learned counsel` |
 | `issues` | framed questions | `Whether`, `points for consideration` |
 | `reasoning` | discussion start | `I have heard`, `Having heard`, `Consideration` |
-| `operative` | result/order paragraph | `In the result`, `stands dismissed`, `With the aforesaid observations` |
-| `signature` | judge sign, attestation, pre-delivery order | `JUDGE`, `Sd/-`, `(Name) JUDGE`, `I attest to the accuracy…` |
-| `noise` | watermarks, page clocks, rules, running headers | `mhc.tn.gov.in/judis`, `Page N of M`, `====`, `****` |
+| `operative` | result/order paragraph | `In the result`, `stands dismissed`, `(Allowed)`, `Ordered.` |
+| `signature` | judge sign, attestation, pre-delivery order | `JUDGE`, `Sd/-`, `(Name) JUDGE`, `Uploaded on:` |
+| `noise` | watermarks, page clocks, rules, running headers | `mhc.tn.gov.in/judis`, `Page N of M`, `====`, `-Vs-` |
 | `statute_style` | citation idiom of the template | `Sections … read with … of the Act`, `Articles 226`, `Section 483 BNSS` |
 
-### Anchor hit rates on the 52-document sweep
+### Anchor hit rates on the 595-document sweep
 
-| Key | Docs | | Key | Docs |
-|---|---:|---|---|---:|
-| `parties.versus` | 51 | | `facts.start` | 43 |
-| `dates.decision_date` | 50 | | `parties.petitioner` | 42 |
-| `relief.prayer` | 49 | | `identity.case_no` | 40 |
-| `counsel.for_petitioner` | 48 | | `statute_style.sections` | 35 |
-| `signature.judge_sign` | 45 | | `coram.judge` | 27 |
-| `forum.court_line` | 44 | | `facts.end` | 26 |
-| `parties.respondent` | 43 | | `identity.cnr` | 22 |
+| Key | Documents |
+|---|---:|
+| `forum.court_line` | 563 |
+| `signature.judge_sign` | 562 |
+| `identity.case_no` | 454 |
+| `parties.versus` | 409 |
+| `statute_style.sections` | 397 |
+| `parties.petitioner` | 394 |
+| `parties.respondent` | 344 |
+| `facts.start` | 324 |
+| `dates.decision_date` | 318 |
+| `operative.conclusion` | 293 |
+| `facts.end` | 292 |
+| `counsel.counsel_for` | 253 |
+| `forum.jurisdiction` | 223 |
+| `coram.judge` | 222 |
+| `relief.prayer` | 218 |
+| `coram.coram_inline` | 200 |
 
-Mean key coverage per profile lands between **0.46 and 0.70**. Coverage is not a
-quality score — a short omnibus order legitimately has no reserved date, no
-issues heading and no prayer (Madras orders are 2–4 pages) — it is the
+Mean key coverage per profile sits between 0.06 and 0.52. Coverage is not a
+quality score — a one-page brief card has no prayer, no reserved date and no
+issues heading; a certified order sheet has no parties block. It is the
 *shortlist* the extractor is allowed to rely on.
 
 Two rules matter when reading the shortlist:
@@ -185,23 +276,32 @@ prays*), with heavy penalties for caption furniture (`..Petitioner`,
 `For Petitioners:`). The winner is trimmed to a paragraph edge and capped at
 4 500 characters.
 
-### Results on the sweep
+### Results on the sweep (595 unique documents)
 
 | Strategy | Documents |
 |---|---:|
-| `anchored_span` | 31 |
-| `paragraph_scan` | 19 |
-| `post_caption_body` | 1 |
-| `explicit_heading` | 1 |
+| `anchored_span` | 226 |
+| `paragraph_scan` | 203 |
+| `explicit_heading` | 130 |
+| `order_sheet` | 21 |
+| `reserved_judgment` | 10 |
+| `post_caption_body` | 5 |
+
+* **0 of 563 body-text documents return empty facts** (mean 1 938 chars, median
+  1 415, min 135, max 7 114). The remaining 32 are cover-page-only PDFs, now
+  labelled `insufficient_text` instead of silently producing nothing.
+* Brief cards (179) extract 636 chars on average — they have no factual narrative,
+  only a headnote, so `headed_facts` correctly returns the summary section.
 
 Example fact sheets (dates / crime numbers / places / offences):
 
-* *CRL OP 26220/2026* — 9 dates, `Crime No.120 of 2025`, `C.C.No.597 of 2026`,
-  Tiruvallur, `Sections 8(c) read with 20(b)(ii)(C), 25 and 29(1) of the Act`,
+* *CRL OP 26220/2026 (Madras)* — 9 dates, `Crime No.120 of 2025`, `C.C.No.597 of
+  2026`, Tiruvallur, `Sections 8(c) read with 20(b)(ii)(C), 25 and 29(1) of the Act`,
   `in custody since then`.
 * *WPS 5957/2023 (CGHC)* — 8 dates, `Section 34 of the Rights of Persons with
   Disabilities Act, 2016`.
-* *CWP-1744-2024 (P&H)* — 12 dates recovered from a repaired text layer.
+* *WP.358.2026 (Bombay)* — dates and `Directorate of Enforcement` recovered from a
+  shift-repaired text layer that previously produced only shard lines.
 
 Fact-sheet fields: `dates`, `crime_numbers`, `places`, `offences`, `custody`,
 `arrest`, `amounts`. They are returned alongside the facts text and are the
@@ -212,6 +312,9 @@ natural feed for the draft-assistant gap analysis and precedent search.
 ## 7. Using it
 
 ```bash
+# full-corpus sweep (storage/cases is the default) — ~4 minutes for 756 PDFs
+python scripts/analyse_case_file_patterns.py --out docs/pattern_analysis
+
 # one-off analysis of any folder of judgments
 python scripts/analyse_case_file_patterns.py \
     --dirs backend/seed_corpus/pdfs backend/incoming_cases \
@@ -220,8 +323,11 @@ python scripts/analyse_case_file_patterns.py \
 # in code
 from app.services.case_pattern_service import CasePatternService
 report = CasePatternService.analyse_pdf("path/to/order.pdf")
-report["profile"]["profile_id"]      # e.g. 'MHC-MB-CRIM-JURIS'
+report["profile"]["profile_id"]      # e.g. 'BOMBAY-HC'
+report["profile"]["court"]           # derived court (brief cards carry any court)
+report["profile"]["key_set_ids"]     # ('KEY-HC-COMMON', 'KEY-EXTRA-BOMBAY')
 report["key_coverage"]               # {'found': 16, 'declared': 29, 'ratio': 0.55, ...}
+report["text_status"]                # 'ok' | 'insufficient_text' (cover-page PDFs)
 report["facts"]["fact_sheet"]        # structured case facts
 ```
 
@@ -239,7 +345,9 @@ logged and swallowed so ingestion cannot regress.
 2. Add the signals to `SIGNALS` (pattern + scope + weight).
 3. Add a profile to `PROFILES` with `required` / `supporting` / `negative`
    signals and `min_score`.
-4. Add (or clone) a key set in `KEY_SETS` and point the profile at it.
+4. Add a `KEY-EXTRA-<COURT>` set in `KEY_SETS` (reuse `KEY-HC-COMMON`) and point
+   the profile at `["KEY-HC-COMMON", "KEY-EXTRA-<COURT>"]`; add a `COURT_REGISTRY`
+   row instead when the court can be expressed as one caption regex.
 5. Pin the behaviour with a synthetic caption fixture in
    `backend/tests/test_case_pattern_service.py`, then re-run
    `scripts/analyse_case_file_patterns.py` to confirm no existing profile moves.
@@ -248,12 +356,15 @@ logged and swallowed so ingestion cannot regress.
 
 ## 8. Known limitations / next steps
 
-* **Coverage skew.** 46 of 52 documents are Madras HC; Chhattisgarh, Patna and
-  Punjab & Haryana rest on 1–2 samples each. Templates from Allahabad, Bombay,
-  Karnataka, Delhi (and the Supreme Court) still need their own profiles.
-* **Scanned orders.** The `ocr_required` path flags the file but no OCR stage is
-  wired in yet.
-* **Facts boundary is heuristic.** On long reserved judgments (30–46 pages) the
+* **Two residual generic documents.** Both are Calcutta cause-list slips whose
+  only court cue is a case-number prefix that Calcutta shares with Madras
+  (`CRM (M)`); leaving them generic is preferable to a 50/50 court guess.
+* **Court attribution for format profiles** depends on `COURT_NAME_MAP` /
+  `REGISTRY_COURT`; a brief card from an unlisted tribunal stays `court: ""`
+  (reported as unknown) rather than being given a wrong court.
+* **Scanned orders.** The `ocr_required` path flags the file (31 in this sweep)
+  but no OCR stage is wired in yet.
+* **Facts boundary is heuristic.** On long reserved judgments (30–125 pages) the
   facts cap may cut before the full factual narrative; a continuation window
   (`facts` + `facts_continuation`) would help.
 * **Judge strings in body citations.** Pass 1 can still pick a judge name from a
@@ -265,3 +376,5 @@ logged and swallowed so ingestion cannot regress.
   extraction payload but is not stored on the `Case` model — adding a
   `pattern_profile` / `layout_quality` column would let the review UI filter
   "needs OCR" and "unrecognised template" queues.
+* **One corrupt file.** `storage/cases/HC_2026_CRL_A_0A6C947A_2026_0a6c947a.pdf`
+  raises `FileDataError`; the sweep records it in `summary.errors` and continues.

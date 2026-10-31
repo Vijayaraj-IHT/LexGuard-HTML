@@ -159,3 +159,25 @@ def test_valid_disposition_constraint():
     """Verify disposition strictly conforms to the approved 7-item judicial enum."""
     for disp in VALID_DISPOSITIONS:
         assert disp in ["Allowed", "Dismissed", "Disposed", "Quashed", "Bail Granted", "Bail Rejected", "Remanded"]
+
+
+# ---------------------------------------------------------------------------
+# Date normalisation across registry date idioms
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("raw,expected", [
+    ("ORDER DATED: 30/10/2026", "2026-10-30"),
+    ("17.08.2026", "2026-08-17"),
+    ("21 September, 2020", "2020-09-21"),
+    ("OCTOBER 22, 2026.", "2026-10-22"),                      # Bombay 'DATE :' line
+    ("DATED THIS THE 14TH DAY OF OCTOBER, 2026", "2026-10-14"),  # Karnataka
+    ("18TH DAY OF NOVEMBER 2022", "2022-11-18"),                # Kerala dual-era
+    ("WEDNESDAY, THE 2nd DAY OF SEPTEMBER 2026", "2026-09-02"), # Telangana/Andhra
+    ("Date of Decision: 30.10.2026", "2026-10-30"),
+])
+def test_date_idioms_normalise(raw, expected):
+    assert ExtractionService._normalize_date_string(raw) == expected
+
+
+def test_unparseable_date_returns_none():
+    assert ExtractionService._normalize_date_string("sometime next week") is None
