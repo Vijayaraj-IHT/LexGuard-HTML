@@ -184,3 +184,100 @@ Roles were played by one session, not by independent reviewers. The verdicts abo
 **Not done (not in F0–F8, not yet reviewed)**
 
 From the audit's remaining findings, these have no debate record and were not changed: the `SECRET_KEY`, `CSRF_SECRET`, and DB-password defaults in `config.py`; the `COOKIE_SECURE` default; dev seeding with known passwords in `main.py`; the CSP `'unsafe-inline'`; the in-memory rate limiter; the bare `except` in `upload-auto`; the static "verified" badge in `case-viewer.html` and the `integrity_status="verified"` default in `schemas/case.py`; the README claims (208 cases, 989 records, "Merkle"); and the `database/*.sql` dumps containing personal data. Each needs its own three-role review before any change.
+
+---
+
+# Round 2 — audit items without a prior debate record
+
+Facts gathered before the review:
+
+- The backend serves no HTML. `run_lexguard.sh` serves the frontend with `python -m http.server 8888`, so **no CSP applies to any page**. The CSP header exists only on uvicorn JSON responses.
+- Six pages contain inline `<script>` blocks, two use inline `on*=` handlers, and 104 elements use `style="..."`.
+- `CSRF_SECRET` is defined in `config.py` and `.env.example` and is never read.
+- Demo seeding runs when `ENVIRONMENT == "development"`, which is the default. The known credentials also appear in `login.html` quick-fill buttons, `README.md`, and several scripts.
+- `/cases/{id}/view` computes `integrity_status` at runtime (verified / tampered / file_missing), so the schema default `"verified"` is always overwritten before a client sees it.
+- `case-viewer.html` has a static "VERIFIED UNALTERED RECORD" badge in the Digital Seal Certificate modal. No JavaScript fills the certificate fields (`cert-*` ids), so the sheet shows dashes plus the badge. Line 120 has a static "Verified Copy" line in the page header.
+- Upload-auto (`cases.py` ~318-330): the file is renamed on disk, then the DB is committed. If the commit fails, the file is at the new path while the DB still points at the old one. The `except Exception: pass` hides this.
+- `rate_limit.py`: `_request_history` never removes keys. Every window in use is 60 s.
+
+---
+
+## G1 — Config defaults: secrets, unused CSRF secret, production gating
+
+**Proposer.** Remove the unused `CSRF_SECRET`. Warn at startup when the default `SECRET_KEY` is in use. Make the production check in `lifespan` use the same rule as the validator (`!= "development"`).
+
+**Skeptic.** Changing defaults breaks local setups. A warning is noise. `DATABASE_URL` carries a local password, and that is a development default, so it should stay. The validator already refuses the default key and `COOKIE_SECURE=False` outside development.
+
+**Judge.** `ACCEPT WITH CHANGES`.
+- Remove `CSRF_SECRET` from `config.py` and `.env.example`. It is dead configuration with a hardcoded value.
+- Log a warning (not an error) in development when the default `SECRET_KEY` is used.
+- Align the `lifespan` condition with the validator.
+- Leave `DATABASE_URL` and `ENVIRONMENT` defaults as they are. Changing them is a deployment decision.
+
+## G2 — Demo accounts with known passwords are seeded by default
+
+**Proposer.** Gate demo seeding behind `SEED_DEMO_ACCOUNTS`, default `False`. `.env.example` turns it on for local development.
+
+**Skeptic.** Fresh clones without a `.env` lose the quick-fill logins. The tracked `lexguard.db` and the dumps still contain these accounts, so the flag does not remove the credentials (that is D3). Some local scripts assume the seeded users exist.
+
+**Judge.** `ACCEPT WITH CHANGES`. Default off, and `.env.example` on. The README must document the flag. D3 stays deferred, and the report must say that the tracked data still holds the accounts.
+
+## G3 — CSP `'unsafe-inline'` in script-src
+
+**Proposer.** Remove `'unsafe-inline'` from `script-src`.
+
+**Skeptic.** The header covers only JSON responses, which contain no scripts. The pages have no CSP at all because `http.server` sets none. Making the pages CSP-safe means moving the inline scripts and handlers out of six pages and two handlers, and the 104 inline style attributes still need `style-src 'unsafe-inline'`. That is a change to every page.
+
+**Judge.** `ACCEPT` for the header only. Removing `'unsafe-inline'` from the API `script-src` is zero-risk. The actual gap is that **pages have no CSP**. Fixing it needs inline-script extraction and a page-level policy, which touches every page. This is recorded as **D6** and needs your approval.
+
+## G4 — In-memory rate limiter
+
+**Proposer.** Prune stale keys so memory stays bounded. Document the limits.
+
+**Skeptic.** The limiter is not an integrity control. Behind a reverse proxy every client shares one IP. It is per process. Trusting `X-Forwarded-For` would let clients spoof their IP.
+
+**Judge.** `ACCEPT WITH CHANGES`. Bound memory only. Do not trust forwarded headers. State the per-process, per-IP limits in the code. A shared limiter (for example Redis) is a new dependency and is out of scope.
+
+## G5 — Bare `except` around post-persist rename in upload-auto
+
+**Proposer.** Replace the silent `pass`. If the rename fails, keep the file where it is. If the DB commit fails after the rename, roll back, move the file back, and log.
+
+**Skeptic.** The rename is cosmetic, so logging alone would be enough.
+
+**Judge.** `ACCEPT`. Logging alone leaves the file/DB mismatch in place. Roll back and restore the file so the record stays consistent.
+
+## G6 — Static "verified" claims in the UI and schema
+
+**Proposer.** Use neutral text for the header and certificate. When the certificate opens, call `verifyIntegrity` and set the badge and hash from the response. Change the schema default to `"not_checked"`.
+
+**Skeptic.** Filling certificate fields is scope creep and needs design work. The schema default is never sent, so changing it has no effect.
+
+**Judge.** `ACCEPT WITH CHANGES`. Set only the integrity badge and hash from the verify response. Do not add new certificate fields. Change the schema default for consistency; it does not change behaviour.
+
+## G7 — README claims
+
+**Proposer.** Replace "Merkle" with "hash-chained". Replace hardcoded counts with the measured values for the tracked `lexguard.db` (607 cases, 1661 audit records, 505 failing hash recomputation), and point to `integrity_report.py`.
+
+**Skeptic.** The counts may describe the SQL dumps, not `lexguard.db`. Removing them loses information.
+
+**Judge.** `ACCEPT WITH CHANGES`. Describe `lexguard.db` only with measured numbers. Make no claims about the dumps, which were not verified in this round.
+
+---
+
+## Round 2 deferred
+
+| ID | Item | Why deferred |
+|----|------|--------------|
+| D6 | Page-level CSP for the frontend (move 6 inline scripts and 2 inline handlers out of HTML; decide on style-src) | Touches every page; needs your approval. |
+
+## Round 2 implementation record
+
+- **G1 done.** `CSRF_SECRET` removed from `config.py` and `.env.example`. Startup logs a warning when the default development `SECRET_KEY` is in use. The lifespan production check now uses the validator's rule (`!= "development"`). `DATABASE_URL` and `ENVIRONMENT` defaults are unchanged.
+- **G2 done.** New setting `SEED_DEMO_ACCOUNTS` (default `False`). Demo seeding requires `ENVIRONMENT=development` and the flag. `.env.example` sets it to `True`. README documents it. The credentials still exist in the tracked `lexguard.db` and the dumps (D3).
+- **G3 done (header only).** API responses no longer allow `'unsafe-inline'` scripts. `style-src` is unchanged. The frontend pages have no CSP; that gap is **D6**.
+- **G4 done.** Stale keys are pruned once the table exceeds 5000 keys. A lock guards the shared dict, because sync dependencies run in the thread pool. X-Forwarded-For is not trusted. Limits are documented in the module.
+- **G5 done.** The rename is wrapped separately from the DB commit. A rename failure keeps the file where the row points. A commit failure rolls back, moves the file back, and logs. No silent `pass`. **Test coverage:** the rename-failure branch is tested. The commit-failure branch is not covered by a test.
+- **G6 done.** The viewer's "Verified Copy" line and the static "VERIFIED UNALTERED RECORD" badge are gone. The certificate badge starts as "INTEGRITY NOT CHECKED". It is set from `verify-integrity` when the sheet opens. The schema default is now `"not_checked"`. Nothing else in the certificate was filled in.
+- **G7 done.** "Merkle" and the hardcoded case counts are replaced. The README gives the measured `lexguard.db` numbers (614 cases, 1734 audit records, 506 hash failures), taken from a read-only run of `integrity_report.py` on a copy of the blob at `main` (`d3f191…`). An earlier run on blob `0772bb…` (607 / 1661 / 505) is superseded: `main` changed `backend/lexguard.db` after the F0–F8 merge. The dumps were not verified, so no claims are made about them.
+
+**Tests.** `test_integrity_fixes.py` now has 19 tests (G1–G7 added). Full suite on a copy of the committed `lexguard.db`: 60 passed, 1 failed, 7 skipped. The failure is the known search-ranking test, which needs `sentence_transformers`.
