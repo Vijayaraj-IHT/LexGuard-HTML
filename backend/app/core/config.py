@@ -14,6 +14,8 @@ class Settings(BaseSettings):
 
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
+    # Seeds demo accounts with well-known passwords. Only honoured when ENVIRONMENT=development.
+    SEED_DEMO_ACCOUNTS: bool = False
     PROJECT_NAME: str = "Lexguard Legal Research & Verification System"
     API_V1_STR: str = "/api/v1"
 
@@ -28,7 +30,6 @@ class Settings(BaseSettings):
     COOKIE_SECURE: bool = False  # Set to True when served over HTTPS (enforced outside development)
     COOKIE_SAMESITE: str = "lax"
     CSRF_HEADER_NAME: str = "X-CSRF-Token"
-    CSRF_SECRET: str = "lexguard-csrf-protection-secret-key-salt"
 
     # Database Configuration (PostgreSQL default)
     DATABASE_URL: str = "postgresql+psycopg2://lexguard:lexguard123@localhost:5432/lexguard"

@@ -21,10 +21,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-        # Content Security Policy header
+        # Content Security Policy header. This is sent on API (JSON) responses only: the
+        # frontend is served separately and has no CSP (see docs/integrity, D6).
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline'; "
+            "script-src 'self'; "
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: https:; "
             "font-src 'self' data:; "
@@ -56,17 +57,22 @@ class CSRFValidationMiddleware(BaseHTTPMiddleware):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Production security validation
-    if settings.ENVIRONMENT == "production":
+    # Production security validation (same rule as Settings.validate_production_security)
+    if settings.ENVIRONMENT != "development":
         if not settings.SECRET_KEY or "lexguard-super-secret" in settings.SECRET_KEY:
             raise RuntimeError("CRITICAL SECURITY VIOLATION: Production SECRET_KEY must be configured via environment variable.")
         settings.COOKIE_SECURE = True
+    elif "lexguard-super-secret" in settings.SECRET_KEY:
+        import logging
+        logging.getLogger("lexguard").warning(
+            "Running with the DEFAULT development SECRET_KEY. Set SECRET_KEY in backend/.env before sharing this server."
+        )
 
     # Startup: Ensure all database tables exist
     Base.metadata.create_all(bind=engine)
 
-    # Dev-gate: Seed test/demo accounts strictly in development mode
-    if settings.ENVIRONMENT == "development":
+    # Dev-gate: seed demo accounts only in development AND when explicitly enabled
+    if settings.ENVIRONMENT == "development" and settings.SEED_DEMO_ACCOUNTS:
         db = SessionLocal()
         try:
             seed_data = [
