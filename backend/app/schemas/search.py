@@ -19,6 +19,13 @@ class SearchRequest(BaseModel):
     offset: int = Field(default=0, ge=0)
 
 
+class Snippet(BaseModel):
+    """A plain-text snippet plus highlight ranges, never HTML."""
+    page: Optional[int] = None
+    text: str
+    highlights: List[List[int]] = []
+
+
 class SearchResultItem(BaseModel):
     id: str
     case_no: str
@@ -26,7 +33,12 @@ class SearchResultItem(BaseModel):
     court: str
     year: int
     matched_sections: List[str] = []
-    relevance_score: float
+    # None means "not a match ranking" (browse / empty query) — never render a score for it.
+    relevance_score: Optional[float] = None
+    match_type: str = "hybrid"  # browse | keyword | statute | related | hybrid
+    citation_display: Optional[str] = None
+    source_verified: bool = False
+    repository_id: Optional[str] = None
     outcome: Optional[str] = None
     disposition: Optional[str] = None
     judge: Optional[str] = None
@@ -38,6 +50,7 @@ class SearchResultItem(BaseModel):
     section_tags: List[str] = []
     keyword_tags: List[str] = []
     matched_snippets: List[str] = []
+    snippets: List[Snippet] = []
     matched_keywords: List[str] = []
     source_url: Optional[str] = None
     rrf_score: Optional[float] = None

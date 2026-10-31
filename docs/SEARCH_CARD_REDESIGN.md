@@ -371,6 +371,15 @@ Client renders highlights by slicing text and escaping each segment — XSS is s
 
 ## 7. What to change first (ordered, minimal diff)
 
+> **Status (2026-11-01):** steps 1–3 are implemented on `arena/557df419-lexguard-html`.
+> `search.py` now returns `relevance_score: null` for browse queries, `match_type`
+> (`browse`/`keyword`/`statute`/`related`), `citation_display`, `source_verified`,
+> `repository_id` and `snippets` with `[start, end]` highlight ranges instead of
+> `<mark>` HTML. The card moved to `frontend/js/components/case-card.js`, escapes every
+> value, and no longer prints a percentage. `fs-7`, `btn-xs`, `query-chip` and
+> `btn-check` are defined in `components.css`. Steps 4 (data migration) and 5
+> (Phase 2 visual tokens / Phase 3) remain.
+
 1. `search.js:159` — escape snippet text (hotfix, 2 lines) and `search.js:150` — hide match badge for browse queries.
 2. `search.py` fast path — `relevance_score = None`.
 3. `components.css` — add the missing `btn-xs`, `fs-7`, `query-chip` definitions (or delete their usage); `badge-gold` exists but is misnamed, so either rename it or restyle it as a real gold token.
