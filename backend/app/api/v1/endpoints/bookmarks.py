@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from pydantic import BaseModel, ConfigDict
@@ -239,12 +239,13 @@ def export_research_memorandum(
             "file_hash": c.file_hash,
         })
 
+        bench_name = c.judge or "Hon'ble Bench"
         md_lines.extend([
             f"### [{idx}] {c.title}",
             f"- **Court:** {c.court} ({c.year})",
             f"- **Case Number:** {c.case_no}",
             f"- **Official Citation:** {c.official_citation or 'LexGuard Precedent'}",
-            f"- **Bench:** {c.judge or 'Hon\'ble Bench'}",
+            f"- **Bench:** {bench_name}",
             f"- **Precedential Authority:** {c.precedential_status or 'Good Law'}",
             f"- **Judicial Ratio:** {c.ratio_decidendi or 'Principles affirmed on record.'}",
             f"- **Advocate Research Note:** {b.notes or 'No private notes attached.'}",

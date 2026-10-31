@@ -2,7 +2,7 @@
 Statutes and Codified Bare Acts API Endpoints.
 Serves legislative text, judicial commentaries, and linked precedent cases for Acts Explorer.
 """
-from typing import List, Optional
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import cast, String
