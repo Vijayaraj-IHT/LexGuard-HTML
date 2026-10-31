@@ -145,7 +145,7 @@ The database comes pre-seeded with authorized credentials for all four judicial 
 ```
 LexGuard-HTML/
 ├── frontend/                     # Pure HTML5 / Bootstrap 5 / jQuery Client
-│   ├── index.html                # Madras High Court Portal & 10-Service Grid
+│   ├── index.html                # Madras High Court Portal & 10-Service Grid (entry page)
 │   ├── search.html               # Hybrid Precedent Search & Query Pills
 │   ├── admin.html                # Staff Workstation & Chart.js Visualizations
 │   ├── case-viewer.html          # PDF.js Reader, Text Layer, Keyword Stepper
@@ -176,7 +176,6 @@ LexGuard-HTML/
 │   └── find_404_errors.py        # Route Integrity Validator
 ├── start_windows.bat             # 1-Click Windows Launcher
 ├── start_linux.sh                # 1-Click Linux Launcher
-├── index.html                    # Root redirect → frontend/index.html
 ├── LICENSE                       # MIT License
 └── README.md                     # Documentation
 ```

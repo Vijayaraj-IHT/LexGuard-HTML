@@ -54,7 +54,7 @@
 
 | Duplicate | Identical to | Size | Why it is probably there | Action |
 |---|---|---|---|---|
-| `index.html` (root) | byte-identical to `frontend/index.html` | 18 KB / 386 lines | A "portal redirect" was documented, but the full portal was copied to the repo root during a deploy/export step | **Replaced with a real 15-line redirect** (the README serves `frontend/` on :8888, so the root copy was never the entry point) |
+| `index.html` (root) | byte-identical to `frontend/index.html` | 18 KB / 386 lines | A "portal redirect" was documented, but the full portal was copied to the repo root during a deploy/export step | **Deleted** — the README serves `frontend/` on :8888, so the root copy was never the entry point |
 | `database/seed_105_cases.py` | `backend/seed_105_cases.py` | 179 lines | Seeder copied into `database/` so the "database assets" folder looked self-contained | Delete one; keep `backend/` |
 | `backend/storage/favicon.ico` | `frontend/favicon.ico` | 1 KB | Served by `GET /favicon.ico` on the API | **Keep** (not dead) |
 | `database/lexguard_dump.sql` | *not identical* — older snapshot (145 cases, 1,179 logs) | 2.1 MB | Earlier export kept alongside the newer `database_dump.sql` (607 cases, 1,593 logs) | **Deleted**; README restore command now points at `database_dump.sql` |
@@ -69,7 +69,7 @@ Also duplicated: `frontend/screenshots.zip` (**5.1 MB**) is an archive of `front
 | Item | Evidence | Size | Purpose it probably served | Action |
 |---|---|---:|---|---|
 | `mermaid.min.js` | 0 references in any HTML/JS/Python | 3.2 MB | Diagrams were authored with Mermaid; the bundle was left in case the browser rendered `.mmd` files. Rendering actually happens offline via `render_svg_chrome.py` | **Delete** |
-| `frontend/screenshots/react_*.png` (16) | **Correction: 14 of 16 ARE referenced** by `frontend/screenshots-gallery.html` (its `galleryItems` array builds `src="screenshots/${filename}"`) | 1.5 MB | Screenshots of the earlier React frontend (`Sem-5-Project/frontend`), kept as a "task completed" showcase for the report/viva | **Keep** unless the gallery page is retired too |
+| `frontend/screenshots/react_*.png` (16) | **Correction: 14 of 16 ARE referenced** by `frontend/screenshots-gallery.html` (its `galleryItems` array builds `src="screenshots/${filename}"`) | 1.3 MB | Screenshots of the earlier React frontend (`Sem-5-Project/frontend`), kept as a "task completed" showcase for the report/viva | **14 kept** (restored after `main` deleted them and left 14 broken images); `react_landing`/`react_search` deleted |
 | 9 unreferenced PNGs (`html_17_gallery`, `html_18_bookmarks`, `html_19_case_upload`, `html_search`, `html_search_budget`, `login`, `login_preview`, `react_landing`, `react_search`) | No `screenshots/<name>` reference in any HTML/JS/Python | 1.3 MB | Iteration leftovers from the screenshot-capture script | **Deleted** |
 | `frontend/screenshots-gallery.html` | 0 inbound links; removed from nav by `scrub_all_prohibited_terms.py` | 20 KB | Internal "visual showcase" page for the report/viva | Keep out of production nav or delete |
 | `backend/incoming_cases/` (50 PDFs) | All 50 are byte-identical to a PDF already in `storage/cases` or `backend/seed_corpus`; no code references the folder | 12 MB | Landing zone for `batch_ingest_*` downloads | **Deleted** (content preserved elsewhere); add to `.gitignore` |
@@ -224,7 +224,7 @@ These are the biggest source of "dead code" by line count. They are **not import
 
 ## 11. Cleanup sequence (safe order)
 
-> **Applied (2026-11-01):** the zero-risk half of this sequence is already done on `arena/64b06a8b-lexguard-html` — **237 files / 72.2 MB** removed (see [`CLEANUP_LOG.md`](CLEANUP_LOG.md)). The remaining items are the code deletions in step 3, which need test runs and belong in their own commit.
+> **Applied (2026-11-01):** the zero-risk half of this sequence has landed on `main` (`2d5da19`, `5370ddf`) and on this branch (237 files / 72.2 MB). See [`CLEANUP_LOG.md`](CLEANUP_LOG.md) for what each commit removed and which items were kept after re-verification. The remaining items are the code deletions in step 3, which need test runs and belong in their own commit.
 
 
 ```bash
