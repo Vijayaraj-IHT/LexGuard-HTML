@@ -318,6 +318,11 @@ $(document).ready(function () {
     executeDocKeywordSearch();
   });
 
+  // Replaces the former inline onclick on the certificate print button.
+  $('#cert-print-btn').on('click', function () {
+    window.print();
+  });
+
   $('#doc-keyword-clear-btn').on('click', function () {
     $('#doc-keyword-input').val('');
     $('#doc-keyword-results-panel').addClass('d-none');

@@ -73,7 +73,7 @@
                   <li><a class="dropdown-item" href="bookmarks.html"><i class="bi bi-bookmarks me-2 text-warning"></i>My Saved Cases</a></li>
                   ${isStaff ? '<li><a class="dropdown-item" href="admin.html"><i class="bi bi-speedometer2 me-2 text-info"></i>Staff Workstation</a></li>' : ''}
                   <li><hr class="dropdown-divider border-secondary border-opacity-25"></li>
-                  <li><a class="dropdown-item text-danger" href="javascript:void(0);" id="nav-logout-btn"><i class="bi bi-box-arrow-right me-2"></i>Sign Out</a></li>
+                  <li><a class="dropdown-item text-danger" href="#" id="nav-logout-btn"><i class="bi bi-box-arrow-right me-2"></i>Sign Out</a></li>
                 </ul>
               </div>
             ` : `

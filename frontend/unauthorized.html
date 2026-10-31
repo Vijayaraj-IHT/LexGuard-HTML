@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light" data-bs-theme="light">
 <head>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://code.jquery.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' http://127.0.0.1:8000; worker-src 'self' blob: https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -59,20 +60,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
   <script src="js/lexguard-core.js"></script>
   <script src="js/lexguard-auth.js"></script>
-  <script>
-    $(document).ready(function () {
-      const user = LG.session.user();
-      if (user) {
-        $('#current-role-badge').html(LG.utils.getRoleBadge(user.role));
-      } else {
-        $('#current-role-badge').html('<span class="badge bg-secondary">Unauthenticated</span>');
-      }
-
-      $('#switch-account-btn').on('click', function () {
-        LG.session.clear();
-        window.location.href = 'login.html';
-      });
-    });
-  </script>
+  <script src="js/pages/unauthorized.js"></script>
 </body>
 </html>
