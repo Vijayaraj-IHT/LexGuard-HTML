@@ -5,7 +5,7 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![HTML5](https://img.shields.io/badge/Frontend-Pure%20HTML5%20%2F%20Bootstrap%205-E34F26?logo=html5&logoColor=white)](https://getbootstrap.com/)
 [![Design System](https://img.shields.io/badge/Theme-High%20Court%20Red%20%26%20White-991b1b)](https://github.com/Vijayaraj-IHT/LexGuard-HTML)
-[![Cryptography](https://img.shields.io/badge/Security-SHA--256%20%7C%20Merkle%20Ledger-059669)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
+[![Cryptography](https://img.shields.io/badge/Security-SHA--256%20%7C%20Hash%20Chained%20Ledger-059669)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
 [![License: MIT](https://img.shields.io/badge/License-MIT-amber.svg)](LICENSE)
 
 > **High Court of Judicature at Madras · Chennai Principal Seat & Madurai Bench**  
@@ -15,7 +15,7 @@
 
 ## 📸 Visual Execution Showcase
 
-| High Court Portal Landing (10-Service Grid) | Precedent Hybrid Search (208 Live Cases) |
+| High Court Portal Landing (10-Service Grid) | Precedent Hybrid Search |
 | :---: | :---: |
 | ![Landing](frontend/screenshots/html_00_landing.png) | ![Search](frontend/screenshots/html_03_search_results.png) |
 
@@ -44,8 +44,8 @@
   * Case facts are lifted with a candidate-and-score strategy (explicit heading → profile anchors → paragraph runs → post-caption body) and returned with a structured fact sheet (dates, crime numbers, places, offences, custody, arrest, amounts).
   * See [`docs/CASE_FILE_PATTERNS.md`](docs/CASE_FILE_PATTERNS.md) and [`docs/pattern_analysis/case_pattern_report.md`](docs/pattern_analysis/case_pattern_report.md).
 * **Robust FastAPI & PostgreSQL Backend**:
-  * 208 precedent judgments indexed with InLegalBERT statutory embeddings and full-text vectors.
-  * Merkle tree audit ledger with 989 immutable SHA-256 hash-chained records.
+  * Precedent judgments indexed with statutory embeddings and full-text vectors (the case count depends on the database you load; see the integrity report below).
+  * Linear SHA-256 hash-chained audit ledger (not a Merkle tree). Run `python backend/integrity_report.py --db backend/lexguard.db` for its current state. At the time of writing, the tracked `backend/lexguard.db` has 607 case rows, 1661 audit records, and 505 records whose hash does not recompute.
   * OWASP A02/A07 defense: SecurityHeadersMiddleware, Double-Submit Cookie CSRF protection, and HttpOnly JWT cookies.
 
 ---
@@ -108,8 +108,8 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-### 3. Database Restoration (607 Cases & Merkle Audit Logs)
-The repository ships a **SQLite** database at `backend/lexguard.db` that works with no setup. To use PostgreSQL instead, restore the sanitised dump:
+### 3. Database Restoration
+The repository ships a **SQLite** database at ackend/lexguard.db that works with no setup. To use PostgreSQL instead, ensure PostgreSQL is running, then restore the database dump:
 ```bash
 # Windows / Linux / macOS
 psql -U lexguard -d lexguard -f ../database/database_dump.sql
@@ -135,7 +135,9 @@ Open your browser to: **`http://127.0.0.1:8888/index.html`**
 
 ## 🔑 Demo Access Personas
 
-The database comes pre-seeded with authorized credentials for all four judicial roles:
+The demo accounts below are **development-only**. The application seeds them only when `ENVIRONMENT=development` **and** `SEED_DEMO_ACCOUNTS=True` (both set in `backend/.env.example`; the code default is off). A tracked SQLite copy in the repository already contains these accounts; rotating those credentials is a separate task.
+
+Demo roles:
 
 | Role | Email | Password | Access Privileges |
 | :--- | :--- | :--- | :--- |
@@ -161,7 +163,7 @@ LexGuard-HTML/
 │   ├── acts-explorer.html        # Indian Statutory Directory & Concordance
 │   ├── verify.html               # Web Crypto SHA-256 Tamper Verification
 │   ├── cause-list.html           # Daily Cause List Court Board Tracker
-│   ├── audit-ledger.html         # Merkle Tree Cryptographic Audit Ledger
+│   ├── audit-ledger.html         # Hash-Chained Audit Ledger
 │   ├── case-upload.html          # PDF Ingestion Desk
 │   ├── bookmarks.html            # Saved Precedents
 │   ├── 404.html                  # Judicial 404 Not Found Screen
@@ -176,7 +178,9 @@ LexGuard-HTML/
 │   ├── requirements.txt          # Minimal Python Dependencies
 │   └── .env.example              # Environment Configuration
 ├── database/                     # Database Assets
-│   └── database_dump.sql         # PostgreSQL Dump (607 cases, sanitised JSON)
+│   ├── database_dump.sql         # PostgreSQL Dump (607 cases, sanitised JSON)
+│   ├── lexguard_dump.sql         # Full PostgreSQL Dump
+│   └── seed_105_cases.py         # Python Seeder Script
 ├── scripts/                      # Utility Scripts
 │   ├── capture_html_red_white.py # Headless Edge Visual Audit Script
 │   ├── analyse_case_file_patterns.py # Case-file drafting-pattern corpus sweep
@@ -195,7 +199,7 @@ LexGuard-HTML/
 ## 🔒 Security & Cryptographic Integrity
 
 * **Zero-Byte Client Hashing**: File digests are computed directly in the client browser using the W3C Web Cryptography API (`crypto.subtle.digest('SHA-256', buffer)`). Sensitive case documents are never sent over the network merely to compute checksums.
-* **Merkle Chained Audit Ledger**: Every case modification, approval, and verification event calculates a SHA-256 leaf hash that links cryptographically to the prior block hash, rendering unauthorized database manipulation mathematically detectable.
+* **Hash-Chained Audit Ledger** (linear, not a Merkle tree): Every case modification, approval, and verification event calculates a SHA-256 leaf hash that links cryptographically to the prior block hash, rendering unauthorized database manipulation mathematically detectable.
 * **OWASP Hardened Headers**: Every API response enforces `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and strict Content Security Policies.
 
 ---

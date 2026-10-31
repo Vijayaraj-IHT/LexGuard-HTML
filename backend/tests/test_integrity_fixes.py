@@ -13,6 +13,7 @@ database engine is created once per process.
 
 import datetime
 import hashlib
+import time
 import os
 import subprocess
 import sys
@@ -356,3 +357,124 @@ def test_f8_report_is_read_only_and_reports_structure(tmp_path):
     for key in ("chain", "seals", "maker_checker", "documents", "hygiene", "failed_checks", "ok"):
         assert key in report
     assert hashlib.sha256(db_copy.read_bytes()).hexdigest() == before, "report modified the database"
+
+
+# ---------------------------------------------------------------- Round 2: G1-G7
+
+
+def _run_python(code: str, env_extra: dict):
+    env = dict(os.environ)
+    env.update(env_extra)
+    return subprocess.run(
+        [sys.executable, "-c", code], cwd=BACKEND_DIR, env=env, capture_output=True, text=True, timeout=300
+    )
+
+
+def test_g1_csrf_secret_removed_and_demo_seeding_off_by_default():
+    from app.core.config import Settings
+    assert "CSRF_SECRET" not in Settings.model_fields
+    assert Settings.model_fields["SEED_DEMO_ACCOUNTS"].default is False
+
+
+def test_g2_demo_accounts_seeded_only_when_opted_in_and_default_key_warned():
+    db_off = os.path.join(_TMP, "g2_off.db")
+    db_on = os.path.join(_TMP, "g2_on.db")
+    code = (
+        "from fastapi.testclient import TestClient\n"
+        "from app.main import app\n"
+        "with TestClient(app):\n"
+        "    pass\n"
+        "from app.core.database import SessionLocal\n"
+        "from app.models.user import User\n"
+        "db = SessionLocal()\n"
+        "print('USERS', db.query(User).count())\n"
+    )
+    off = _run_python(code, {"DATABASE_URL": f"sqlite:///{db_off}", "ENVIRONMENT": "development",
+                             "SEED_DEMO_ACCOUNTS": "false"})
+    assert "USERS 0" in off.stdout, off.stdout + off.stderr
+    assert "DEFAULT development SECRET_KEY" in off.stderr
+
+    on = _run_python(code, {"DATABASE_URL": f"sqlite:///{db_on}", "ENVIRONMENT": "development",
+                            "SEED_DEMO_ACCOUNTS": "true"})
+    users = [l for l in on.stdout.splitlines() if l.startswith("USERS")]
+    assert users and int(users[0].split()[1]) > 0, on.stdout + on.stderr
+
+
+def test_g3_api_csp_has_no_inline_scripts():
+    r = client.get("/api/v1/does-not-exist")
+    csp = r.headers.get("content-security-policy", "")
+    assert "script-src 'self'" in csp
+    script_part = csp.split("style-src")[0]
+    assert "'unsafe-inline'" not in script_part
+
+
+def test_g4_rate_limiter_memory_is_bounded_and_limit_still_applies():
+    import types
+    from fastapi import HTTPException
+    from app.core import rate_limit as rl
+
+    rl._request_history.clear()
+    stale = time.time() - 10_000
+    for i in range(6000):
+        rl._request_history[f"10.0.{i // 256}.{i % 256}:/stale"] = [stale]
+
+    dep = rl.rate_limit(max_requests=5, window_seconds=60)
+    req = types.SimpleNamespace(client=types.SimpleNamespace(host="1.2.3.4"),
+                                url=types.SimpleNamespace(path="/limited"))
+    for _ in range(5):
+        dep(req)
+    with pytest.raises(HTTPException) as exc:
+        dep(req)
+    assert exc.value.status_code == 429
+    assert len(rl._request_history) < 100  # stale keys were pruned
+    rl._request_history.clear()
+
+
+def test_g5_upload_auto_rename_failure_keeps_file_and_row_consistent(monkeypatch):
+    import app.api.v1.endpoints.cases as cases_mod
+    from app.core.config import resolve_case_pdf_path
+    from app.models.user import User as _U
+
+    db = SessionLocal()
+    staff = _user(db, f"g5_{os.urandom(3).hex()}@t.in", "senior_staff")
+    db.close()
+    _as(staff)
+
+    # Use a unique copy: the seeded DB already holds this PDF, and duplicates are rejected (409).
+    src = os.path.join(BACKEND_DIR, "seed_corpus", "pdfs", "01_crl-a-md-1150-2026.pdf")
+    pdf = os.path.join(_TMP, f"g5_{os.urandom(4).hex()}.pdf")
+    with open(src, "rb") as fh_src, open(pdf, "wb") as fh_dst:
+        fh_dst.write(fh_src.read() + b"\n% g5 nonce " + os.urandom(12).hex().encode() + b"\n")
+
+    def failing_replace(src, dst):
+        raise OSError("simulated rename failure")
+
+    monkeypatch.setattr(cases_mod.os, "replace", failing_replace)
+    with open(pdf, "rb") as fh:
+        r = client.post("/api/v1/cases/upload-auto", files={"file": ("judgment.pdf", fh, "application/pdf")})
+    assert r.status_code == 201, r.text
+    body = r.json()
+    case_id = body.get("id") or body.get("case_id")
+    assert case_id
+
+    db = SessionLocal()
+    row = db.query(Case).filter(Case.id == case_id).one()
+    assert os.path.exists(str(resolve_case_pdf_path(row.file_path))), "DB row points at a missing file"
+    db.close()
+
+
+def test_g6_static_verified_claims_removed_from_viewer_and_schema():
+    from app.schemas.case import CaseDetailResponse
+    assert CaseDetailResponse.model_fields["integrity_status"].default == "not_checked"
+    html = open(os.path.join(BACKEND_DIR, "..", "frontend", "case-viewer.html"), encoding="utf-8").read()
+    assert "VERIFIED UNALTERED RECORD" not in html.split("<script")[0]
+    assert "Verified Copy" not in html
+    assert 'id="cert-integrity-badge"' in html
+
+
+def test_g7_readme_has_no_unmeasured_merkle_or_case_count_claims():
+    readme = open(os.path.join(BACKEND_DIR, "..", "README.md"), encoding="utf-8").read()
+    # "Merkle" may appear only in a negated statement ("not a Merkle tree").
+    assert all("Merkle" not in line or "not a Merkle" in line for line in readme.splitlines())
+    assert "208" not in readme
+    assert "989" not in readme

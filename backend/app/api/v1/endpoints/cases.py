@@ -324,13 +324,25 @@ async def upload_case_auto(
     )
     canonical_path = os.path.join(settings.STORAGE_DIR, canonical_filename)
     if canonical_path != safe_path and os.path.exists(safe_path):
+        # Keep the file and the DB row pointing at the same place. If either step fails,
+        # the file stays (or is moved back) at safe_path, which the row already references.
         try:
             os.replace(safe_path, canonical_path)
-            new_case.file_path = f"storage/cases/{canonical_filename}"
-            db.commit()
-            db.refresh(new_case)
-        except Exception:
-            pass
+        except OSError:
+            logger.warning("Could not rename uploaded file to %s; keeping %s", canonical_path, safe_path)
+        else:
+            try:
+                new_case.file_path = f"storage/cases/{canonical_filename}"
+                db.commit()
+                db.refresh(new_case)
+            except Exception:
+                db.rollback()
+                logger.exception("DB commit failed after rename; moving file back to %s", safe_path)
+                try:
+                    os.replace(canonical_path, safe_path)
+                except OSError:
+                    logger.error("Could not move %s back to %s; manual repair needed", canonical_path, safe_path)
+                db.refresh(new_case)
 
     version_entry = DocumentVersion(
         case_id=new_case.id,

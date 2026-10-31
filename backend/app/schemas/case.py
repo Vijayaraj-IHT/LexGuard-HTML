@@ -60,7 +60,7 @@ class CaseResponse(CaseBase):
 
 
 class CaseDetailResponse(CaseResponse):
-    integrity_status: str = "verified"  # verified, tampered, pending_check
+    integrity_status: str = "not_checked"  # verified, tampered, file_missing, not_checked (set by /view at runtime)
 
 
 class CaseVerificationResponse(BaseModel):
