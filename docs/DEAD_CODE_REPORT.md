@@ -30,9 +30,9 @@
 | Duplicate files | 5 groups | ~7 MB + 565 lines | Delete one copy each |
 | Unused vendored asset | 1 | 3.2 MB | Delete |
 | Stale / duplicate exports | 4 groups | ~37 MB | Delete or move out of Git |
-| Unreferenced images | 8 | 1.2 MB | Delete |
-| Stale screenshots from abandoned React app | 16 | 1.5 MB | Delete |
-| Duplicate PDFs in corpus | 160 files | 25 MB | Deduplicate |
+| Unreferenced images | 9 | 1.3 MB | **Deleted** |
+| React-era screenshots | 16 (14 still referenced by the gallery) | 1.5 MB | Keep — only 9 truly unreferenced images deleted |
+| Duplicate PDFs in corpus | 160 files | 27.2 MB | **Deduplicated** (kept the copies the DB points at) |
 | Dead frontend pages / flows | 3 | 3 files | Fix or delete |
 | Dead API client wrappers | 10 | 110 lines | Keep 3, delete 7 |
 | Dead backend routes | 3 | — | Delete aliases, document rest |
@@ -54,11 +54,11 @@
 
 | Duplicate | Identical to | Size | Why it is probably there | Action |
 |---|---|---|---|---|
-| `index.html` (root) | `frontend/index.html` | 18 KB / 386 lines | A "portal redirect" was documented, but the full portal was copied to the repo root during a deploy/export step | Delete; keep a real 5-line redirect if needed |
+| `index.html` (root) | byte-identical to `frontend/index.html` | 18 KB / 386 lines | A "portal redirect" was documented, but the full portal was copied to the repo root during a deploy/export step | **Replaced with a real 15-line redirect** (the README serves `frontend/` on :8888, so the root copy was never the entry point) |
 | `database/seed_105_cases.py` | `backend/seed_105_cases.py` | 179 lines | Seeder copied into `database/` so the "database assets" folder looked self-contained | Delete one; keep `backend/` |
 | `backend/storage/favicon.ico` | `frontend/favicon.ico` | 1 KB | Served by `GET /favicon.ico` on the API | **Keep** (not dead) |
-| `database/lexguard_dump.sql` | *not identical* — older snapshot (145 cases, 1,179 logs) | 2.1 MB | Earlier export kept alongside the newer `database_dump.sql` (607 cases, 1,593 logs) | **Delete or rename `_legacy`; README currently points users at the stale one** |
-| `report_diagrams_png/*`, `report_diagrams_svg/*` | 4 figures byte-identical to `report_builder/diagrams/*`; rest are re-renders | 6.3 MB | Output folders from two diagram pipelines (`generate_ppt_diagrams.py`, `render_svg_chrome.py`) | Keep one canonical folder under `docs/diagrams/` |
+| `database/lexguard_dump.sql` | *not identical* — older snapshot (145 cases, 1,179 logs) | 2.1 MB | Earlier export kept alongside the newer `database_dump.sql` (607 cases, 1,593 logs) | **Deleted**; README restore command now points at `database_dump.sql` |
+| `report_diagrams_png/*`, `report_diagrams_svg/*` | **Correction:** only **4 of 13** PNGs are byte-identical to `report_builder/diagrams/*`. The 19 files in `report_diagrams_svg/` (9 `.svg` + 9 `.mmd` + 1 `.html`) are **unique** — they are the only Mermaid sources for the report figures | 6.3 MB | Output folders from two diagram pipelines (`generate_ppt_diagrams.py`, `render_svg_chrome.py`). `render_svg_chrome.py:6` reads them via a hard-coded `E:\SEM 5 PROJECT\...` path, so the dependency only works on the author's machine | **Keep** — deleting them loses the only editable source of the figures |
 
 Also duplicated: `frontend/screenshots.zip` (**5.1 MB**) is an archive of `frontend/screenshots/` — pure redundancy unless it is a deliverable upload bundle.
 
@@ -69,10 +69,10 @@ Also duplicated: `frontend/screenshots.zip` (**5.1 MB**) is an archive of `front
 | Item | Evidence | Size | Purpose it probably served | Action |
 |---|---|---:|---|---|
 | `mermaid.min.js` | 0 references in any HTML/JS/Python | 3.2 MB | Diagrams were authored with Mermaid; the bundle was left in case the browser rendered `.mmd` files. Rendering actually happens offline via `render_svg_chrome.py` | **Delete** |
-| `frontend/screenshots/react_*.png` (16) | Gallery lists some, but they belong to the abandoned React client | 1.5 MB | Screenshots of the earlier React frontend (`Sem-5-Project/frontend`) used to demonstrate the UI before the HTML rewrite | **Delete** |
-| 8 unreferenced PNGs (`html_17_gallery`, `html_18_bookmarks`, `html_19_case_upload`, `html_search`, `html_search_budget`, `login_preview`, `react_landing`, `react_search`) | Not referenced by galler array or pages | 1.2 MB | Iteration leftovers from the screenshot-capture script | **Delete** |
+| `frontend/screenshots/react_*.png` (16) | **Correction: 14 of 16 ARE referenced** by `frontend/screenshots-gallery.html` (its `galleryItems` array builds `src="screenshots/${filename}"`) | 1.5 MB | Screenshots of the earlier React frontend (`Sem-5-Project/frontend`), kept as a "task completed" showcase for the report/viva | **Keep** unless the gallery page is retired too |
+| 9 unreferenced PNGs (`html_17_gallery`, `html_18_bookmarks`, `html_19_case_upload`, `html_search`, `html_search_budget`, `login`, `login_preview`, `react_landing`, `react_search`) | No `screenshots/<name>` reference in any HTML/JS/Python | 1.3 MB | Iteration leftovers from the screenshot-capture script | **Deleted** |
 | `frontend/screenshots-gallery.html` | 0 inbound links; removed from nav by `scrub_all_prohibited_terms.py` | 20 KB | Internal "visual showcase" page for the report/viva | Keep out of production nav or delete |
-| `backend/incoming_cases/` (50 PDFs) | Not referenced by code; ingestion staging folder | 11 MB | Landing zone for `batch_ingest_*` downloads | Move out of Git (staging data) |
+| `backend/incoming_cases/` (50 PDFs) | All 50 are byte-identical to a PDF already in `storage/cases` or `backend/seed_corpus`; no code references the folder | 12 MB | Landing zone for `batch_ingest_*` downloads | **Deleted** (content preserved elsewhere); add to `.gitignore` |
 | `backend/landmark_cases_manifest_template.csv/.json` | 0 references | 8 KB | Templates for bulk landmark import; superseded by `landmark_cases_data.json` | Delete |
 | `backend/storage/extracted_metadata/manifest_1000.json` | Referenced only by a one-off script | 40 KB | Manifest for the "1000 case" ingestion experiment that never completed (607 cases exist) | Archive |
 | `cases_lacking_original_pdfs.json` | 1 script reference | 115 KB | Audit list for purging cases without source PDFs — historical record | Move to `docs/audit/` |
@@ -223,6 +223,9 @@ These are the biggest source of "dead code" by line count. They are **not import
 ---
 
 ## 11. Cleanup sequence (safe order)
+
+> **Applied (2026-11-01):** the zero-risk half of this sequence is already done on `arena/64b06a8b-lexguard-html` — **237 files / 72.2 MB** removed (see [`CLEANUP_LOG.md`](CLEANUP_LOG.md)). The remaining items are the code deletions in step 3, which need test runs and belong in their own commit.
+
 
 ```bash
 # 0. Branch and baseline

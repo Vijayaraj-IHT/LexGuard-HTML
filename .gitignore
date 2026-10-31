@@ -38,6 +38,9 @@ Thumbs.db
 
 # Storage & local artifacts
 backend/storage/
+backend/incoming_cases/   # ingestion staging; content is copied into storage/cases
+report_builder/archive/   # superseded .docx exports
+frontend/screenshots.zip  # archive of frontend/screenshots/
 *.db
 *.sqlite
 
