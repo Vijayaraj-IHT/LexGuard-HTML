@@ -15,6 +15,9 @@ Planning and audit documents produced for the project. Start with the search-car
 | [`../PROJECT_AUDIT.md`](../PROJECT_AUDIT.md) | Full project overview + plagiarism/originality audit, defect list, remediation plan, reproduction commands |
 | [`SEARCH_CARD_REDESIGN.md`](SEARCH_CARD_REDESIGN.md) | Code walk-through of the hybrid-search result card, every defect with evidence, proposed markup/CSS/JS, backend contract changes, phased rollout, acceptance criteria |
 | [`search-card-mockup.html`](search-card-mockup.html) | Visual comparison: current card vs proposed card vs verified/mobile variants (self-contained, open in any browser) |
+| [`CORPUS_BACKFILL.md`](CORPUS_BACKFILL.md) | Measured corpus gaps, proof that the stored vectors are hashed fallbacks rather than MiniLM, the text backfill result (291/293 PDFs), and the PostgreSQL runbook |
+| [`NEXT_STEPS.md`](NEXT_STEPS.md) | Verified state of the repo today, nine candidate workstreams with effort/impact/risk, dependency order, and the four decisions that need your call |
+| [`CLEANUP_LOG.md`](CLEANUP_LOG.md) | What was actually removed (237 files / 72.2 MB), the evidence for each deletion, the three claims that re-verification corrected, and what Git history still holds |
 | [`DEAD_CODE_REPORT.md`](DEAD_CODE_REPORT.md) | Every unused/duplicate/dead item with evidence, probable purpose, and delete/keep/archive decision + cleanup commands |
 | [`OPTIMISATION_PLAN.md`](OPTIMISATION_PLAN.md) | Directory-by-directory optimisation: repo/storage, backend, database, frontend delivery, corpus, security, CI, measurable targets, sequencing |
 | [`LOGO_DESIGN_BRIEF.md`](LOGO_DESIGN_BRIEF.md) | Brand audit, three concepts, recommended master mark with SVG source, palette/contrast, lockup rules, integration checklist |

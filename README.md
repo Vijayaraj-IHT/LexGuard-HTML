@@ -102,11 +102,11 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-### 3. Database Restoration (208 Cases & Merkle Audit Logs)
-Ensure PostgreSQL is running, then restore the included database dump:
+### 3. Database Restoration (607 Cases & Merkle Audit Logs)
+The repository ships a **SQLite** database at `backend/lexguard.db` that works with no setup. To use PostgreSQL instead, restore the sanitised dump:
 ```bash
 # Windows / Linux / macOS
-psql -U lexguard -d lexguard -f ../database/lexguard_dump.sql
+psql -U lexguard -d lexguard -f ../database/database_dump.sql
 ```
 *(Default credentials in `.env.example`: User: `lexguard`, Password: `lexguard123`, DB: `lexguard`)*
 
@@ -145,7 +145,7 @@ The database comes pre-seeded with authorized credentials for all four judicial 
 ```
 LexGuard-HTML/
 ├── frontend/                     # Pure HTML5 / Bootstrap 5 / jQuery Client
-│   ├── index.html                # Madras High Court Portal & 10-Service Grid
+│   ├── index.html                # Madras High Court Portal & 10-Service Grid (entry page)
 │   ├── search.html               # Hybrid Precedent Search & Query Pills
 │   ├── admin.html                # Staff Workstation & Chart.js Visualizations
 │   ├── case-viewer.html          # PDF.js Reader, Text Layer, Keyword Stepper
@@ -162,22 +162,20 @@ LexGuard-HTML/
 │   ├── screenshots-gallery.html  # 31-Task Visual Execution Showcase
 │   ├── css/                      # High Court Red & White CSS Engine
 │   ├── js/                       # API Services, Nav Loader, Page Logic
-│   ├── screenshots/              # 31 Visual Audit Execution Screenshots
+│   ├── screenshots/              # 31 Visual Audit Execution Screenshots (referenced by screenshots-gallery.html)
 │   └── favicon.svg               # High Court Crimson Shield
 ├── backend/                      # FastAPI Python Backend
 │   ├── app/                      # Models, Endpoints, Services, Security
-│   ├── storage/cases/            # Judgment PDF Corpus (208 Cases)
+│   ├── storage/cases/            # Judgment PDF Corpus (607 cases, 596 unique)
 │   ├── requirements.txt          # Minimal Python Dependencies
 │   └── .env.example              # Environment Configuration
 ├── database/                     # Database Assets
-│   ├── lexguard_dump.sql         # Full PostgreSQL Dump (208 cases, 989 logs)
-│   └── seed_105_cases.py         # Python Seeder Script
+│   └── database_dump.sql         # PostgreSQL Dump (607 cases, sanitised JSON)
 ├── scripts/                      # Utility Scripts
 │   ├── capture_html_red_white.py # Headless Edge Visual Audit Script
 │   └── find_404_errors.py        # Route Integrity Validator
 ├── start_windows.bat             # 1-Click Windows Launcher
 ├── start_linux.sh                # 1-Click Linux Launcher
-├── index.html                    # Root Portal Redirect
 ├── LICENSE                       # MIT License
 └── README.md                     # Documentation
 ```
