@@ -1,0 +1,55 @@
+flowchart LR
+    subgraph Actors
+        JStaff["Junior Court Staff"]
+        SStaff["Senior Court Staff"]
+        Advocate["Advocate / Legal Scholar"]
+        Public["Public Citizen"]
+        Sys["Automated Ledger Daemon"]
+    end
+
+    subgraph Platform_Boundary["LexGuard Judicial Repository System Boundary"]
+        UC1["Authenticate & Session Exchange (HttpOnly JWT)"]
+        UC2["Upload Case Judgment PDF"]
+        UC3["Compute 64KB Chunked SHA-256 Hash"]
+        UC4["Auto-Extract Metadata (CNR, Acts, Sections)"]
+        UC5["Review Case Approval Queue"]
+        UC6["Endorse Composite Judicial Seal & Publish"]
+        UC7["Reject Case with Audit Reason"]
+        UC8["Hybrid Precedent Search (Vector + Exact Keyword)"]
+        UC9["Multi-Precedent Comparator Matrix"]
+        UC10["AI Draft Petition Gap Analysis"]
+        UC11["Stream Verified PDF Document"]
+        UC12["Verify Document Byte Integrity On-the-Fly"]
+        UC13["Append Block to Hash-Chained Audit Ledger"]
+        UC14["Export Printable Digital Seal Certificate"]
+    end
+
+    JStaff --> UC1
+    JStaff --> UC2
+    UC2 -.->|<<include>>| UC3
+    UC2 -.->|<<include>>| UC4
+    UC2 -.->|<<include>>| UC13
+
+    SStaff --> UC1
+    SStaff --> UC5
+    SStaff --> UC6
+    SStaff --> UC7
+    UC6 -.->|<<include>>| UC13
+    UC7 -.->|<<include>>| UC13
+
+    Advocate --> UC1
+    Advocate --> UC8
+    Advocate --> UC9
+    Advocate --> UC10
+    Advocate --> UC11
+    Advocate --> UC14
+
+    UC8 -.->|<<extend>>| UC9
+    UC10 -.->|<<include>>| UC8
+    UC11 -.->|<<include>>| UC12
+    UC11 -.->|<<include>>| UC13
+
+    Public --> UC8
+    Public --> UC11
+
+    Sys --> UC13

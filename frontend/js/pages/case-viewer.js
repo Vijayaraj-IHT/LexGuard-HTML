@@ -328,7 +328,7 @@ $(document).ready(function () {
    * Render Tab 3: CIS Metadata fields and JSON viewer.
    */
   function renderCisTab(c) {
-    $('#cis-cnr').text(c.cnr || '—');
+    $('#cis-cnr').text(c.cnr_number || c.cnr || '—');
     $('#cis-casetype').text(c.cis_case_type || c.case_type || 'Writ Petition / Appeal');
     $('#cis-regno').text(c.case_no || '—');
     $('#cis-filingdate').text(LG.utils.formatDate(c.filing_date || c.created_at));
@@ -740,7 +740,7 @@ $(document).ready(function () {
     const c = currentCase;
     $('#brief-court-title').text((c.court || 'MADRAS HIGH COURT').toUpperCase());
     $('#brief-case-no').text(c.case_no || '—');
-    $('#brief-cnr').text(c.cnr || '—');
+    $('#brief-cnr').text(c.cnr_number || c.cnr || '—');
     $('#brief-coram').text(c.judge || 'Hon\'ble Judges of the Bench');
     $('#brief-disposition').text(c.disposition || c.outcome || 'Disposed');
     $('#brief-parties').text(c.parties || (c.title ? c.title : 'Appellant v. Respondent'));
@@ -765,7 +765,7 @@ $(document).ready(function () {
   $('#brief-copy-md-btn').on('click', function () {
     if (!currentCase) return;
     const c = currentCase;
-    const md = `# JUDICIAL CASE BRIEF: ${c.case_no}\n\n**Court:** ${c.court}\n**CNR:** ${c.cnr || 'N/A'}\n**Coram:** ${c.judge}\n**Parties:** ${c.parties}\n**Disposition:** ${c.disposition || c.outcome}\n\n## Ratio Decidendi\n> ${c.ratio_decidendi}\n\n## Material Facts & Summary\n${c.summary || c.facts}\n\n---\n*LexGuard Verified SHA-256 Digest: ${c.file_hash}*`;
+    const md = `# JUDICIAL CASE BRIEF: ${c.case_no}\n\n**Court:** ${c.court}\n**CNR:** ${c.cnr_number || c.cnr || 'N/A'}\n**Coram:** ${c.judge}\n**Parties:** ${c.parties}\n**Disposition:** ${c.disposition || c.outcome}\n\n## Ratio Decidendi\n> ${c.ratio_decidendi}\n\n## Material Facts & Summary\n${c.summary || c.facts}\n\n---\n*LexGuard Verified SHA-256 Digest: ${c.file_hash}*`;
     LG.utils.copyToClipboard(md, 'Case brief markdown copied to clipboard!');
   });
 

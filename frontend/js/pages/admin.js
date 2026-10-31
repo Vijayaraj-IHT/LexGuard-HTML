@@ -326,11 +326,96 @@ $(document).ready(function () {
       });
   });
 
+  /**
+   * Load and render Staff Password Reset Tickets (Supervisor Four-Eyes Gate)
+   */
+  function loadStaffResetTickets() {
+    LG.api.request('/admin/password-reset-tickets', 'GET')
+      .done(function (tickets) {
+        const $tbody = $('#staff-reset-tickets-tbody');
+        const $badge = $('#staff-tickets-badge-count');
+
+        if (!Array.isArray(tickets) || tickets.length === 0) {
+          $tbody.html(`
+            <tr>
+              <td colspan="5" class="text-center py-3 text-secondary">
+                <i class="bi bi-check2-circle text-success me-1"></i>No pending staff password reset tickets.
+              </td>
+            </tr>
+          `);
+          $badge.text('0 Tickets').removeClass('bg-danger').addClass('badge-gold');
+          return;
+        }
+
+        $badge.text(`${tickets.length} Pending`).removeClass('badge-gold').addClass('bg-danger');
+
+        const rows = tickets.map(function (t) {
+          return `
+            <tr>
+              <td>
+                <div class="fw-bold text-light">${LG.utils.escapeHtml(t.user_name)}</div>
+                <div class="text-secondary small font-mono">${LG.utils.escapeHtml(t.user_id)}</div>
+              </td>
+              <td>
+                <div>${LG.utils.escapeHtml(t.user_email)}</div>
+                <span class="badge badge-gold" style="font-size: 0.7rem;">${LG.utils.escapeHtml(t.role)}</span>
+              </td>
+              <td>
+                <span class="font-mono text-warning">${LG.utils.escapeHtml(t.credential_id || 'N/A')}</span>
+              </td>
+              <td class="text-secondary small">
+                ${LG.utils.formatDate(t.submitted_at)}
+              </td>
+              <td class="text-end">
+                <button type="button" class="btn btn-xs btn-gold authorize-staff-reset-btn" data-ticket-id="${LG.utils.escapeHtml(t.ticket_id)}" data-user-name="${LG.utils.escapeHtml(t.user_name)}">
+                  <i class="bi bi-shield-check me-1"></i>Authorize Reset
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        $tbody.html(rows);
+
+        $('.authorize-staff-reset-btn').off('click').on('click', function () {
+          const ticketId = $(this).data('ticket-id');
+          const userName = $(this).data('user-name');
+          const $btn = $(this);
+
+          if (!confirm(`Are you sure you want to authorize a one-time password reset link for court officer ${userName}?`)) {
+            return;
+          }
+
+          $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Authorizing...');
+
+          LG.api.request(`/admin/authorize-password-reset/${encodeURIComponent(ticketId)}`, 'POST')
+            .done(function (res) {
+              LG.toast(`Staff password reset authorized for ${userName}!`, 'success');
+              alert(`SUPERVISOR AUTHORIZATION GRANTED!\n\nOne-Time Activation URL for ${userName}:\n${window.location.origin}${res.reset_url}\n\nValid for 60 minutes. Provide this link securely to the officer.`);
+              loadStaffResetTickets();
+            })
+            .fail(function (xhr) {
+              $btn.prop('disabled', false).html('<i class="bi bi-shield-check me-1"></i>Authorize Reset');
+              let err = 'Failed to authorize reset ticket.';
+              if (xhr.responseJSON && xhr.responseJSON.detail) {
+                err = xhr.responseJSON.detail;
+              }
+              LG.toast(err, 'danger');
+            });
+        });
+      })
+      .fail(function () {
+        // Silently omit if not senior staff
+        $('#staff-reset-tickets-section').addClass('d-none');
+      });
+  }
+
   // Refresh Button
   $refreshBtn.on('click', function () {
     loadAnalytics();
     loadApprovalQueue();
     loadAuditLogs();
+    loadStaffResetTickets();
     LG.toast('Workstation data refreshed.', 'info');
   });
 
@@ -338,4 +423,5 @@ $(document).ready(function () {
   loadAnalytics();
   loadApprovalQueue();
   loadAuditLogs();
+  loadStaffResetTickets();
 });

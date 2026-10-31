@@ -40,7 +40,8 @@ $(document).ready(function () {
       </div>
     `);
 
-    $.getJSON('http://127.0.0.1:8000/api/v1/statutes/acts')
+    const apiUrl = (window.LG && window.LG.config ? window.LG.config.API_BASE : 'http://127.0.0.1:8000/api/v1') + '/statutes/acts';
+    $.getJSON(apiUrl)
       .done(function (acts) {
         liveActsData = acts || [];
         renderCatalog();
@@ -174,7 +175,8 @@ $(document).ready(function () {
 
     statuteModal.show();
 
-    $.getJSON(`http://127.0.0.1:8000/api/v1/statutes/${encodeURIComponent(actCode)}/${encodeURIComponent(secNo)}`)
+    const baseApi = (window.LG && window.LG.config ? window.LG.config.API_BASE : 'http://127.0.0.1:8000/api/v1');
+    $.getJSON(`${baseApi}/statutes/${encodeURIComponent(actCode)}/${encodeURIComponent(secNo)}`)
       .done(function (data) {
         $('#modal-section-title').text(`Section ${data.section_no}: ${data.section_title}`);
         $('#modal-act-title').text(data.act_title);

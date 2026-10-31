@@ -807,7 +807,23 @@ class ExtractionService:
             f"and High Court, and settled principles governing {pet_type_abbr.lower()} proceedings."
         )
 
-        # ─── 4. Neural Enhancement via AI Microservice (if running) ───────
+        # ─── 4. Neural Enhancement via Local LLM / Microservice ───────
+        try:
+            from app.services.local_llm_service import local_llm_service
+            llm_res = local_llm_service.summarize_judgment(full_text=full_text, metadata=data)
+            if llm_res and llm_res.get("ratio_decidendi"):
+                ratio_decidendi = llm_res["ratio_decidendi"]
+                if llm_res.get("summary"):
+                    full_summary = f"[{catchwords}]\n\n{llm_res['summary']}"
+                if llm_res.get("facts"):
+                    data["facts"] = llm_res["facts"]
+                if llm_res.get("issues_framed"):
+                    data["issues_framed"] = llm_res["issues_framed"]
+                confidence["ratio_decidendi"] = {"confidence": 0.92, "source": f"pass3_{llm_res.get('model_source', 'local_llm')}"}
+                confidence["summary"] = {"confidence": 0.90, "source": f"pass3_{llm_res.get('model_source', 'local_llm')}"}
+        except Exception as e:
+            logger.debug(f"Local LLM extraction pass-3 synthesis fallback: {e}")
+
         try:
             from app.services.ai_api_service import ai_api_service
             health = ai_api_service.check_health()

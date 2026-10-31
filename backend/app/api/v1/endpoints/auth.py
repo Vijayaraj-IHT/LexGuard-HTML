@@ -14,11 +14,12 @@ from app.schemas.user import UserCreate, UserLogin, UserResponse
 from app.schemas.token import TokenResponse
 from app.services.crypto_service import generate_csrf_token
 from app.services.audit_service import log_audit_event
+from app.core.rate_limit import rate_limit
 
 router = APIRouter()
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(rate_limit(max_requests=10, window_seconds=60))])
 def register(
     user_in: UserCreate,
     request: Request,
@@ -76,7 +77,7 @@ def register(
     return user
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=TokenResponse, dependencies=[Depends(rate_limit(max_requests=15, window_seconds=60))])
 def login(
     credentials: UserLogin,
     request: Request,

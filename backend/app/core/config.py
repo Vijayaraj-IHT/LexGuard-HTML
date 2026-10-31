@@ -91,3 +91,56 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
+import os
+import re
+from pathlib import Path
+
+COURT_CODES = {
+    "supreme court of india": "SC",
+    "madras high court": "MHC",
+    "madras high court (principal seat)": "MHC-PS",
+    "madras high court (madurai bench)": "MHC-MB",
+    "bombay high court": "BHC",
+    "delhi high court": "DHC",
+    "calcutta high court": "CHC",
+    "gujarat high court": "GHC",
+    "allahabad high court": "ALHC",
+    "punjab and haryana high court": "PHHC",
+}
+
+
+def build_case_pdf_filename(court: str, year: int, case_no: str, case_id: str) -> str:
+    """Generates standardized judicial PDF filename: {COURT_CODE}_{YEAR}_{CASE_NO}_{SHORT_ID}.pdf"""
+    court_key = (court or "").strip().lower()
+    court_code = COURT_CODES.get(court_key)
+    if not court_code:
+        for k, v in COURT_CODES.items():
+            if k in court_key:
+                court_code = v
+                break
+    court_code = court_code or "HC"
+    clean_case_no = re.sub(r"[^A-Za-z0-9]+", "-", (case_no or "CASE")).strip("-")[:40]
+    short_id = str(case_id).split("-")[0][:8]
+    return f"{court_code}_{year}_{clean_case_no}_{short_id}.pdf"
+
+
+def resolve_case_pdf_path(stored_path: str) -> Path:
+    """Resolves physical PDF path across execution environments and root/backend storage trees."""
+    if not stored_path:
+        return Path(settings.STORAGE_DIR)
+    p = Path(stored_path)
+    if p.exists():
+        return p
+    clean_name = Path(stored_path.replace("\\", "/")).name
+    candidates = [
+        Path(settings.STORAGE_DIR) / clean_name,
+        Path("storage/cases") / clean_name,
+        Path("backend/storage/cases") / clean_name,
+        Path(os.getcwd()) / "storage" / "cases" / clean_name,
+        Path(os.getcwd()) / "backend" / "storage" / "cases" / clean_name,
+    ]
+    for cand in candidates:
+        if cand.exists():
+            return cand
+    return Path(settings.STORAGE_DIR) / clean_name
+

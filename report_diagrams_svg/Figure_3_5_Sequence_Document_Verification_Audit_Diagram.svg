@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 750" width="1100" height="750">
+    <rect width="1100" height="750" fill="#f8fafc"/>
+    
+    <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#1e293b"/>
+        </marker>
+        <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#1d4ed8"/>
+        </marker>
+        <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#059669"/>
+        </marker>
+        <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#dc2626"/>
+        </marker>
+        <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+            <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.12"/>
+        </filter>
+    </defs>
+
+    <rect x="30" y="20" width="1040" height="50" rx="8" fill="#1e3a8a"/>
+    <text x="550" y="52" font-family="'Segoe UI', Arial, sans-serif" font-size="18" font-weight="bold" fill="#ffffff" text-anchor="middle">Figure 3.5: IEEE Sequence Diagram — Document Stream &amp; Cryptographic Audit Chaining</text>
+
+    <!-- Lifelines Header -->
+    <rect x="60" y="100" width="120" height="40" rx="6" fill="#1e293b"/>
+    <text x="120" y="125" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">User Browser</text>
+
+    <rect x="270" y="100" width="130" height="40" rx="6" fill="#1e3a8a"/>
+    <text x="335" y="125" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">CasesAPI (:8000)</text>
+
+    <rect x="490" y="100" width="130" height="40" rx="6" fill="#059669"/>
+    <text x="555" y="125" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">CryptoService</text>
+
+    <rect x="710" y="100" width="130" height="40" rx="6" fill="#334155"/>
+    <text x="775" y="125" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">Disk Storage Vault</text>
+
+    <rect x="910" y="100" width="130" height="40" rx="6" fill="#1d4ed8"/>
+    <text x="975" y="125" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">Audit Ledger</text>
+
+    <!-- Lifeline tracks -->
+    <line x1="120" y1="140" x2="120" y2="700" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,4"/>
+    <line x1="335" y1="140" x2="335" y2="700" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,4"/>
+    <line x1="555" y1="140" x2="555" y2="700" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,4"/>
+    <line x1="775" y1="140" x2="775" y2="700" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,4"/>
+    <line x1="975" y1="140" x2="975" y2="700" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,4"/>
+
+    <!-- Messages -->
+    <line x1="120" y1="180" x2="335" y2="180" stroke="#1e293b" stroke-width="1.8" marker-end="url(#arrow)"/>
+    <text x="227" y="172" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="bold" fill="#1e293b" text-anchor="middle">1. GET /api/v1/cases/&#123;id&#125;/download</text>
+
+    <line x1="335" y1="215" x2="555" y2="215" stroke="#059669" stroke-width="1.8" marker-end="url(#arrow-green)"/>
+    <text x="445" y="207" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#065f46" text-anchor="middle">2. verify_sha256_stream(file_path, expected_hash)</text>
+
+    <line x1="555" y1="250" x2="775" y2="250" stroke="#334155" stroke-width="1.8" marker-end="url(#arrow)"/>
+    <text x="665" y="242" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#334155" text-anchor="middle">3. Read binary stream in 64KB chunks</text>
+
+    <line x1="775" y1="285" x2="555" y2="285" stroke="#334155" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+    <text x="665" y="277" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#334155" text-anchor="middle">4. Return byte chunks</text>
+
+    <rect x="460" y="305" width="210" height="28" rx="4" fill="#ecfdf5" stroke="#059669" stroke-width="1"/>
+    <text x="565" y="323" font-family="'Segoe UI', Arial, sans-serif" font-size="10" font-weight="bold" fill="#065f46" text-anchor="middle">Compute Digest &amp; Compare Hash</text>
+
+    <line x1="555" y1="355" x2="335" y2="355" stroke="#059669" stroke-width="1.8" stroke-dasharray="4,3" marker-end="url(#arrow-green)"/>
+    <text x="445" y="347" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="bold" fill="#065f46" text-anchor="middle">5. Hash Match Confirmed (True)</text>
+
+    <!-- Audit Chaining Sequence -->
+    <line x1="335" y1="400" x2="975" y2="400" stroke="#1d4ed8" stroke-width="1.8" marker-end="url(#arrow-blue)"/>
+    <text x="655" y="392" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="bold" fill="#1e3a8a" text-anchor="middle">6. append_audit_entry('DOCUMENT_STREAM', case_id, user_id)</text>
+
+    <line x1="975" y1="440" x2="975" y2="480" stroke="#1d4ed8" stroke-width="1.5"/>
+    <line x1="975" y1="480" x2="940" y2="480" stroke="#1d4ed8" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+    <rect x="830" y="495" width="250" height="36" rx="4" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1"/>
+    <text x="955" y="513" font-family="'Segoe UI', Arial, sans-serif" font-size="10" font-weight="bold" fill="#1e3a8a" text-anchor="middle">current_hash = SHA256(prev_hash ||</text>
+    <text x="955" y="525" font-family="'Segoe UI', Arial, sans-serif" font-size="10" font-weight="bold" fill="#1e3a8a" text-anchor="middle">user_id || 'DOCUMENT_STREAM' || ts)</text>
+
+    <!-- Response -->
+    <line x1="335" y1="580" x2="120" y2="580" stroke="#059669" stroke-width="2" marker-end="url(#arrow-green)"/>
+    <text x="227" y="572" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="bold" fill="#065f46" text-anchor="middle">7. HTTP 200 Stream (application/pdf)</text>
+
+    <rect x="40" y="610" width="220" height="40" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+    <text x="150" y="628" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="bold" fill="#15803d" text-anchor="middle">Display Green Seal Badge</text>
+    <text x="150" y="642" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#15803d" text-anchor="middle">&amp; Printable Certificate Modal</text>
+</svg>

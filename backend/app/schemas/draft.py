@@ -23,6 +23,7 @@ class DraftAnalyzeResponse(BaseModel):
     missing_arguments: List[str]
     suggested_sections: List[str]
     citation_suggestions: List[CitationSuggestion]
+    model_source: Optional[str] = "heuristic_fallback"
     disclaimer: str = (
         "AI suggestions are generated as research references and require independent verification. "
         "Every citation links directly to a verified repository judgment."

@@ -1,0 +1,31 @@
+sequenceDiagram
+    autonumber
+    actor Advocate
+    participant UI as Frontend Interface (search.js / draft.js)
+    participant SearchAPI as Search Router (:8000)
+    participant DraftAPI as Draft Router (:8000)
+    participant EmbedSvc as Embedding Service (LRU Cache)
+    participant LocalLLM as Local LLM Runtime (Ollama :11434)
+    participant DB as Relational Database (lexguard.db)
+
+    Advocate->>UI: Types query ("Sec 439 CrPC parity bail medical condition")
+    UI->>SearchAPI: POST /api/v1/search (query, filters)
+    SearchAPI->>EmbedSvc: encode_query(query)
+    EmbedSvc-->>SearchAPI: 384-d dense vector (cached)
+    SearchAPI->>DB: Query published cases (defer full_text)
+    DB-->>SearchAPI: Candidate cases & vector representations
+    SearchAPI->>SearchAPI: Compute (0.6 * cosine_sim) + (0.4 * statutory_match)
+    SearchAPI-->>UI: Top ranked precedent cards + official citations
+    UI-->>Advocate: Render search results
+
+    Advocate->>UI: Pastes draft petition & clicks "Analyze Legal Gaps"
+    UI->>DraftAPI: POST /api/v1/draft/analyze (petition_text)
+    DraftAPI->>EmbedSvc: encode_text_cached(petition_text)
+    EmbedSvc-->>DraftAPI: Petition semantic vector
+    DraftAPI->>DB: Fetch top-3 published precedents matching legal vector
+    DB-->>DraftAPI: Verified Precedents (Ratio, Facts, Statutes)
+    DraftAPI->>LocalLLM: analyze_draft_gap(petition_text, precedents)
+    Note over LocalLLM: Ollama local runtime inference<br/>Fallback to heuristic engine if offline
+    LocalLLM-->>DraftAPI: Missing legal grounds & adverse rulings
+    DraftAPI-->>UI: Gap suggestions + Verified Precedent Citations (model_source)
+    UI-->>Advocate: Display split-screen recommendations with "Insert Citation"

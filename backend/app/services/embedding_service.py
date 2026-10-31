@@ -1,6 +1,7 @@
 import math
 import hashlib
 import logging
+from functools import lru_cache
 from typing import List, Optional
 from app.core.config import settings
 
@@ -70,24 +71,42 @@ class EmbeddingService:
 
         return [self.generate_embedding(t) for t in texts]
 
+    @lru_cache(maxsize=512)
+    def encode_text_cached(self, text: str) -> tuple:
+        """Cached single-text embedding returning tuple for immutability and O(1) repeated query lookups."""
+        return tuple(self.generate_embedding(text))
+
+    def encode_query(self, text: str) -> List[float]:
+        """Encodes user search query leveraging LRU cache."""
+        return list(self.encode_text_cached(text.strip().lower()))
+
     def cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:
         """
         Computes the cosine similarity between two 384-dimensional vectors.
-        Returns a float between 0.0 and 1.0.
+        Uses NumPy vectorization when available for maximum CPU efficiency.
         """
         if not vec1 or not vec2 or len(vec1) != len(vec2):
             return 0.0
 
-        dot = sum(a * b for a, b in zip(vec1, vec2))
-        norm1 = math.sqrt(sum(a * a for a in vec1))
-        norm2 = math.sqrt(sum(b * b for b in vec2))
-
-        if norm1 == 0.0 or norm2 == 0.0:
-            return 0.0
-
-        similarity = dot / (norm1 * norm2)
-        # Clamp to [0.0, 1.0] range
-        return max(0.0, min(1.0, (similarity + 1.0) / 2.0 if similarity < 0 else similarity))
+        try:
+            import numpy as np
+            v1 = np.asarray(vec1, dtype=np.float32)
+            v2 = np.asarray(vec2, dtype=np.float32)
+            dot = np.dot(v1, v2)
+            n1 = np.linalg.norm(v1)
+            n2 = np.linalg.norm(v2)
+            if n1 == 0.0 or n2 == 0.0:
+                return 0.0
+            sim = float(dot / (n1 * n2))
+            return max(0.0, min(1.0, (sim + 1.0) / 2.0 if sim < 0 else sim))
+        except Exception:
+            dot = sum(a * b for a, b in zip(vec1, vec2))
+            norm1 = math.sqrt(sum(a * a for a in vec1))
+            norm2 = math.sqrt(sum(b * b for b in vec2))
+            if norm1 == 0.0 or norm2 == 0.0:
+                return 0.0
+            similarity = dot / (norm1 * norm2)
+            return max(0.0, min(1.0, (similarity + 1.0) / 2.0 if similarity < 0 else similarity))
 
     def _deterministic_fallback_vector(self, text: str) -> List[float]:
         """

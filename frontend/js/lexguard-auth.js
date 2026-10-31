@@ -94,20 +94,32 @@
     }
   };
 
-  // Automated session bootstrapping from URL parameters
+  // Safe session bootstrapping from URL parameters (SSO callback / Local Demo Preview)
   (function () {
     try {
       const urlParams = new URLSearchParams(window.location.search);
       const urlToken = urlParams.get('auth_token');
-      const urlRole = urlParams.get('auth_role') || urlParams.get('demo_role');
-      if (urlToken || urlRole) {
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
+      const demoRole = urlParams.get('demo_role') || (urlParams.get('auth_role') && isLocal ? urlParams.get('auth_role') : null);
+
+      if (urlToken) {
         LG.session.set({
-          access_token: urlToken || 'lexguard-bearer-session',
+          access_token: urlToken,
           token_type: 'bearer',
-          role: urlRole || 'staff',
-          user_id: urlParams.get('auth_id') || 'staff-001',
-          name: urlParams.get('auth_name') || (urlRole === 'advocate' ? 'Advocate K. Parasaran' : 'Registrar V. Sundaram'),
-          email: urlParams.get('auth_email') || (urlRole === 'advocate' ? 'advocate@bar.in' : 'staff@court.gov.in'),
+          role: urlParams.get('auth_role') || 'public',
+          user_id: urlParams.get('auth_id') || '',
+          name: urlParams.get('auth_name') || 'User',
+          email: urlParams.get('auth_email') || '',
+          csrf_token: urlParams.get('csrf_token') || ''
+        });
+      } else if (demoRole && isLocal && !LG.session.isAuthenticated()) {
+        LG.session.set({
+          access_token: 'demo-preview-session',
+          token_type: 'bearer',
+          role: demoRole,
+          user_id: urlParams.get('auth_id') || 'demo-' + demoRole,
+          name: urlParams.get('auth_name') || (demoRole === 'advocate' ? 'Advocate K. Parasaran' : 'Registrar V. Sundaram'),
+          email: urlParams.get('auth_email') || (demoRole === 'advocate' ? 'advocate@bar.in' : 'staff@court.gov.in'),
           csrf_token: urlParams.get('csrf_token') || 'demo-csrf-token'
         });
       }

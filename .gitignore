@@ -47,3 +47,6 @@ temp/
 tmp/
 .cache/
 .pytest_cache/
+
+# Microsoft Office temp files
+~$*

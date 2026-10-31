@@ -1,0 +1,128 @@
+classDiagram
+    class User {
+        -id (PK)
+        +name
+        +email
+        -password_hash
+        +role
+        +credential_id
+        +status
+        +created_at
+        +verify_password(plain_password)
+    }
+
+    class Case {
+        -id (PK)
+        +cnr_number
+        +case_no
+        +title
+        +court
+        +year
+        +decision_date
+        +judge
+        +bench_type
+        +parties
+        +act_tags
+        +section_tags
+        +ratio_decidendi
+        +facts
+        +issues_framed
+        +disposition
+        +file_path
+        +file_hash
+        +embedding
+        +status
+        +official_citation
+        +uploaded_by_id (FK)
+        +approved_by_id (FK)
+        +build_case_pdf_filename()
+    }
+
+    class AuditLog {
+        -id (PK)
+        +user_id (FK)
+        +case_id (FK)
+        +action
+        +details
+        +ip_address
+        +timestamp
+        +previous_log_hash
+        +current_hash
+        +compute_block_hash()
+    }
+
+    class ApprovalQueue {
+        -id (PK)
+        +case_id (FK)
+        +submitted_by_id (FK)
+        +reviewed_by_id (FK)
+        +status
+        +review_note
+        +submitted_at
+        +reviewed_at
+        +approve_case()
+        +reject_case()
+    }
+
+    class Bookmark {
+        -id (PK)
+        +user_id (FK)
+        +case_id (FK)
+        +folder_name
+        +notes
+        +created_at
+    }
+
+    class DocumentVersion {
+        -id (PK)
+        +case_id (FK)
+        +version_no
+        +file_hash
+        +changed_by_id (FK)
+        +changed_at
+    }
+
+    class DraftSession {
+        -id (PK)
+        +user_id (FK)
+        +title
+        +draft_text
+        +inserted_citations
+        +last_updated
+    }
+
+    class CryptoService {
+        -file_hash_cache
+        +compute_sha256_stream(path)
+        +verify_sha256_stream(path, expected_hash)
+        +hash_password(password)
+    }
+
+    class EmbeddingService {
+        -model
+        +encode_text_cached(text)
+        +encode_query(query)
+        +cosine_similarity(vec_a, vec_b)
+    }
+
+    class LocalLLMService {
+        -ollama_base_url
+        +enrich_query(query)
+        +summarize_judgment(full_text)
+        +analyze_draft_gap(draft_text, precedents)
+    }
+
+    User "1" --> "*" Case : uploads / approves
+    User "1" --> "*" AuditLog : generates
+    User "1" --> "*" Bookmark : creates
+    User "1" --> "*" DraftSession : authors
+    User "1" --> "*" ApprovalQueue : reviews
+
+    Case "1" --> "*" AuditLog : subject_of
+    Case "1" --> "*" Bookmark : referenced_in
+    Case "1" --> "*" DocumentVersion : version_history
+    Case "1" --> "1" ApprovalQueue : queued_for
+
+    Case ..> CryptoService : validated_by
+    Case ..> EmbeddingService : indexed_by
+    Case ..> LocalLLMService : summarized_by

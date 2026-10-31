@@ -1,0 +1,29 @@
+flowchart TD
+    A([Start: Staff Selects PDF]) --> B[Stream Bytes in 64KB Chunks]
+    B --> C[Compute SHA-256 Digest]
+    C --> D{File Hash Exists in DB?}
+
+    D -- Yes --> E[Log DUPLICATE_UPLOAD Violation]
+    E --> F[Return HTTP 409 Conflict] --> Z1([End / Terminated])
+
+    D -- No --> G[Save to Ingestion Storage]
+    G --> H[Execute Pass 1: Structural Extraction - CNR, Court, Bench, Parties]
+    H --> I[Execute Pass 2: Legal NER - Acts, Sections, IPC/CrPC Tags]
+    I --> J[Execute Pass 3: Rhetorical Extraction - Ratio Decidendi, Facts, Summary]
+    J --> K[Compute 384-dimensional Vector Embedding]
+    K --> L[Resolve Standardized Path: COURT_YEAR_CASE_SHORTID.pdf]
+    L --> M[Persist Case Record: status = pending_approval]
+    M --> N[Insert Entry into ApprovalQueue]
+    
+    N --> O[Senior Staff Opens Review Queue Interface]
+    O --> P{Senior Staff Decision?}
+    
+    P -- Reject --> Q[Enter Rejection Reason]
+    Q --> R[Set Case Status: rejected]
+    R --> S[Append REJECT Event to Hash-Chained Audit Ledger] --> Z2([End / Rejected])
+
+    P -- Edit & Approve --> T[Update Metadata Adjustments]
+    T --> U[Generate Composite Judicial Digital Seal]
+    U --> V[Set Case Status: published]
+    V --> W[Append APPROVE Block to Cryptographic Hash Chain]
+    W --> X[Index in Published Judicial Precedent Repository] --> Z3([End / Active Case])

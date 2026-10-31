@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800">
+    <rect width="1200" height="800" fill="#f8fafc"/>
+    
+    <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#1e293b"/>
+        </marker>
+        <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#1d4ed8"/>
+        </marker>
+        <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#059669"/>
+        </marker>
+        <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#dc2626"/>
+        </marker>
+        <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+            <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.12"/>
+        </filter>
+    </defs>
+
+    <rect x="30" y="20" width="1140" height="50" rx="8" fill="#1e3a8a"/>
+    <text x="600" y="52" font-family="'Segoe UI', Arial, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">Figure 3.7: IEEE Component Diagram — Decoupled Tiers &amp; Gateway Interfaces</text>
+
+    <!-- Tier 1: Presentation Layer -->
+    <rect x="50" y="100" width="300" height="640" rx="10" fill="#ffffff" stroke="#3b82f6" stroke-width="2" filter="url(#shadow)"/>
+    <rect x="50" y="100" width="300" height="35" rx="10" fill="#3b82f6"/>
+    <text x="200" y="123" font-family="'Segoe UI', Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff" text-anchor="middle">PRESENTATION TIER (UI Client)</text>
+
+    <rect x="75" y="160" width="250" height="50" rx="6" fill="#f8fafc" stroke="#64748b" stroke-width="1.5"/>
+    <text x="200" y="190" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="bold" fill="#1e293b" text-anchor="middle">search.js (250ms Debounced)</text>
+
+    <rect x="75" y="240" width="250" height="50" rx="6" fill="#f8fafc" stroke="#64748b" stroke-width="1.5"/>
+    <text x="200" y="270" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="bold" fill="#1e293b" text-anchor="middle">case-viewer.js (PDF.js Engine)</text>
+
+    <rect x="75" y="320" width="250" height="50" rx="6" fill="#f8fafc" stroke="#64748b" stroke-width="1.5"/>
+    <text x="200" y="350" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="bold" fill="#1e293b" text-anchor="middle">draft-assistant.js (Split Editor)</text>
+
+    <rect x="75" y="400" width="250" height="50" rx="6" fill="#f8fafc" stroke="#64748b" stroke-width="1.5"/>
+    <text x="200" y="430" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="bold" fill="#1e293b" text-anchor="middle">lexguard-auth.js (CSRF Token)</text>
+
+    <!-- Tier 2: Security & Gateway -->
+    <rect x="420" y="100" width="340" height="280" rx="10" fill="#ffffff" stroke="#1e3a8a" stroke-width="2" filter="url(#shadow)"/>
+    <rect x="420" y="100" width="340" height="35" rx="10" fill="#1e3a8a"/>
+    <text x="590" y="123" font-family="'Segoe UI', Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff" text-anchor="middle">SECURITY &amp; MIDDLEWARE TIER</text>
+
+    <rect x="445" y="155" width="290" height="40" rx="6" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/>
+    <text x="590" y="180" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="600" fill="#1e3a8a" text-anchor="middle">OWASP Security Headers (CSP, nosniff)</text>
+
+    <rect x="445" y="215" width="290" height="40" rx="6" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/>
+    <text x="590" y="240" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="600" fill="#1e3a8a" text-anchor="middle">Double-Submit CSRF Middleware</text>
+
+    <rect x="445" y="275" width="290" height="40" rx="6" fill="#eff6ff" stroke="#1d4ed8" stroke-width="1.5"/>
+    <text x="590" y="300" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="600" fill="#1e3a8a" text-anchor="middle">Role-Based Access Control (Depends)</text>
+
+    <!-- Tier 3: Core Business Services -->
+    <rect x="420" y="420" width="340" height="320" rx="10" fill="#ffffff" stroke="#059669" stroke-width="2" filter="url(#shadow)"/>
+    <rect x="420" y="420" width="340" height="35" rx="10" fill="#059669"/>
+    <text x="590" y="443" font-family="'Segoe UI', Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff" text-anchor="middle">CORE FASTAPI ENGINE (:8000)</text>
+
+    <rect x="445" y="475" width="290" height="40" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+    <text x="590" y="500" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="bold" fill="#14532d" text-anchor="middle">CryptoService (64KB Chunk Stream)</text>
+
+    <rect x="445" y="535" width="290" height="40" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+    <text x="590" y="560" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="bold" fill="#14532d" text-anchor="middle">AuditService (Sequential Hash Chainer)</text>
+
+    <rect x="445" y="595" width="290" height="40" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+    <text x="590" y="620" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="bold" fill="#14532d" text-anchor="middle">EmbeddingService (LRU Cached Vectors)</text>
+
+    <rect x="445" y="655" width="290" height="40" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+    <text x="590" y="680" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="bold" fill="#14532d" text-anchor="middle">LocalLLMService (Ollama Runtime)</text>
+
+    <!-- Tier 4: AI & Persistence (Right) -->
+    <rect x="830" y="100" width="320" height="280" rx="10" fill="#ffffff" stroke="#7c3aed" stroke-width="2" filter="url(#shadow)"/>
+    <rect x="830" y="100" width="320" height="35" rx="10" fill="#7c3aed"/>
+    <text x="990" y="123" font-family="'Segoe UI', Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff" text-anchor="middle">AI &amp; NLP SUBSYSTEM (:11434)</text>
+
+    <rect x="855" y="160" width="270" height="45" rx="6" fill="#faf5ff" stroke="#9333ea" stroke-width="1.5"/>
+    <text x="990" y="188" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="bold" fill="#581c87" text-anchor="middle">all-MiniLM-L6-v2 Embedder</text>
+
+    <rect x="855" y="230" width="270" height="45" rx="6" fill="#faf5ff" stroke="#9333ea" stroke-width="1.5"/>
+    <text x="990" y="258" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="bold" fill="#581c87" text-anchor="middle">InLegalBERT Legal NER Engine</text>
+
+    <rect x="855" y="300" width="270" height="45" rx="6" fill="#faf5ff" stroke="#9333ea" stroke-width="1.5"/>
+    <text x="990" y="328" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="bold" fill="#581c87" text-anchor="middle">Ollama Llama-3 / Heuristic Runtime</text>
+
+    <rect x="830" y="420" width="320" height="320" rx="10" fill="#ffffff" stroke="#334155" stroke-width="2" filter="url(#shadow)"/>
+    <rect x="830" y="420" width="320" height="35" rx="10" fill="#334155"/>
+    <text x="990" y="443" font-family="'Segoe UI', Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff" text-anchor="middle">PERSISTENCE &amp; STORAGE</text>
+
+    <rect x="855" y="480" width="270" height="70" rx="6" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>
+    <text x="990" y="510" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="bold" fill="#1e293b" text-anchor="middle">SQLite (lexguard.db) / PG</text>
+    <text x="990" y="530" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#64748b" text-anchor="middle">280 Precedents, Chained Ledger</text>
+
+    <rect x="855" y="590" width="270" height="70" rx="6" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>
+    <text x="990" y="620" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="bold" fill="#1e293b" text-anchor="middle">Judicial PDF Vault</text>
+    <text x="990" y="640" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#64748b" text-anchor="middle">/storage/cases/ (COURT_YEAR_ID)</text>
+
+    <!-- Connectors -->
+    <line x1="350" y1="240" x2="420" y2="240" stroke="#334155" stroke-width="2" marker-end="url(#arrow)"/>
+    <line x1="590" y1="380" x2="590" y2="420" stroke="#334155" stroke-width="2" marker-end="url(#arrow)"/>
+    <line x1="760" y1="520" x2="830" y2="520" stroke="#334155" stroke-width="2" marker-end="url(#arrow)"/>
+    <line x1="760" y1="620" x2="830" y2="620" stroke="#334155" stroke-width="2" marker-end="url(#arrow)"/>
+    <line x1="760" y1="240" x2="830" y2="240" stroke="#7c3aed" stroke-width="2" marker-end="url(#arrow)"/>
+</svg>

@@ -1,0 +1,48 @@
+flowchart TB
+    subgraph ClientNode["Client Workstation Node"]
+        Browser["Modern Web Browser (Chrome / Edge / Firefox)
+- DOM Runtime Engine
+- PDF.js Canvas Rendering Engine
+- Local Storage & HttpOnly Cookies"]
+    end
+
+    subgraph AppServerNode["Application & API Server Node (Host: 127.0.0.1)"]
+        subgraph StaticHosting["Static Content Server (:8888)"]
+            StaticFiles["Frontend Web Directory
+- HTML5, Bootstrap 5 CSS
+- Vanilla JavaScript Modules"]
+        end
+
+        subgraph ASGIApp["Uvicorn ASGI Container (:8000)"]
+            FastAPIEngine["FastAPI Core Runtime (Python 3.13 / 3.11)
+- Security Headers & CSRF Engine
+- SQLAlchemy ORM Engine
+- NumPy Vector Algebra Engine"]
+        end
+
+        subgraph LocalAIRuntime["Local AI Daemon (:11434)"]
+            OllamaRuntime["Ollama Inference Server
+- Model: Llama-3 / Legal Fine-Tune
+- Fallback Heuristic Legal Engine"]
+        end
+    end
+
+    subgraph StorageNode["Persistence & File Storage Subsystem"]
+        subgraph DatabaseEngine["Relational Database Engine"]
+            SQLiteDB["lexguard.db (SQLite) / PostgreSQL 15
+- 280 Verified Precedent Records
+- Immutable Hash-Chained Audit Blocks"]
+        end
+
+        subgraph StorageTree["Local Filesystem Partition"]
+            JudicialVault["Judicial Storage Vault
+- backend/storage/cases/
+- Standardized {COURT}_{YEAR}_{CASE_NO}_{SHORT_ID}.pdf"]
+        end
+    end
+
+    Browser -- "HTTP / TCP Port 8888" --> StaticFiles
+    Browser -- "REST API / HTTPS Port 8000 (JWT + CSRF Token)" --> FastAPIEngine
+    FastAPIEngine -- "HTTP REST IPC / Port 11434" --> OllamaRuntime
+    FastAPIEngine -- "SQLAlchemy Engine / Local File I/O" --> SQLiteDB
+    FastAPIEngine -- "Direct 64KB Chunked Stream I/O" --> JudicialVault

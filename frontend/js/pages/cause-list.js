@@ -73,7 +73,7 @@ $(document).ready(function () {
             judge: c.judge || 'Hon’ble Bench',
             title: c.title || 'Untitled Precedent',
             caseNo: c.case_no || `WP / ${202600 + idx} / 2026`,
-            cnr: c.cnr || `MCHC01-00${idx + 100}-2026`,
+            cnr: c.cnr_number || c.cnr || `MCHC01-00${idx + 100}-2026`,
             stage: stage,
             status: status
           };

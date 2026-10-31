@@ -1,7 +1,7 @@
 from typing import List, Optional, Tuple, Dict, Any
 import re
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 from sqlalchemy import or_
 from app.core.database import get_db
 from app.core.security import get_optional_current_user
@@ -240,11 +240,11 @@ def search_cases(
     query_sections = enriched.get("sections", [])
     query_acts = enriched.get("acts", [])
 
-    # 3. Vector Embedding for Query
-    query_embedding = embedding_service.generate_embedding(clean_search_text)
+    # 3. Vector Embedding for Query (LRU Cached)
+    query_embedding = embedding_service.encode_query(clean_search_text)
 
-    # 4. Base Query: Only published cases
-    query_obj = db.query(Case).filter(Case.status == "published")
+    # 4. Base Query: Only published cases, deferring heavy full_text RAM hydration
+    query_obj = db.query(Case).options(defer(Case.full_text)).filter(Case.status == "published")
 
     # Apply UI filters
     if search_in.filters:

@@ -245,45 +245,141 @@ body::before {
 }
 
 /* ==============================================================================
-   5. Tables: High Court Clean Table with Subtle Red Borders
+   5. Tables: High Court Clean Judicial Tables (High Contrast & Visible)
    ============================================================================== */
-.table {
-  color: #0f172a !important;
-  background-color: #ffffff !important;
-  border-color: rgba(185, 28, 28, 0.1) !important;
-}
-
-.table-dark {
-  --bs-table-bg: #ffffff !important;
-  --bs-table-color: #0f172a !important;
-  --bs-table-border-color: rgba(185, 28, 28, 0.1) !important;
+.table,
+.table-dark,
+.card-judicial .table,
+.card-judicial .table-dark {
+  --bs-table-bg: transparent !important;
+  --bs-table-striped-bg: rgba(248, 250, 252, 0.85) !important;
+  --bs-table-striped-color: #0f172a !important;
+  --bs-table-accent-bg: transparent !important;
+  --bs-table-active-bg: #fef2f2 !important;
+  --bs-table-active-color: #7f1d1d !important;
   --bs-table-hover-bg: #fef2f2 !important;
-  --bs-table-hover-color: #0f172a !important;
+  --bs-table-hover-color: #7f1d1d !important;
+  --bs-table-color: #0f172a !important;
+  --bs-table-border-color: rgba(185, 28, 28, 0.12) !important;
+  background-color: transparent !important;
+  background: transparent !important;
   color: #0f172a !important;
-  background-color: #ffffff !important;
+  border-color: rgba(185, 28, 28, 0.12) !important;
 }
 
+/* Headers: High Court Crimson Banner Style */
+.table th,
 .table-dark th,
-.table th {
+.card-judicial .table th,
+.card-judicial .table-dark th {
   background-color: #fef2f2 !important;
+  background: #fef2f2 !important;
   color: #7f1d1d !important;
   font-weight: 700 !important;
-  border-bottom: 2px solid rgba(185, 28, 28, 0.2) !important;
+  border-bottom: 2px solid rgba(185, 28, 28, 0.22) !important;
   text-transform: uppercase;
   font-size: 0.76rem;
   letter-spacing: 0.05em;
 }
 
+/* Cells: Crisp Dark Charcoal for Maximum Readability */
+.table td,
 .table-dark td,
-.table td {
-  background-color: #ffffff !important;
-  color: #1e293b !important;
+.card-judicial .table td,
+.card-judicial .table-dark td,
+.table > :not(caption) > * > *,
+.table-dark > :not(caption) > * > * {
+  background-color: transparent !important;
+  color: #0f172a !important;
   border-bottom: 1px solid rgba(185, 28, 28, 0.08) !important;
 }
 
+/* Specific Field Labels (e.g. CIS Extraction Fields left column) */
+.table td.text-secondary,
+.table-dark td.text-secondary,
+.card-judicial .table td.text-secondary,
+#cis-table-body tr td:first-child {
+  color: #475569 !important;
+  font-weight: 600 !important;
+}
+
+/* Monospace Provision Tags inside tables */
+.table .font-mono.text-warning,
+.table-dark .font-mono.text-warning,
+.table td.text-warning,
+.table-dark td.text-warning {
+  color: #b45309 !important; /* Accessible high-contrast bronze/amber */
+  font-weight: 600 !important;
+}
+
+.table .font-mono.text-success,
+.table-dark .font-mono.text-success,
+.table td.text-success,
+.table-dark td.text-success {
+  color: #047857 !important; /* Accessible high-contrast emerald */
+  font-weight: 600 !important;
+}
+
+/* Striped alternating rows: Subtle slate tint with crisp dark text */
+.table-striped > tbody > tr:nth-of-type(odd) > *,
+.table-dark.table-striped > tbody > tr:nth-of-type(odd) > *,
+.card-judicial .table-striped > tbody > tr:nth-of-type(odd) > * {
+  --bs-table-accent-bg: rgba(248, 250, 252, 0.85) !important;
+  --bs-table-striped-bg: rgba(248, 250, 252, 0.85) !important;
+  --bs-table-striped-color: #0f172a !important;
+  background-color: rgba(248, 250, 252, 0.85) !important;
+  color: #0f172a !important;
+}
+
+.table-striped > tbody > tr:nth-of-type(even) > *,
+.table-dark.table-striped > tbody > tr:nth-of-type(even) > *,
+.card-judicial .table-striped > tbody > tr:nth-of-type(even) > * {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+/* Hover Rows */
+.table tbody tr:hover td,
 .table-dark tbody tr:hover td,
-.table tbody tr:hover td {
+.card-judicial .table tbody tr:hover td {
   background-color: #fff1f2 !important;
+  color: #7f1d1d !important;
+}
+
+/* Dedicated Dark Theme Mode (Only when [data-theme="dark"] is explicitly set) */
+html[data-theme="dark"] .table,
+html[data-theme="dark"] .table-dark,
+html[data-bs-theme="dark"] .table,
+html[data-bs-theme="dark"] .table-dark {
+  --bs-table-bg: transparent !important;
+  --bs-table-striped-bg: rgba(255, 255, 255, 0.02) !important;
+  --bs-table-striped-color: #e2e8f0 !important;
+  --bs-table-color: #e2e8f0 !important;
+  color: #e2e8f0 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html[data-theme="dark"] .table th,
+html[data-theme="dark"] .table-dark th,
+html[data-bs-theme="dark"] .table th,
+html[data-bs-theme="dark"] .table-dark th {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  color: #94a3b8 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+html[data-theme="dark"] .table td,
+html[data-theme="dark"] .table-dark td,
+html[data-bs-theme="dark"] .table td,
+html[data-bs-theme="dark"] .table-dark td {
+  color: #e2e8f0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+html[data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) > *,
+html[data-bs-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) > * {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+  color: #e2e8f0 !important;
 }
 
 /* ==============================================================================

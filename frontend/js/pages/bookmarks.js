@@ -284,7 +284,7 @@ $(document).ready(function () {
       const c = b.case || {};
       bib += `${idx + 1}. **${c.title || 'Case'}**, (${c.year || ''}) ${c.court || ''}\n`;
       if (c.official_citation) bib += `   *Citation:* ${c.official_citation}\n`;
-      if (c.case_no) bib += `   *Case No:* ${c.case_no}  |  *CNR:* ${c.cnr || 'N/A'}\n`;
+      if (c.case_no) bib += `   *Case No:* ${c.case_no}  |  *CNR:* ${c.cnr_number || c.cnr || 'N/A'}\n`;
       if (c.precedential_status) bib += `   *Precedential Authority:* ${c.precedential_status}\n`;
       if (b.binder_name) bib += `   *Binder:* ${b.binder_name}\n`;
       if (c.ratio_decidendi) bib += `   *Ratio:* ${c.ratio_decidendi.substring(0, 160)}...\n`;

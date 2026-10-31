@@ -75,7 +75,7 @@ $(document).ready(function () {
 
         $editTitle.val(c.title || '');
         $editCaseno.val(c.case_no || '');
-        $editCnr.val(c.cnr || '');
+        $editCnr.val(c.cnr_number || c.cnr || '');
         if (c.court) $editCourt.val(c.court);
         $editYear.val(c.year || 2026);
         if (c.bench_type) $editBenchtype.val(c.bench_type);
@@ -114,26 +114,54 @@ $(document).ready(function () {
   }
 
   /**
-   * Load PDF into left pane.
+   * Load PDF into left pane using raw document download stream.
    */
   function loadPdf() {
-    const pdfUrl = LG.api.cases.getOfficialContentUrl(caseId);
+    const pdfUrl = LG.api.cases.getDownloadUrl(caseId);
+    const headers = {};
+    const token = LG.session.token();
+    if (token) {
+      headers['Authorization'] = 'Bearer ' + token;
+    }
+    const csrfToken = LG._csrf || LG.utils.getCookie(LG.config.CSRF_COOKIE_NAME);
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
 
     if (window.pdfjsLib) {
-      window.pdfjsLib.getDocument({
-        url: pdfUrl,
-        withCredentials: true
-      }).promise.then(function (loadedDoc) {
+      $pdfLoading.removeClass('d-none');
+      $pdfCanvas.addClass('d-none');
+      $pdfFallbackText.addClass('d-none');
+
+      fetch(pdfUrl, {
+        headers: headers,
+        credentials: 'include'
+      })
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error('PDF stream error: HTTP ' + response.status);
+        }
+        return response.arrayBuffer();
+      })
+      .then(function (buffer) {
+        return window.pdfjsLib.getDocument({
+          data: buffer,
+          cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+          cMapPacked: true
+        }).promise;
+      })
+      .then(function (loadedDoc) {
         pdfDoc = loadedDoc;
         $pdfTotalPages.text(pdfDoc.numPages);
         $pdfLoading.addClass('d-none');
         $pdfCanvas.removeClass('d-none');
         renderPdfPage(pageNum);
-      }).catch(function (err) {
-        console.warn('PDF stream failed in review:', err);
+      })
+      .catch(function (err) {
+        console.warn('PDF stream failed in review, attempting fallback:', err);
         $pdfLoading.addClass('d-none');
-        if (currentCase && (currentCase.raw_text || currentCase.summary)) {
-          $pdfFallbackText.removeClass('d-none').text(currentCase.raw_text || currentCase.summary);
+        if (currentCase && (currentCase.full_text || currentCase.raw_text || currentCase.summary)) {
+          $pdfFallbackText.removeClass('d-none').text(currentCase.full_text || currentCase.raw_text || currentCase.summary);
         }
       });
     }

@@ -1,0 +1,36 @@
+sequenceDiagram
+    autonumber
+    actor User as Advocate / Public Citizen
+    participant Viewer as Case Viewer UI (case-viewer.js)
+    participant CaseAPI as Cases Endpoint (:8000)
+    participant CryptoSvc as Crypto Service
+    participant Disk as Storage Vault (/storage/cases)
+    participant AuditSvc as Audit Service
+    participant DB as Database (audit_logs table)
+
+    User->>Viewer: Opens judgment record or clicks "Download PDF"
+    Viewer->>CaseAPI: GET /api/v1/cases/{id}/download
+    CaseAPI->>Disk: resolve_case_pdf_path(case.file_path)
+    CaseAPI->>CryptoSvc: verify_sha256_stream(file_path, case.file_hash)
+    
+    CryptoSvc->>Disk: Read binary stream in 64KB chunks
+    Disk-->>CryptoSvc: File byte stream
+    CryptoSvc->>CryptoSvc: Compute SHA-256 digest & compare with case.file_hash
+
+    alt Byte Mismatch Detected (Tampering Incident)
+        CryptoSvc-->>CaseAPI: Verification FAILED (false)
+        CaseAPI->>DB: UPDATE cases SET status = 'quarantined'
+        CaseAPI->>AuditSvc: log_event(action='INTEGRITY_VIOLATION')
+        AuditSvc->>DB: Record tamper alert block
+        CaseAPI-->>Viewer: HTTP 409 Conflict (Security Quarantined)
+        Viewer-->>User: Render Red "Integrity Violation Alert"
+    else Hash Verification Passed (100% Cryptographic Match)
+        CryptoSvc-->>CaseAPI: Verification PASSED (true)
+        CaseAPI->>AuditSvc: log_event(action='DOCUMENT_STREAM', case_id, user_id)
+        AuditSvc->>DB: Query current_hash of latest audit record
+        DB-->>AuditSvc: previous_log_hash
+        AuditSvc->>AuditSvc: SHA-256(prev_hash + user_id + 'DOCUMENT_STREAM' + case_id + timestamp)
+        AuditSvc->>DB: INSERT into audit_logs (previous_log_hash, current_hash)
+        CaseAPI-->>Viewer: HTTP 200 FileResponse (application/pdf, Content-Disposition: COURT_YEAR_CASE_NO_ID.pdf, ETag)
+        Viewer-->>User: Display PDF in PDF.js with Green Seal Badge & Printable Certificate Modal
+    end

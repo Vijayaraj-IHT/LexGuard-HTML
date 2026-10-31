@@ -1,0 +1,72 @@
+flowchart TD
+    subgraph Client_Subsystem["Presentation Subsystem (Vanilla JS + Bootstrap 5 / React)"]
+        NavComp["lexguard-nav.js
+(Role Topbar & Badges)"]
+        AuthComp["lexguard-auth.js
+(Session & CSRF State)"]
+        SearchComp["search.js
+(250ms Keystroke Debouncer)"]
+        ViewerComp["case-viewer.js
+(PDF.js Engine + Digital Seal Modal)"]
+        DraftComp["draft-assistant.js
+(Grounding & Citation Embedder)"]
+    end
+
+    subgraph Security_Gateway["Security & Interceptor Tier"]
+        CORS["CORS Middleware"]
+        CSRFMiddleware["CSRFValidationMiddleware
+(Double Submit Cookie)"]
+        SecHeaders["SecurityHeadersMiddleware
+(OWASP CSP, nosniff, DENY)"]
+        RBAC["FastAPI Depends(require_role)"]
+    end
+
+    subgraph API_Routers["FastAPI API Endpoints Tier (:8000)"]
+        AuthRouter["/api/v1/auth"]
+        CasesRouter["/api/v1/cases"]
+        SearchRouter["/api/v1/search"]
+        DraftRouter["/api/v1/draft"]
+        VerificationRouter["/api/v1/cases/verify"]
+        QueueRouter["/api/v1/approval-queue"]
+    end
+
+    subgraph Core_Services["Core Logic & Engineering Services"]
+        CryptoService["CryptoService
+(64KB Chunk Stream Hasher)"]
+        AuditService["AuditService
+(Cryptographic Hash Chaining)"]
+        EmbeddingService["EmbeddingService
+(LRU Cached Vector Encoder)"]
+        LocalLLMService["LocalLLMService
+(Ollama Client + Heuristic Fallback)"]
+        ExtractionService["ExtractionService
+(PyMuPDF 3-Pass NLP Extractor)"]
+    end
+
+    subgraph External_AI["AI Runtime (:11434 / :8001)"]
+        OllamaEngine["Ollama Runtime (Llama-3 / Legal Model)"]
+        InLegalBERT["all-MiniLM-L6-v2 / InLegalBERT"]
+    end
+
+    subgraph Persistence_Tier["Persistence Subsystem"]
+        RelationalDB[(Relational DB: SQLite / PostgreSQL)]
+        FileStorage[(Judicial PDF Storage: /storage/cases/)]
+    end
+
+    Client_Subsystem -->|HTTPS / REST / Cookies| Security_Gateway
+    Security_Gateway --> API_Routers
+    
+    CasesRouter --> CryptoService
+    CasesRouter --> AuditService
+    CasesRouter --> ExtractionService
+    SearchRouter --> EmbeddingService
+    DraftRouter --> LocalLLMService
+    DraftRouter --> EmbeddingService
+    VerificationRouter --> CryptoService
+
+    LocalLLMService -.->|HTTP IPC| OllamaEngine
+    EmbeddingService -.->|Torch Inference| InLegalBERT
+
+    CasesRouter --> FileStorage
+    CryptoService --> FileStorage
+    API_Routers --> RelationalDB

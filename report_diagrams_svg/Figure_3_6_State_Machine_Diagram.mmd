@@ -1,0 +1,27 @@
+stateDiagram-v2
+    [*] --> DRAFT_INGESTION: Staff uploads raw PDF
+    
+    DRAFT_INGESTION --> REJECTED_DUPLICATE: [SHA-256 matches existing record]
+    REJECTED_DUPLICATE --> [*]: Ingestion blocked (409 Conflict)
+
+    DRAFT_INGESTION --> PENDING_APPROVAL: [Unique Hash & 3-Pass Metadata Extracted]
+    
+    state PENDING_APPROVAL {
+        [*] --> InQueue
+        InQueue --> MetadataEdited: Senior staff corrects CNR/Acts/Sections
+        MetadataEdited --> InQueue: Saved
+    }
+
+    PENDING_APPROVAL --> REJECTED: Senior staff clicks Reject [Review note recorded]
+    REJECTED --> [*]: Archived in rejected state
+
+    PENDING_APPROVAL --> PUBLISHED: Senior staff clicks Approve [Composite seal stamped]
+    
+    state PUBLISHED {
+        [*] --> IDLE_IN_REPOSITORY
+        IDLE_IN_REPOSITORY --> STREAMING_ACTIVE: GET /cases/{id}/download
+        STREAMING_ACTIVE --> IDLE_IN_REPOSITORY: [Computed Hash == Stored Hash] (Verified HTTP 200)
+    }
+
+    PUBLISHED --> QUARANTINED: [Computed Hash != Stored Hash] (Byte Tamper Detected)
+    QUARANTINED --> [*]: Quarantined; access blocked; forensic audit generated

@@ -5,7 +5,7 @@ color 0F
 
 echo ===============================================================================
 echo     🏛️  LEXGUARD · HIGH COURT JUDICIAL CASE REPOSITORY & VERIFIER
-echo         Pure HTML5 / Bootstrap 5 / FastAPI / PostgreSQL 17 / WebCrypto
+echo         Pure HTML5 / Bootstrap 5 / FastAPI / PostgreSQL / WebCrypto
 echo ===============================================================================
 echo.
 
@@ -20,7 +20,11 @@ if errorlevel 1 (
 
 :: 2. Setup Virtual Environment if not present
 if not exist "backend\venv\Scripts\activate.bat" (
-    echo [INFO] Creating Python virtual environment in backend\venv...
+    echo [INFO] Preparing Python virtual environment for Windows in backend\venv...
+    if exist "backend\venv\bin" (
+        echo [INFO] Detected non-Windows virtual environment. Refreshing backend\venv for Windows...
+        rmdir /s /q "backend\venv"
+    )
     python -m venv backend\venv
     call backend\venv\Scripts\activate.bat
     echo [INFO] Installing backend dependencies...
@@ -55,7 +59,7 @@ echo   ✅ LEXGUARD SERVICES ARE RUNNING!
 echo   - High Court Portal:  http://127.0.0.1:8888/index.html
 echo   - Case Search:        http://127.0.0.1:8888/search.html
 echo   - Staff Workstation:  http://127.0.0.1:8888/admin.html?auth_role=staff
-echo   - Visual Showcase:    http://127.0.0.1:8888/screenshots-gallery.html
+echo   - Interface Gallery:  http://127.0.0.1:8888/screenshots-gallery.html
 echo   - FastAPI Swagger UI: http://127.0.0.1:8000/docs
 echo.
 echo   Press any key in this window to close these launcher tips.

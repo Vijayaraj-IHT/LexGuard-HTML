@@ -191,8 +191,8 @@ async def custom_http_exception_handler(request: Request, exc: Exception):
                 "available_endpoints": {
                     "health": "/health",
                     "api_docs": f"{settings.API_V1_STR}/docs",
-                    "search_cases": f"{settings.API_V1_STR}/cases/search",
-                    "acts_catalog": f"{settings.API_V1_STR}/acts/all",
+                    "search_cases": f"{settings.API_V1_STR}/search",
+                    "acts_catalog": f"{settings.API_V1_STR}/statutes/acts",
                 }
             }
         )

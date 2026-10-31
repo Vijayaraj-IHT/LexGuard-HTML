@@ -1,8 +1,12 @@
+import threading
 from typing import Optional
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from app.models.audit_log import AuditLog
 from app.services.crypto_service import compute_audit_log_hash, GENESIS_HASH
+
+# Global mutex to prevent in-process thread-level race conditions on audit chain generation
+_audit_lock = threading.Lock()
 
 
 def log_audit_event(
@@ -17,35 +21,44 @@ def log_audit_event(
     """
     Creates and commits an immutable, cryptographically hash-chained audit log entry.
     Links the new record's previous_log_hash to the current_hash of the most recent entry.
+    Protected with thread mutex and row-level locking to prevent concurrency ledger forks.
     """
-    # Retrieve the last record in the audit ledger
-    last_entry = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).first()
-    previous_hash = last_entry.current_hash if last_entry else GENESIS_HASH
+    with _audit_lock:
+        # Retrieve the last record in the audit ledger with row lock if supported
+        try:
+            if db.bind and db.bind.dialect.name == "postgresql":
+                last_entry = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).with_for_update().first()
+            else:
+                last_entry = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).first()
+        except Exception:
+            last_entry = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).first()
 
-    now = datetime.now(timezone.utc)
-    current_hash = compute_audit_log_hash(
-        previous_hash=previous_hash,
-        user_id=str(user_id) if user_id else None,
-        case_id=str(case_id) if case_id else None,
-        action=action,
-        ip_address=ip_address,
-        timestamp_iso=now.isoformat(),
-        details=details,
-    )
+        previous_hash = last_entry.current_hash if last_entry else GENESIS_HASH
 
-    log_entry = AuditLog(
-        user_id=user_id,
-        case_id=case_id,
-        action=action,
-        details=details,
-        ip_address=ip_address,
-        user_agent=user_agent,
-        timestamp=now,
-        previous_log_hash=previous_hash,
-        current_hash=current_hash,
-    )
+        now = datetime.now(timezone.utc)
+        current_hash = compute_audit_log_hash(
+            previous_hash=previous_hash,
+            user_id=str(user_id) if user_id else None,
+            case_id=str(case_id) if case_id else None,
+            action=action,
+            ip_address=ip_address,
+            timestamp_iso=now.isoformat(),
+            details=details,
+        )
 
-    db.add(log_entry)
-    db.commit()
-    db.refresh(log_entry)
-    return log_entry
+        log_entry = AuditLog(
+            user_id=user_id,
+            case_id=case_id,
+            action=action,
+            details=details,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            timestamp=now,
+            previous_log_hash=previous_hash,
+            current_hash=current_hash,
+        )
+
+        db.add(log_entry)
+        db.commit()
+        db.refresh(log_entry)
+        return log_entry

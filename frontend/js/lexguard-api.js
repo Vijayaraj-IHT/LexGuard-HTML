@@ -13,7 +13,14 @@
    * Generic API request handler wrapping $.ajax with JWT authentication,
    * CSRF protection, and standardized error processing.
    */
-  function apiRequest(options) {
+  function apiRequest(options, method, data) {
+    if (typeof options === 'string') {
+      options = {
+        url: options,
+        method: method || 'GET',
+        data: data || null
+      };
+    }
     const url = options.url.startsWith('http')
       ? options.url
       : LG.config.API_BASE + (options.url.startsWith('/') ? options.url : '/' + options.url);

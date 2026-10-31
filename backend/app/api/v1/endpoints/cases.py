@@ -1,6 +1,7 @@
 import os
 import uuid
 import json
+import logging
 from typing import Optional, List
 from datetime import datetime, timezone
 from fastapi import (
@@ -16,7 +17,7 @@ from fastapi import (
 )
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from app.core.config import settings
+from app.core.config import settings, build_case_pdf_filename, resolve_case_pdf_path
 from app.core.database import get_db
 from app.core.security import get_current_user, get_optional_current_user, require_role
 from app.models.user import User
@@ -35,6 +36,8 @@ from app.services.audit_service import log_audit_event
 from app.services.embedding_service import embedding_service
 from app.services.ner_service import ner_service
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 ALLOWED_EXTENSIONS = {".pdf", ".docx"}
@@ -42,23 +45,10 @@ MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024  # 20MB
 
 
 def resolve_case_file_path(file_path: str) -> str:
-    """Resolves physical file path, falling back to STORAGE_DIR if moved across environments."""
+    """Resolves physical file path, falling back across environments and storage roots."""
     if not file_path:
         return ""
-    if os.path.exists(file_path):
-        return file_path
-    fname = os.path.basename(file_path)
-    candidates = [
-        os.path.join(settings.STORAGE_DIR, fname),
-        os.path.join(os.getcwd(), "storage", "cases", fname),
-        os.path.join(os.getcwd(), "backend", "storage", "cases", fname),
-        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "storage", "cases", fname),
-        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "backend", "storage", "cases", fname),
-    ]
-    for cand in candidates:
-        if os.path.exists(cand):
-            return cand
-    return file_path
+    return str(resolve_case_pdf_path(file_path))
 
 
 @router.post("/upload", response_model=CaseResponse, status_code=status.HTTP_201_CREATED)
@@ -112,9 +102,10 @@ async def upload_case(
             detail=f"Duplicate document detected. This judgment is already registered under Case No: {duplicate.case_no}.",
         )
 
-    # Secure file storage
+    # Secure file storage using canonical judicial filename
     os.makedirs(settings.STORAGE_DIR, exist_ok=True)
-    safe_filename = f"{uuid.uuid4()}{ext}"
+    case_uid = str(uuid.uuid4())
+    safe_filename = build_case_pdf_filename(court, year, case_no, case_uid)
     safe_path = os.path.join(settings.STORAGE_DIR, safe_filename)
 
     with open(safe_path, "wb") as f:
@@ -325,10 +316,26 @@ async def upload_case_auto(
     db.refresh(new_case)
 
     # Track Version 1
+    canonical_filename = build_case_pdf_filename(
+        court=new_case.court,
+        year=new_case.year,
+        case_no=new_case.case_no,
+        case_id=new_case.id,
+    )
+    canonical_path = os.path.join(settings.STORAGE_DIR, canonical_filename)
+    if canonical_path != safe_path and os.path.exists(safe_path):
+        try:
+            os.replace(safe_path, canonical_path)
+            new_case.file_path = f"storage/cases/{canonical_filename}"
+            db.commit()
+            db.refresh(new_case)
+        except Exception:
+            pass
+
     version_entry = DocumentVersion(
         case_id=new_case.id,
         version_no=1,
-        file_path=safe_path,
+        file_path=new_case.file_path,
         file_hash=file_hash,
         change_summary="Automated extraction and initial ingestion",
         changed_by_id=current_user.id,
@@ -1014,5 +1021,237 @@ def get_case_citations_network(
         "cited_by_count": len(citing_cases),
         "precedents_cited": precedents_cited,
         "cited_by": citing_cases,
+    }
+
+
+def _build_external_references(case: Case) -> list:
+    """
+    Generates clickable external reference links for a case to authoritative
+    Indian legal databases: Indian Kanoon, eCourts, SCI Judgments Portal,
+    India Code, and more.
+    """
+    import urllib.parse
+
+    refs = []
+    title = case.title or ""
+    case_no = case.case_no or ""
+    year = case.year or ""
+    court = (case.court or "").strip()
+    official_citation = case.official_citation or ""
+    source_url = case.source_url or ""
+
+    # ── 1. Indian Kanoon (Primary Legal Research Database) ──────────────
+    # Build a search query from the case title/citation
+    kanoon_query = official_citation if official_citation else f"{title} {year}"
+    kanoon_query = kanoon_query.strip()
+    if kanoon_query:
+        refs.append({
+            "name": "Indian Kanoon",
+            "description": "India's largest free legal research engine with full judgments, headnotes, and citator",
+            "url": f"https://indiankanoon.org/search/?formInput={urllib.parse.quote_plus(kanoon_query)}",
+            "icon": "bi-search",
+            "badge": "Primary",
+            "badge_color": "success",
+        })
+
+    # ── 2. eCourts – Judgment Search Portal ─────────────────────────────
+    refs.append({
+        "name": "eCourts Judgment Search",
+        "description": "Official judiciary portal for case status, orders, and certified judgment PDFs",
+        "url": "https://judgments.ecourts.gov.in/pdfsearch/",
+        "icon": "bi-bank2",
+        "badge": "Official",
+        "badge_color": "danger",
+    })
+
+    # ── 3. eCourts – National Case Status Tracking (CNR Lookup) ────────
+    cnr = case.cnr_number or ""
+    if cnr:
+        refs.append({
+            "name": "eCourts CNR Status",
+            "description": f"Track live case status and orders using CNR: {cnr}",
+            "url": f"https://services.ecourts.gov.in/ecourtindia_v6/",
+            "icon": "bi-upc-scan",
+            "badge": "CNR Lookup",
+            "badge_color": "info",
+        })
+    else:
+        refs.append({
+            "name": "eCourts Services Portal",
+            "description": "National case tracking by CNR, case number, filing number, or party name",
+            "url": "https://services.ecourts.gov.in/ecourtindia_v6/",
+            "icon": "bi-upc-scan",
+            "badge": "Official",
+            "badge_color": "info",
+        })
+
+    # ── 4. Supreme Court of India – Judgments Portal ───────────────────
+    court_upper = court.upper()
+    if "SUPREME" in court_upper:
+        sci_query = case_no if case_no else title
+        refs.append({
+            "name": "SCI Judgments Portal",
+            "description": "Supreme Court of India official judgment information system",
+            "url": f"https://main.sci.gov.in/judgments",
+            "icon": "bi-building",
+            "badge": "Supreme Court",
+            "badge_color": "warning",
+        })
+
+    # ── 5. Indian Kanoon – Direct Citation Lookup ──────────────────────
+    if official_citation:
+        refs.append({
+            "name": "Indian Kanoon – Citation Lookup",
+            "description": f"Search by official citation: {official_citation}",
+            "url": f"https://indiankanoon.org/search/?formInput={urllib.parse.quote_plus(official_citation)}",
+            "icon": "bi-journal-bookmark-fill",
+            "badge": "Citation",
+            "badge_color": "warning",
+        })
+
+    # ── 6. India Code – Legislative Database ───────────────────────────
+    act_tags = case.act_tags if isinstance(case.act_tags, list) else []
+    if act_tags:
+        refs.append({
+            "name": "India Code – Legislative Database",
+            "description": f"Official repository of all Central and State Acts ({', '.join(act_tags[:3])})",
+            "url": "https://www.indiacode.nic.in/",
+            "icon": "bi-book-half",
+            "badge": "Legislation",
+            "badge_color": "secondary",
+        })
+
+    # ── 7. High Court–Specific Judgment Portals ────────────────────────
+    hc_portals = {
+        "MADRAS": {
+            "name": "Madras High Court Judis Portal",
+            "url": "https://www.mhc.tn.gov.in/judis/",
+            "description": "Official Madras High Court judgment repository (JUDIS)",
+        },
+        "DELHI": {
+            "name": "Delhi High Court Judgments",
+            "url": "https://dhcappl.nic.in/FreeText/",
+            "description": "Delhi High Court official judgment search portal",
+        },
+        "BOMBAY": {
+            "name": "Bombay High Court Judgments",
+            "url": "https://bombayhighcourt.nic.in/",
+            "description": "Bombay High Court official portal",
+        },
+        "KARNATAKA": {
+            "name": "Karnataka High Court Judgments",
+            "url": "https://karnatakajudiciary.kar.nic.in/",
+            "description": "Karnataka High Court official judgment database",
+        },
+        "CALCUTTA": {
+            "name": "Calcutta High Court Judgments",
+            "url": "https://www.calcuttahighcourt.gov.in/",
+            "description": "Calcutta High Court official judgment portal",
+        },
+        "ALLAHABAD": {
+            "name": "Allahabad High Court Judgments",
+            "url": "https://www.allahabadhighcourt.in/",
+            "description": "Allahabad High Court official judgment repository",
+        },
+        "KERALA": {
+            "name": "Kerala High Court Judgments",
+            "url": "https://highcourtofkerala.nic.in/",
+            "description": "Kerala High Court official judgment search",
+        },
+        "TELANGANA": {
+            "name": "Telangana High Court Judgments",
+            "url": "https://tshc.gov.in/",
+            "description": "Telangana High Court official judgment portal",
+        },
+        "PUNJAB": {
+            "name": "Punjab & Haryana High Court Judgments",
+            "url": "https://phhc.gov.in/",
+            "description": "Punjab & Haryana High Court judgment repository",
+        },
+        "GAUHATI": {
+            "name": "Gauhati High Court Judgments",
+            "url": "https://ghconline.gov.in/",
+            "description": "Gauhati High Court official judgment portal",
+        },
+        "GUJARAT": {
+            "name": "Gujarat High Court Judgments",
+            "url": "https://gujarathighcourt.nic.in/",
+            "description": "Gujarat High Court official judgment portal",
+        },
+    }
+
+    for hc_key, hc_info in hc_portals.items():
+        if hc_key in court_upper:
+            refs.append({
+                "name": hc_info["name"],
+                "description": hc_info["description"],
+                "url": hc_info["url"],
+                "icon": "bi-bank",
+                "badge": "High Court",
+                "badge_color": "danger",
+            })
+            break
+
+    # ── 8. Verified Source URL (if available from PDF watermark) ────────
+    if source_url:
+        refs.append({
+            "name": "Verified Source Document",
+            "description": f"Original court-verified source: {source_url}",
+            "url": source_url,
+            "icon": "bi-patch-check-fill",
+            "badge": "Verified Source",
+            "badge_color": "success",
+        })
+
+    # ── 9. SCC Online / Manupatra Search (general search) ──────────────
+    if kanoon_query:
+        refs.append({
+            "name": "SCC Online",
+            "description": "Comprehensive legal research database with editorial annotations and citator",
+            "url": f"https://www.scconline.com/Members/SearchResult.aspx",
+            "icon": "bi-journal-richtext",
+            "badge": "Premium",
+            "badge_color": "secondary",
+        })
+
+    # ── 10. National Judicial Data Grid ────────────────────────────────
+    refs.append({
+        "name": "National Judicial Data Grid (NJDG)",
+        "description": "Pendency and disposal data for all Indian courts under eCourts",
+        "url": "https://njdg.ecourts.gov.in/",
+        "icon": "bi-bar-chart-line-fill",
+        "badge": "Statistics",
+        "badge_color": "info",
+    })
+
+    return refs
+
+
+@router.get("/{case_id}/external-references")
+def get_case_external_references(
+    case_id: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Returns authoritative external reference links for a case to Indian legal
+    databases including Indian Kanoon, eCourts Judgment Search Portal, SCI
+    Judgments, India Code, High Court–specific portals, SCC Online, NJDG, etc.
+    """
+    case = db.query(Case).filter(Case.id == case_id).first()
+    if not case:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Case record not found.",
+        )
+
+    references = _build_external_references(case)
+
+    return {
+        "case_id": case.id,
+        "case_no": case.case_no,
+        "title": case.title,
+        "court": case.court,
+        "year": case.year,
+        "references": references,
     }
 

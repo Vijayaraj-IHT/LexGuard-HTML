@@ -1,0 +1,348 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+    <defs>
+        <!-- Standard Arrow Marker for 1-side cardinality -->
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#1e293b"/>
+        </marker>
+        <!-- Orange Arrow Marker for Identifying Relationships -->
+        <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#c2410c"/>
+        </marker>
+        <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+            <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.08"/>
+        </filter>
+    </defs>
+
+    <!-- Canvas Background -->
+    <rect width="1600" height="1150" fill="#ffffff"/>
+
+    <!-- Title Banner -->
+    <rect x="40" y="20" width="1520" height="50" rx="8" fill="#1e3a8a"/>
+    <text x="800" y="52" font-family="'Segoe UI', Arial, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">Figure 3.9: IEEE Peter Chen Entity-Relationship Diagram for LexGuard Platform</text>
+
+    <!-- ========================================================================= -->
+    <!-- RELATIONSHIP CONNECTING LINES (Rendered underneath shapes) -->
+    <!-- ========================================================================= -->
+
+    <!-- 1. USERS <--> CASES (Uploads - N:1) -->
+    <!-- Blunt line from CASES to Uploads (Many) -->
+    <line x1="610" y1="440" x2="495" y2="370" stroke="#1e293b" stroke-width="2"/>
+    <!-- Directed arrow from Uploads to USERS (1) -->
+    <line x1="425" y1="370" x2="310" y2="340" stroke="#1e293b" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="540" y="390" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#475569" font-weight="600">role: uploader</text>
+
+    <!-- 2. USERS <--> CASES (Approves - N:1) -->
+    <!-- Blunt line from CASES to Approves (Many) -->
+    <line x1="610" y1="475" x2="495" y2="460" stroke="#1e293b" stroke-width="2"/>
+    <!-- Directed arrow from Approves to USERS (1) -->
+    <line x1="425" y1="460" x2="310" y2="365" stroke="#1e293b" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="540" y="485" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#475569" font-weight="600">role: approver</text>
+
+    <!-- 3. USERS <--> DRAFT_SESSIONS (Authors - N:1) -->
+    <!-- Blunt line from DRAFT_SESSIONS to Authors (Many) -->
+    <line x1="230" y1="760" x2="230" y2="615" stroke="#1e293b" stroke-width="2"/>
+    <!-- Directed arrow from Authors to USERS (1) -->
+    <line x1="230" y1="565" x2="230" y2="380" stroke="#1e293b" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- 4. USERS <--> AUDIT_LOGS (Triggers - N:1 via Outer Border Highway) -->
+    <!-- Blunt line from AUDIT_LOGS out to the right border, up along border to top, to Triggers diamond (Many) -->
+    <path d="M 1280,520 L 1280,495 L 1500,495 L 1500,95 L 835,95" fill="none" stroke="#1e293b" stroke-width="2"/>
+    <!-- Directed arrow from Triggers diamond along top border then straight down into USERS (1) -->
+    <path d="M 765,95 L 230,95 L 230,300" fill="none" stroke="#1e293b" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- 5. CASES <--> APPROVAL_QUEUE (Queued_For - 1:1 Identifying Relationship) -->
+    <line x1="1130" y1="335" x2="1025" y2="350" stroke="#c2410c" stroke-width="2.5"/>
+    <line x1="955" y1="350" x2="830" y2="435" stroke="#c2410c" stroke-width="2.5" marker-end="url(#arrow-orange)"/>
+
+    <!-- 6. CASES <--> AUDIT_LOGS (Audited_For - N:1) -->
+    <!-- Blunt line from AUDIT_LOGS to Audited_For (Many) -->
+    <line x1="1140" y1="540" x2="1035" y2="510" stroke="#1e293b" stroke-width="2"/>
+    <!-- Directed arrow from Audited_For to CASES (1) -->
+    <line x1="965" y1="510" x2="830" y2="470" stroke="#1e293b" stroke-width="2" marker-end="url(#arrow)"/>
+
+    <!-- 7. CASES <--> DOCUMENT_VERSIONS (Version_Of - N:1 Identifying Relationship) -->
+    <!-- Blunt line from Weak Entity DOCUMENT_VERSIONS to Version_Of (Many) -->
+    <line x1="720" y1="780" x2="720" y2="685" stroke="#c2410c" stroke-width="2.5"/>
+    <!-- Directed orange arrow from Version_Of to CASES (1) -->
+    <line x1="720" y1="635" x2="720" y2="500" stroke="#c2410c" stroke-width="2.5" marker-end="url(#arrow-orange)"/>
+
+    <!-- 8. CASES <--> BOOKMARKS (Points_To - N:1, Completely Unobstructed Direct Path) -->
+    <!-- Blunt line from BOOKMARKS to Points_To (Many) -->
+    <line x1="1140" y1="795" x2="1035" y2="710" stroke="#1e293b" stroke-width="2"/>
+    <!-- Directed arrow from Points_To to CASES (1) -->
+    <line x1="965" y1="710" x2="830" y2="490" stroke="#1e293b" stroke-width="2" marker-end="url(#arrow)"/>
+
+
+    <!-- ========================================================================= -->
+    <!-- RELATIONSHIP DIAMONDS -->
+    <!-- ========================================================================= -->
+
+    <!-- Relationship: Uploads (460, 370) -->
+    <polygon points="460,345 495,370 460,395 425,370" fill="#f1f5f9" stroke="#1e293b" stroke-width="2"/>
+    <text x="460" y="374" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="bold" fill="#0f172a" text-anchor="middle">Uploads</text>
+
+    <!-- Relationship: Approves (460, 460) -->
+    <polygon points="460,435 495,460 460,485 425,460" fill="#f1f5f9" stroke="#1e293b" stroke-width="2"/>
+    <text x="460" y="464" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="bold" fill="#0f172a" text-anchor="middle">Approves</text>
+
+    <!-- Relationship: Authors (230, 590) -->
+    <polygon points="230,565 265,590 230,615 195,590" fill="#f1f5f9" stroke="#1e293b" stroke-width="2"/>
+    <text x="230" y="594" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="bold" fill="#0f172a" text-anchor="middle">Authors</text>
+
+    <!-- Relationship: Triggers (800, 95) Outer Border Corridor -->
+    <polygon points="800,72 835,95 800,118 765,95" fill="#f1f5f9" stroke="#1e293b" stroke-width="2"/>
+    <text x="800" y="99" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="bold" fill="#0f172a" text-anchor="middle">Triggers</text>
+
+    <!-- Identifying Relationship: Queued_For (990, 350) - Double Diamond -->
+    <polygon points="990,325 1025,350 990,375 955,350" fill="#fff7ed" stroke="#c2410c" stroke-width="2"/>
+    <polygon points="990,330 1017,350 990,370 963,350" fill="#fff7ed" stroke="#c2410c" stroke-width="1.2"/>
+    <text x="990" y="354" font-family="'Segoe UI', Arial, sans-serif" font-size="10" font-weight="bold" fill="#9a3412" text-anchor="middle">Queued_For</text>
+
+    <!-- Relationship: Audited_For (1000, 510) -->
+    <polygon points="1000,485 1035,510 1000,535 965,510" fill="#f1f5f9" stroke="#1e293b" stroke-width="2"/>
+    <text x="1000" y="514" font-family="'Segoe UI', Arial, sans-serif" font-size="10" font-weight="bold" fill="#0f172a" text-anchor="middle">Audited_For</text>
+
+    <!-- Identifying Relationship: Version_Of (720, 660) - Double Diamond -->
+    <polygon points="720,635 755,660 720,685 685,660" fill="#fff7ed" stroke="#c2410c" stroke-width="2"/>
+    <polygon points="720,640 747,660 720,680 693,660" fill="#fff7ed" stroke="#c2410c" stroke-width="1.2"/>
+    <text x="720" y="664" font-family="'Segoe UI', Arial, sans-serif" font-size="10" font-weight="bold" fill="#9a3412" text-anchor="middle">Version_Of</text>
+
+    <!-- Relationship: Points_To (1000, 710) -->
+    <polygon points="1000,685 1035,710 1000,735 965,710" fill="#f1f5f9" stroke="#1e293b" stroke-width="2"/>
+    <text x="1000" y="714" font-family="'Segoe UI', Arial, sans-serif" font-size="10" font-weight="bold" fill="#0f172a" text-anchor="middle">Points_To</text>
+
+    <!-- Recursive Relationship: Hash_Chains (AuditLog to AuditLog) -->
+    <polygon points="1390,530 1425,555 1390,580 1355,555" fill="#fef3c7" stroke="#b45309" stroke-width="2"/>
+    <text x="1390" y="559" font-family="'Segoe UI', Arial, sans-serif" font-size="10" font-weight="bold" fill="#78350f" text-anchor="middle">Chains</text>
+    <path d="M 1300,535 C 1350,510 1390,515 1390,530" fill="none" stroke="#b45309" stroke-width="1.8"/>
+    <path d="M 1390,580 C 1390,605 1350,605 1300,575" fill="none" stroke="#b45309" stroke-width="1.8" marker-end="url(#arrow)"/>
+    <text x="1400" y="515" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#b45309">role: next</text>
+    <text x="1400" y="615" font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#b45309">role: prev</text>
+
+
+    <!-- ========================================================================= -->
+    <!-- ENTITY 1: USERS (Top-Left Strong Entity) -->
+    <!-- ========================================================================= -->
+    <rect x="150" y="300" width="160" height="80" rx="4" fill="#eff6ff" stroke="#1e3a8a" stroke-width="2.5" filter="url(#shadow)"/>
+    <text x="230" y="337" font-family="'Segoe UI', Arial, sans-serif" font-size="15" font-weight="bold" fill="#1e3a8a" text-anchor="middle">USERS</text>
+    <text x="230" y="358" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#475569" text-anchor="middle">(Strong Entity)</text>
+
+    <!-- USERS Attributes (Positioned strictly to the left & bottom-left so the top entry is completely unobstructed) -->
+    <!-- id (PK) -->
+    <line x1="85" y1="250" x2="150" y2="310" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="70" cy="245" rx="46" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="70" y="249" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="bold" text-decoration="underline" fill="#0f172a" text-anchor="middle">id (PK)</text>
+
+    <!-- name -->
+    <line x1="75" y1="295" x2="150" y2="325" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="60" cy="295" rx="36" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="60" y="299" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#0f172a" text-anchor="middle">name</text>
+
+    <!-- email -->
+    <line x1="75" y1="350" x2="150" y2="345" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="60" cy="350" rx="38" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="60" y="354" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#0f172a" text-anchor="middle">email</text>
+
+    <!-- role -->
+    <line x1="75" y1="400" x2="150" y2="365" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="60" cy="400" rx="34" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="60" y="404" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#0f172a" text-anchor="middle">role</text>
+
+    <!-- credential_id -->
+    <line x1="90" y1="445" x2="170" y2="380" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="75" cy="450" rx="55" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="75" y="454" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#0f172a" text-anchor="middle">credential_id</text>
+
+    <!-- status -->
+    <line x1="165" y1="430" x2="200" y2="380" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="155" cy="445" rx="36" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="155" y="449" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#0f172a" text-anchor="middle">status</text>
+
+
+    <!-- ========================================================================= -->
+    <!-- ENTITY 2: CASES (Center Strong Entity) -->
+    <!-- ========================================================================= -->
+    <rect x="610" y="420" width="220" height="80" rx="4" fill="#eff6ff" stroke="#1e3a8a" stroke-width="3" filter="url(#shadow)"/>
+    <text x="720" y="456" font-family="'Segoe UI', Arial, sans-serif" font-size="17" font-weight="bold" fill="#1e3a8a" text-anchor="middle">CASES</text>
+    <text x="720" y="478" font-family="'Segoe UI', Arial, sans-serif" font-size="12" fill="#475569" text-anchor="middle">(Central Strong Entity)</text>
+
+    <!-- Top Attributes of CASES (5 attributes fanned out cleanly) -->
+    <!-- id (PK) -->
+    <line x1="535" y1="340" x2="625" y2="420" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="525" cy="330" rx="46" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="525" y="334" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="bold" text-decoration="underline" fill="#0f172a" text-anchor="middle">id (PK)</text>
+
+    <!-- cnr_number -->
+    <line x1="620" y1="320" x2="665" y2="420" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="615" cy="305" rx="48" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="615" y="309" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#0f172a" text-anchor="middle">cnr_number</text>
+
+    <!-- case_no -->
+    <line x1="700" y1="310" x2="705" y2="420" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="700" cy="290" rx="42" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="700" y="294" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#0f172a" text-anchor="middle">case_no</text>
+
+    <!-- court -->
+    <line x1="785" y1="310" x2="755" y2="420" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="790" cy="290" rx="38" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="790" y="294" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#0f172a" text-anchor="middle">court</text>
+
+    <!-- year -->
+    <line x1="865" y1="330" x2="800" y2="420" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="875" cy="320" rx="36" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="875" y="324" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#0f172a" text-anchor="middle">year</text>
+
+    <!-- Bottom Attributes of CASES (Cleanly separated so the bottom-right connection corridor is 100% open) -->
+    <!-- cited_by_count (Derived Attribute: Dashed Oval, on bottom-left) -->
+    <line x1="495" y1="520" x2="610" y2="480" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="450" cy="520" rx="55" ry="18" fill="#f8fafc" stroke="#64748b" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <text x="450" y="524" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#475569" text-anchor="middle">cited_by_count (D)</text>
+
+    <!-- ratio_decidendi (Positioned on bottom-left away from the Points_To corridor) -->
+    <line x1="495" y1="575" x2="610" y2="495" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="450" cy="580" rx="55" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="450" y="584" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#0f172a" text-anchor="middle">ratio_decidendi</text>
+
+    <!-- file_hash -->
+    <line x1="560" y1="590" x2="635" y2="500" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="545" cy="610" rx="45" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="545" y="614" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#0f172a" text-anchor="middle">file_hash</text>
+
+    <!-- act_tags (Multi-Valued: Double Oval) -->
+    <line x1="635" y1="610" x2="670" y2="500" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="630" cy="635" rx="55" ry="22" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <ellipse cx="630" cy="635" rx="49" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1"/>
+    <text x="630" y="639" font-family="'Segoe UI', Arial, sans-serif" font-size="10" font-weight="bold" fill="#0f172a" text-anchor="middle">act_tags (M)</text>
+
+    <!-- section_tags (Multi-Valued: Double Oval) -->
+    <line x1="800" y1="610" x2="770" y2="500" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="805" cy="635" rx="58" ry="22" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <ellipse cx="805" cy="635" rx="52" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1"/>
+    <text x="805" y="639" font-family="'Segoe UI', Arial, sans-serif" font-size="10" font-weight="bold" fill="#0f172a" text-anchor="middle">section_tags (M)</text>
+
+
+    <!-- ========================================================================= -->
+    <!-- ENTITY 3: APPROVAL_QUEUE (Top-Right Weak Entity - Double Rectangle) -->
+    <!-- ========================================================================= -->
+    <rect x="1130" y="300" width="180" height="70" rx="4" fill="#fff7ed" stroke="#c2410c" stroke-width="2.5" filter="url(#shadow)"/>
+    <rect x="1134" y="304" width="172" height="62" rx="3" fill="#fff7ed" stroke="#c2410c" stroke-width="1.2"/>
+    <text x="1220" y="333" font-family="'Segoe UI', Arial, sans-serif" font-size="14" font-weight="bold" fill="#9a3412" text-anchor="middle">APPROVAL_QUEUE</text>
+    <text x="1220" y="352" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#c2410c" text-anchor="middle">(Weak Entity)</text>
+
+    <!-- Attributes APPROVAL_QUEUE -->
+    <line x1="1130" y1="235" x2="1175" y2="300" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="1120" cy="225" rx="42" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="1120" y="229" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="bold" text-decoration="underline" fill="#0f172a" text-anchor="middle">id (PK)</text>
+
+    <line x1="1220" y1="235" x2="1220" y2="300" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="1220" cy="220" rx="38" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="1220" y="224" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#0f172a" text-anchor="middle">status</text>
+
+    <line x1="1310" y1="235" x2="1265" y2="300" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="1320" cy="220" rx="48" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="1320" y="224" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#0f172a" text-anchor="middle">review_note</text>
+
+    <line x1="1350" y1="330" x2="1310" y2="330" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="1395" cy="330" rx="50" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="1395" y="334" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#0f172a" text-anchor="middle">submitted_at</text>
+
+
+    <!-- ========================================================================= -->
+    <!-- ENTITY 4: AUDIT_LOGS (Middle-Right Strong Entity) -->
+    <!-- ========================================================================= -->
+    <rect x="1140" y="520" width="160" height="70" rx="4" fill="#eff6ff" stroke="#1e3a8a" stroke-width="2.5" filter="url(#shadow)"/>
+    <text x="1220" y="553" font-family="'Segoe UI', Arial, sans-serif" font-size="15" font-weight="bold" fill="#1e3a8a" text-anchor="middle">AUDIT_LOGS</text>
+    <text x="1220" y="572" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#475569" text-anchor="middle">(Strong Entity)</text>
+
+    <!-- Attributes AUDIT_LOGS -->
+    <line x1="1100" y1="465" x2="1165" y2="520" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="1090" cy="455" rx="42" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="1090" y="459" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="bold" text-decoration="underline" fill="#0f172a" text-anchor="middle">id (PK)</text>
+
+    <line x1="1200" y1="465" x2="1210" y2="520" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="1195" cy="450" rx="40" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="1195" y="454" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#0f172a" text-anchor="middle">action</text>
+
+    <line x1="1290" y1="465" x2="1255" y2="520" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="1300" cy="450" rx="45" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="1300" y="454" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#0f172a" text-anchor="middle">timestamp</text>
+
+    <line x1="1080" y1="610" x2="1145" y2="580" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="1060" cy="625" rx="55" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="1060" y="629" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#0f172a" text-anchor="middle">previous_hash</text>
+
+    <line x1="1190" y1="640" x2="1215" y2="590" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="1180" cy="655" rx="52" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="1180" y="659" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#0f172a" text-anchor="middle">current_hash</text>
+
+
+    <!-- ========================================================================= -->
+    <!-- ENTITY 5: DRAFT_SESSIONS (Bottom-Left Strong Entity) -->
+    <!-- ========================================================================= -->
+    <rect x="150" y="760" width="160" height="70" rx="4" fill="#eff6ff" stroke="#1e3a8a" stroke-width="2.5" filter="url(#shadow)"/>
+    <text x="230" y="793" font-family="'Segoe UI', Arial, sans-serif" font-size="14" font-weight="bold" fill="#1e3a8a" text-anchor="middle">DRAFT_SESSIONS</text>
+    <text x="230" y="812" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#475569" text-anchor="middle">(Strong Entity)</text>
+
+    <line x1="90" y1="710" x2="170" y2="760" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="75" cy="700" rx="45" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="75" y="704" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="bold" text-decoration="underline" fill="#0f172a" text-anchor="middle">id (PK)</text>
+
+    <line x1="70" y1="795" x2="150" y2="795" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="60" cy="795" rx="38" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="60" y="799" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#0f172a" text-anchor="middle">title</text>
+
+    <line x1="90" y1="870" x2="170" y2="825" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="80" cy="880" rx="52" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="80" y="884" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#0f172a" text-anchor="middle">last_updated</text>
+
+
+    <!-- ========================================================================= -->
+    <!-- ENTITY 6: DOCUMENT_VERSIONS (Bottom-Center Weak Entity - Double Rect) -->
+    <!-- ========================================================================= -->
+    <rect x="630" y="780" width="180" height="65" rx="4" fill="#fff7ed" stroke="#c2410c" stroke-width="2.5" filter="url(#shadow)"/>
+    <rect x="634" y="784" width="172" height="57" rx="3" fill="#fff7ed" stroke="#c2410c" stroke-width="1.2"/>
+    <text x="720" y="810" font-family="'Segoe UI', Arial, sans-serif" font-size="13" font-weight="bold" fill="#9a3412" text-anchor="middle">DOCUMENT_VERSIONS</text>
+    <text x="720" y="828" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#c2410c" text-anchor="middle">(Weak Entity)</text>
+
+    <line x1="590" y1="900" x2="670" y2="845" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="570" cy="915" rx="68" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="570" y="919" font-family="'Segoe UI', Arial, sans-serif" font-size="10" text-decoration="underline" stroke-dasharray="3,2" fill="#0f172a" text-anchor="middle">version_no (Partial)</text>
+
+    <line x1="720" y1="895" x2="720" y2="845" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="720" cy="915" rx="45" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="720" y="919" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#0f172a" text-anchor="middle">file_hash</text>
+
+    <line x1="840" y1="900" x2="770" y2="845" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="855" cy="915" rx="50" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="855" y="919" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#0f172a" text-anchor="middle">changed_at</text>
+
+
+    <!-- ========================================================================= -->
+    <!-- ENTITY 7: BOOKMARKS (Bottom-Right Strong Entity) -->
+    <!-- ========================================================================= -->
+    <rect x="1140" y="780" width="160" height="70" rx="4" fill="#eff6ff" stroke="#1e3a8a" stroke-width="2.5" filter="url(#shadow)"/>
+    <text x="1220" y="813" font-family="'Segoe UI', Arial, sans-serif" font-size="15" font-weight="bold" fill="#1e3a8a" text-anchor="middle">BOOKMARKS</text>
+    <text x="1220" y="832" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#475569" text-anchor="middle">(Strong Entity)</text>
+
+    <line x1="1090" y1="895" x2="1165" y2="850" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="1075" cy="910" rx="42" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="1075" y="914" font-family="'Segoe UI', Arial, sans-serif" font-size="11" font-weight="bold" text-decoration="underline" fill="#0f172a" text-anchor="middle">id (PK)</text>
+
+    <line x1="1220" y1="895" x2="1220" y2="850" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="1220" cy="910" rx="50" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="1220" y="914" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#0f172a" text-anchor="middle">folder_name</text>
+
+    <line x1="1340" y1="895" x2="1275" y2="850" stroke="#64748b" stroke-width="1.3"/>
+    <ellipse cx="1355" cy="910" rx="38" ry="18" fill="#f8fafc" stroke="#334155" stroke-width="1.5"/>
+    <text x="1355" y="914" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#0f172a" text-anchor="middle">notes</text>
+
+
+    <!-- ========================================================================= -->
+    <!-- IEEE CHEN NOTATION CONVENTIONS LEGEND (Bottom Banner) -->
+    <!-- ========================================================================= -->
+    <rect x="40" y="1010" width="1520" height="90" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="60" y="1038" font-family="'Segoe UI', Arial, sans-serif" font-size="13" font-weight="bold" fill="#0f172a">IEEE PETER CHEN NOTATION CONVENTIONS &amp; CARDINALITY MAPPING:</text>
+    <text x="60" y="1063" font-family="'Segoe UI', Arial, sans-serif" font-size="11.5" fill="#334155">&#x25AA; Single Rectangle = Strong Entity Set | Double Rectangle = Weak Entity Set | Diamond = Relationship Set | Double Diamond = Identifying Relationship</text>
+    <text x="60" y="1083" font-family="'Segoe UI', Arial, sans-serif" font-size="11.5" fill="#334155">&#x25AA; Oval = Attribute | Underlined = Primary Key (PK) | Dashed Underline = Partial Key | Double Oval = Multi-valued (M) | Dashed Oval = Derived (D)</text>
+    <text x="60" y="1098" font-family="'Segoe UI', Arial, sans-serif" font-size="11.5" fill="#1e3a8a" font-weight="600">&#x25AA; Cardinality: Directed Arrow (&#8594;) strictly denotes 1-side cardinality; Blunt Straight Line (&#x2014;) strictly denotes Many-side (N / M) cardinality (No numeric labels used).</text>
+</svg>

@@ -1,0 +1,160 @@
+flowchart TB
+    subgraph Cluster_USERS ["Entity Set: USERS"]
+        E_USER["USERS
+(Strong Entity)"]
+        U_id(["<u>id (PK)</u>"])
+        U_email(["email"])
+        U_name(["name"])
+        U_role(["role"])
+        U_cred(["credential_id"])
+        U_stat(["status"])
+
+        E_USER --- U_id
+        E_USER --- U_email
+        E_USER --- U_name
+        E_USER --- U_role
+        E_USER --- U_cred
+        E_USER --- U_stat
+    end
+
+    subgraph Cluster_CASES ["Entity Set: CASES"]
+        E_CASE["CASES
+(Strong Entity)"]
+        C_id(["<u>id (PK)</u>"])
+        C_cnr(["cnr_number"])
+        C_no(["case_no"])
+        C_court(["court"])
+        C_year(["year"])
+        C_hash(["file_hash"])
+        C_acts([["act_tags
+(Multi-valued)"]])
+        C_secs([["section_tags
+(Multi-valued)"]])
+        C_ratio(["ratio_decidendi"])
+        C_cite_count(["cited_by_count
+(Derived)"])
+
+        E_CASE --- C_id
+        E_CASE --- C_cnr
+        E_CASE --- C_no
+        E_CASE --- C_court
+        E_CASE --- C_year
+        E_CASE --- C_hash
+        E_CASE --- C_acts
+        E_CASE --- C_secs
+        E_CASE --- C_ratio
+        E_CASE --- C_cite_count
+    end
+
+    subgraph Cluster_AUDIT ["Entity Set: AUDIT_LOGS"]
+        E_AUDIT["AUDIT_LOGS
+(Strong Entity)"]
+        A_id(["<u>id (PK)</u>"])
+        A_action(["action"])
+        A_time(["timestamp"])
+        A_ip(["ip_address"])
+        A_prev(["previous_log_hash"])
+        A_curr(["current_hash"])
+
+        E_AUDIT --- A_id
+        E_AUDIT --- A_action
+        E_AUDIT --- A_time
+        E_AUDIT --- A_ip
+        E_AUDIT --- A_prev
+        E_AUDIT --- A_curr
+    end
+
+    subgraph Cluster_QUEUE ["Entity Set: APPROVAL_QUEUE"]
+        E_QUEUE[["APPROVAL_QUEUE
+(Weak Entity)"]]
+        Q_id(["<u>id (PK)</u>"])
+        Q_stat(["status"])
+        Q_note(["review_note"])
+        Q_time(["submitted_at"])
+
+        E_QUEUE --- Q_id
+        E_QUEUE --- Q_stat
+        E_QUEUE --- Q_note
+        E_QUEUE --- Q_time
+    end
+
+    subgraph Cluster_VERSION ["Entity Set: DOCUMENT_VERSIONS"]
+        E_VERSION[["DOCUMENT_VERSIONS
+(Weak Entity)"]]
+        V_vno(["<u>version_no (Partial Key)</u>"])
+        V_hash(["file_hash"])
+        V_time(["changed_at"])
+
+        E_VERSION --- V_vno
+        E_VERSION --- V_hash
+        E_VERSION --- V_time
+    end
+
+    subgraph Cluster_BOOKMARK ["Entity Set: BOOKMARKS"]
+        E_BOOKMARK["BOOKMARKS
+(Strong Entity)"]
+        B_id(["<u>id (PK)</u>"])
+        B_folder(["folder_name"])
+        B_notes(["notes"])
+
+        E_BOOKMARK --- B_id
+        E_BOOKMARK --- B_folder
+        E_BOOKMARK --- B_notes
+    end
+
+    subgraph Cluster_DRAFT ["Entity Set: DRAFT_SESSIONS"]
+        E_DRAFT["DRAFT_SESSIONS
+(Strong Entity)"]
+        D_id(["<u>id (PK)</u>"])
+        D_title(["title"])
+        D_updated(["last_updated"])
+
+        E_DRAFT --- D_id
+        E_DRAFT --- D_title
+        E_DRAFT --- D_updated
+    end
+
+    R_UPLOAD{"Uploads"}
+    R_APPROVE{"Approves"}
+    R_TRIGGER{"Triggers"}
+    R_AUDITED{"Audited_For"}
+    R_BM_USER{"Saves"}
+    R_BM_CASE{"Points_To"}
+    R_DRAFT_USER{"Authors"}
+
+    R_ID_VER{{"Version_Of
+(Identifying Rel)"}}
+    R_ID_QUEUE{{"Queued_For
+(Identifying Rel)"}}
+    R_CHAIN{"Hash_Chains
+(Recursive Rel)"}
+
+    E_CASE ---|role: uploaded_by| R_UPLOAD
+    R_UPLOAD --> E_USER
+
+    E_CASE ---|role: approved_by| R_APPROVE
+    R_APPROVE --> E_USER
+
+    E_AUDIT ---|Total Participation| R_TRIGGER
+    R_TRIGGER --> E_USER
+
+    E_AUDIT ---|Total Participation| R_AUDITED
+    R_AUDITED --> E_CASE
+
+    E_AUDIT ---|role: next_block| R_CHAIN
+    R_CHAIN -->|role: prior_block| E_AUDIT
+
+    E_VERSION ---|Total Participation| R_ID_VER
+    R_ID_VER --> E_CASE
+
+    E_QUEUE -->|1:1 Total Participation| R_ID_QUEUE
+    R_ID_QUEUE --> E_CASE
+
+    E_BOOKMARK --- R_BM_USER
+    R_BM_USER --> E_USER
+
+    E_BOOKMARK --- R_BM_CASE
+    R_BM_CASE --> E_CASE
+
+    E_DRAFT --- R_DRAFT_USER
+    R_DRAFT_USER --> E_USER

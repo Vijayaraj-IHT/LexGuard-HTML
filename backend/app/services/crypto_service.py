@@ -1,11 +1,16 @@
 import hashlib
 import hmac
 import secrets
-from typing import Optional, List, Dict, Any
+import os
+from pathlib import Path
+from typing import Optional, List, Dict, Any, Tuple
 from app.core.config import settings
 
 # Genesis hash for the initial block in the audit trail chain
 GENESIS_HASH = "0" * 64
+
+# In-memory mtime/size cache: (canonical_path, mtime_ns, size_bytes) -> sha256_hex
+_file_hash_cache: Dict[Tuple[str, int, int], str] = {}
 
 
 def compute_sha256(data: bytes) -> str:
@@ -15,9 +20,46 @@ def compute_sha256(data: bytes) -> str:
     return hasher.hexdigest().lower()
 
 
+def compute_sha256_stream(file_path_or_stream: Any, chunk_size: int = 65536) -> str:
+    """Computes SHA-256 in 64 KB chunks, using in-memory stat cache if a path is provided."""
+    if isinstance(file_path_or_stream, (str, Path)):
+        p = Path(file_path_or_stream)
+        if p.exists():
+            st = p.stat()
+            cache_key = (str(p.resolve()), st.st_mtime_ns, st.st_size)
+            if cache_key in _file_hash_cache:
+                return _file_hash_cache[cache_key]
+
+            hasher = hashlib.sha256()
+            with open(p, "rb") as f:
+                while chunk := f.read(chunk_size):
+                    hasher.update(chunk)
+            digest = hasher.hexdigest().lower()
+            _file_hash_cache[cache_key] = digest
+            return digest
+
+    # If stream / file-like object
+    hasher = hashlib.sha256()
+    if hasattr(file_path_or_stream, "read"):
+        while chunk := file_path_or_stream.read(chunk_size):
+            hasher.update(chunk)
+        return hasher.hexdigest().lower()
+
+    if isinstance(file_path_or_stream, (bytes, bytearray)):
+        return compute_sha256(file_path_or_stream)
+
+    raise ValueError("Unsupported input for compute_sha256_stream")
+
+
 def verify_sha256(data: bytes, expected_hash: str) -> bool:
     """Constant-time comparison of computed data hash against expected hash."""
     computed = compute_sha256(data)
+    return hmac.compare_digest(computed.lower(), expected_hash.strip().lower())
+
+
+def verify_sha256_stream(file_path_or_stream: Any, expected_hash: str, chunk_size: int = 65536) -> bool:
+    """Constant-time verification of chunk-computed stream hash against expected digest."""
+    computed = compute_sha256_stream(file_path_or_stream, chunk_size=chunk_size)
     return hmac.compare_digest(computed.lower(), expected_hash.strip().lower())
 
 

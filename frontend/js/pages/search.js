@@ -10,6 +10,8 @@ $(document).ready(function () {
   let currentPage = 1;
   const pageSize = 10;
   let totalResults = 0;
+  let activeSearchXhr = null;
+  let debounceTimer = null;
 
   const $form = $('#search-form');
   const $input = $('#search-query-input');
@@ -84,7 +86,11 @@ $(document).ready(function () {
       payload.filters = filters;
     }
 
-    LG.api.search.query(payload)
+    if (activeSearchXhr && activeSearchXhr.abort) {
+      activeSearchXhr.abort();
+    }
+    activeSearchXhr = LG.api.search.query(payload)
+    activeSearchXhr
       .done(function (res) {
         totalResults = res.total || 0;
         $resultsCount.text(totalResults);
@@ -313,8 +319,21 @@ $(document).ready(function () {
   // Handle Form Submission
   $form.on('submit', function (e) {
     e.preventDefault();
+    clearTimeout(debounceTimer);
     currentQuery = $input.val().trim();
     executeSearch(1);
+  });
+
+  // Debounced input search (250ms)
+  $input.on('input', function () {
+    clearTimeout(debounceTimer);
+    const val = $input.val().trim();
+    debounceTimer = setTimeout(function () {
+      if (val !== currentQuery) {
+        currentQuery = val;
+        executeSearch(1);
+      }
+    }, 250);
   });
 
   // Query Suggestion Chips

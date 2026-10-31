@@ -5,14 +5,16 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
+from app.core.config import settings, resolve_case_pdf_path
 from app.core.database import get_db
 from app.core.security import get_optional_current_user, get_current_user
 from app.models.user import User
 from app.models.case import Case
 from app.models.audit_log import AuditLog
 from app.schemas.verification import HashLookupResponse, HashLookupRequest, MatchedCaseSummary
-from app.services.crypto_service import verify_sha256
+from app.services.crypto_service import verify_sha256, verify_sha256_stream
 from app.services.audit_service import log_audit_event
+from app.core.rate_limit import rate_limit
 
 router = APIRouter()
 
@@ -20,25 +22,10 @@ HEX_64_PATTERN = re.compile(r"^[a-fA-F0-9]{64}$")
 
 
 def resolve_case_file_path(file_path: str) -> str:
-    """Resolves physical file path, falling back across known storage locations."""
+    """Resolves physical file path portably, falling back across configured and standard storage locations."""
     if not file_path:
         return ""
-    if os.path.exists(file_path):
-        return file_path
-    fname = os.path.basename(file_path)
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-    candidates = [
-        os.path.join(base_dir, "storage", "cases", fname),
-        os.path.join(base_dir, "backend", "storage", "cases", fname),
-        os.path.join(os.getcwd(), "storage", "cases", fname),
-        os.path.join(os.getcwd(), "backend", "storage", "cases", fname),
-        os.path.join(r"e:\SEM 5 PROJECT\LexGuard-HTML\storage\cases", fname),
-        os.path.join(r"e:\SEM 5 PROJECT\LexGuard-HTML\backend\storage\cases", fname),
-    ]
-    for cand in candidates:
-        if os.path.exists(cand):
-            return cand
-    return file_path
+    return str(resolve_case_pdf_path(file_path))
 
 
 def _execute_hash_lookup(hash_str: str, request: Request, db: Session, current_user: User = None) -> HashLookupResponse:
@@ -143,7 +130,7 @@ def _execute_hash_lookup(hash_str: str, request: Request, db: Session, current_u
     )
 
 
-@router.get("/lookup/{sha256_hash}", response_model=HashLookupResponse)
+@router.get("/lookup/{sha256_hash}", response_model=HashLookupResponse, dependencies=[Depends(rate_limit(max_requests=60, window_seconds=60))])
 def lookup_by_hash_path(
     sha256_hash: str,
     request: Request,
@@ -158,7 +145,7 @@ def lookup_by_hash_path(
     return _execute_hash_lookup(sha256_hash, request, db, current_user)
 
 
-@router.post("/lookup", response_model=HashLookupResponse)
+@router.post("/lookup", response_model=HashLookupResponse, dependencies=[Depends(rate_limit(max_requests=60, window_seconds=60))])
 def lookup_by_hash_body(
     payload: HashLookupRequest,
     request: Request,
@@ -212,11 +199,8 @@ def stream_verified_document(
             detail="Underlying document file is currently unavailable in repository storage."
         )
 
-    # Verify bytes on disk before serving
-    with open(resolved_path, "rb") as f:
-        file_bytes = f.read()
-
-    if not verify_sha256(file_bytes, expected_hash):
+    # Verify bytes on disk via 64 KB chunked stream before serving
+    if not verify_sha256_stream(resolved_path, expected_hash):
         # Quarantine corrupted file
         case.status = "quarantined"
         db.commit()
@@ -250,4 +234,10 @@ def stream_verified_document(
         path=resolved_path,
         media_type="application/pdf",
         filename=clean_filename,
+        headers={
+            "ETag": f'"{expected_hash}"',
+            "Cache-Control": "private, max-age=3600",
+            "X-Lexguard-SHA256": expected_hash,
+            "X-Lexguard-Verified": "true",
+        },
     )

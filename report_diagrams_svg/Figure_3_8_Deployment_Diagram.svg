@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 750" width="1100" height="750">
+    <rect width="1100" height="750" fill="#f8fafc"/>
+    
+    <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#1e293b"/>
+        </marker>
+        <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#1d4ed8"/>
+        </marker>
+        <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#059669"/>
+        </marker>
+        <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 10 5 L 0 8.5 z" fill="#dc2626"/>
+        </marker>
+        <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+            <feDropShadow dx="2" dy="2" stdDeviation="3" flood-opacity="0.12"/>
+        </filter>
+    </defs>
+
+    <rect x="30" y="20" width="1040" height="50" rx="8" fill="#1e3a8a"/>
+    <text x="550" y="52" font-family="'Segoe UI', Arial, sans-serif" font-size="18" font-weight="bold" fill="#ffffff" text-anchor="middle">Figure 3.8: IEEE Deployment Diagram — Physical Nodes, Ports &amp; Topologies</text>
+
+    <!-- Node 1: Client Node -->
+    <rect x="50" y="110" width="280" height="580" rx="10" fill="#ffffff" stroke="#2563eb" stroke-width="2.5" filter="url(#shadow)"/>
+    <rect x="50" y="110" width="280" height="35" rx="10" fill="#2563eb"/>
+    <text x="190" y="133" font-family="'Segoe UI', Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff" text-anchor="middle">&lt;&lt;device&gt;&gt; Client Workstation</text>
+
+    <rect x="75" y="170" width="230" height="120" rx="6" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5"/>
+    <text x="190" y="195" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="bold" fill="#1e3a8a" text-anchor="middle">Web Browser (Edge/Chrome)</text>
+    <text x="190" y="220" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#334155" text-anchor="middle">&#x2022; HTML5 / CSS3 / Vanilla JS</text>
+    <text x="190" y="240" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#334155" text-anchor="middle">&#x2022; PDF.js Canvas Rendering</text>
+    <text x="190" y="260" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#334155" text-anchor="middle">&#x2022; HttpOnly Cookie Storage</text>
+
+    <!-- Node 2: App Server Node -->
+    <rect x="420" y="110" width="340" height="580" rx="10" fill="#ffffff" stroke="#1e3a8a" stroke-width="2.5" filter="url(#shadow)"/>
+    <rect x="420" y="110" width="340" height="35" rx="10" fill="#1e3a8a"/>
+    <text x="590" y="133" font-family="'Segoe UI', Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff" text-anchor="middle">&lt;&lt;executionEnvironment&gt;&gt; Server (127.0.0.1)</text>
+
+    <rect x="445" y="170" width="290" height="100" rx="6" fill="#f8fafc" stroke="#64748b" stroke-width="1.5"/>
+    <text x="590" y="195" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="bold" fill="#1e293b" text-anchor="middle">Static Web Server (:8888)</text>
+    <text x="590" y="220" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#334155" text-anchor="middle">Serves HTML, JS, CSS Assets</text>
+    <text x="590" y="240" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#334155" text-anchor="middle">frontend/ &amp; root index.html</text>
+
+    <rect x="445" y="300" width="290" height="160" rx="6" fill="#eff6ff" stroke="#1d4ed8" stroke-width="2"/>
+    <text x="590" y="325" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="bold" fill="#1e3a8a" text-anchor="middle">FastAPI Core Engine (:8000)</text>
+    <text x="590" y="350" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#334155" text-anchor="middle">Uvicorn ASGI Container (Python 3.13)</text>
+    <text x="590" y="375" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#334155" text-anchor="middle">SQLAlchemy ORM + NumPy Fusion</text>
+    <text x="590" y="400" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#334155" text-anchor="middle">Chunked Stream Hasher &amp; Chainer</text>
+    <text x="590" y="425" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#334155" text-anchor="middle">OWASP Security Headers &amp; CSRF</text>
+
+    <rect x="445" y="490" width="290" height="100" rx="6" fill="#faf5ff" stroke="#9333ea" stroke-width="1.5"/>
+    <text x="590" y="515" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="bold" fill="#581c87" text-anchor="middle">Local AI Daemon (:11434)</text>
+    <text x="590" y="540" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#581c87" text-anchor="middle">Ollama Inference Runtime</text>
+    <text x="590" y="560" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#581c87" text-anchor="middle">Llama-3 Precedent Gap Analyzer</text>
+
+    <!-- Node 3: Storage Node -->
+    <rect x="830" y="110" width="230" height="580" rx="10" fill="#ffffff" stroke="#334155" stroke-width="2.5" filter="url(#shadow)"/>
+    <rect x="830" y="110" width="230" height="35" rx="10" fill="#334155"/>
+    <text x="945" y="133" font-family="'Segoe UI', Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff" text-anchor="middle">&lt;&lt;storage&gt;&gt; Persistence Vault</text>
+
+    <rect x="850" y="190" width="190" height="150" rx="6" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>
+    <text x="945" y="220" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="bold" fill="#1e293b" text-anchor="middle">Relational Database</text>
+    <text x="945" y="250" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#334155" text-anchor="middle">lexguard.db (SQLite)</text>
+    <text x="945" y="275" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#334155" text-anchor="middle">280 Genuine Cases</text>
+    <text x="945" y="300" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#334155" text-anchor="middle">Hash-Chained Audit Logs</text>
+
+    <rect x="850" y="420" width="190" height="150" rx="6" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>
+    <text x="945" y="450" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="bold" fill="#1e293b" text-anchor="middle">Judicial PDF Storage</text>
+    <text x="945" y="480" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#334155" text-anchor="middle">/storage/cases/</text>
+    <text x="945" y="505" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#334155" text-anchor="middle">COURT_YEAR_CASE_ID.pdf</text>
+    <text x="945" y="530" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#334155" text-anchor="middle">100% Matching Hashes</text>
+
+    <!-- Connectors -->
+    <line x1="330" y1="210" x2="445" y2="210" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow-blue)"/>
+    <text x="387" y="200" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#2563eb" text-anchor="middle">HTTP:8888</text>
+
+    <line x1="330" y1="380" x2="445" y2="380" stroke="#1d4ed8" stroke-width="2" marker-end="url(#arrow-blue)"/>
+    <text x="387" y="370" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#1d4ed8" text-anchor="middle">REST:8000</text>
+
+    <line x1="735" y1="280" x2="850" y2="280" stroke="#334155" stroke-width="2" marker-end="url(#arrow)"/>
+    <line x1="735" y1="480" x2="850" y2="480" stroke="#334155" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="792" y="470" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#334155" text-anchor="middle">64KB I/O</text>
+</svg>

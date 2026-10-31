@@ -18,6 +18,7 @@ from app.services.local_llm_service import local_llm_service
 from app.services.claude_service import claude_service
 from app.services.comparator import precedent_comparator
 from app.services.audit_service import log_audit_event
+from app.services.embedding_service import embedding_service
 
 router = APIRouter()
 
@@ -36,14 +37,28 @@ def analyze_draft_petition(
     3. Suggests applicable statutory sections and grounded case citations.
     4. Enforces strict citation grounding to prevent legal hallucination.
     """
-    # Fetch available published cases to ground citations
-    published_cases = (
+    # Fetch available published cases and rank by semantic & statutory relevance
+    candidates = (
         db.query(Case)
         .filter(Case.status == "published")
-        .order_by(Case.created_at.desc())
-        .limit(10)
         .all()
     )
+
+    if candidates:
+        try:
+            draft_emb = embedding_service.generate_embedding(draft_in.petition_text[:1500])
+            scored_cases = []
+            for c in candidates:
+                sim = 0.0
+                if c.embedding:
+                    sim = embedding_service.cosine_similarity(draft_emb, c.embedding)
+                scored_cases.append((sim, c))
+            scored_cases.sort(key=lambda x: x[0], reverse=True)
+            relevant_cases = [c for _, c in scored_cases[:10]]
+        except Exception:
+            relevant_cases = candidates[:10]
+    else:
+        relevant_cases = []
 
     cases_data = [
         {
@@ -55,7 +70,7 @@ def analyze_draft_petition(
             "outcome": c.outcome,
             "summary": c.summary,
         }
-        for c in published_cases
+        for c in relevant_cases
     ]
 
     analysis = local_llm_service.analyze_draft_gap(
@@ -77,6 +92,7 @@ def analyze_draft_petition(
         missing_arguments=analysis.get("missing_arguments", []),
         suggested_sections=analysis.get("suggested_sections", []),
         citation_suggestions=analysis.get("citation_suggestions", []),
+        model_source=analysis.get("model_source", "heuristic_fallback"),
     )
 
 
