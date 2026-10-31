@@ -281,3 +281,41 @@ Facts gathered before the review:
 - **G7 done.** "Merkle" and the hardcoded case counts are replaced. The README gives the measured `lexguard.db` numbers (614 cases, 1734 audit records, 506 hash failures), taken from a read-only run of `integrity_report.py` on a copy of the blob at `main` (`d3f191…`). An earlier run on blob `0772bb…` (607 / 1661 / 505) is superseded: `main` changed `backend/lexguard.db` after the F0–F8 merge. The dumps were not verified, so no claims are made about them.
 
 **Tests.** `test_integrity_fixes.py` now has 19 tests (G1–G7 added). Full suite on a copy of the committed `lexguard.db`: 60 passed, 1 failed, 7 skipped. The failure is the known search-ranking test, which needs `sentence_transformers`.
+
+## Round 3 — D6: page-level Content-Security-Policy for the frontend
+
+*Three roles were played within one session, not by independent agents.* The user approved implementing D6.
+
+**Context.** The API sends a CSP header (`main.py`), but the frontend is served by `python -m http.server` (`run_lexguard.sh`, `start_linux.sh`), which cannot set headers. Six pages have inline `<script>` blocks, `index.html` has one more, `case-viewer.html` has an inline `onclick`, `screenshots-gallery.js` generates `onerror=` attributes, and `js/lexguard-nav.js` uses `href="javascript:void(0);"`. The API base is hardcoded to `http://127.0.0.1:8000/api/v1` (D5).
+
+**Proposer (suitable).** Add a `<meta http-equiv="Content-Security-Policy">` tag to all 20 HTML pages. `script-src` allows only `'self'` and the three CDNs already in use (cdnjs, code.jquery, cdn.jsdelivr). No `'unsafe-inline'` and no `'unsafe-eval'`. Move each inline block verbatim to `js/pages/*.js` at the same position, so execution order is unchanged. Replace the inline `onclick` and `onerror` with bound handlers, and change the `javascript:` href to `#`, which the existing click handler already covers with `preventDefault()`. `connect-src` allows only `'self'` and `http://127.0.0.1:8000`, the hardcoded API base.
+
+**Skeptic (not suitable as proposed).**
+1. `style-src` needs `'unsafe-inline'`. About 130 `style="…"` attributes are spread over the pages. Removing them is a larger rewrite. Inline styles remain an injection vector, but a much weaker one than scripts.
+2. A meta tag cannot set `frame-ancestors`, `report-uri`, or `sandbox`. Clickjacking protection is therefore not provided by this change.
+3. Every future HTML page must include the tag. Nothing enforces that except a test.
+4. `connect-src` duplicates the hardcoded API origin. A non-local deployment already breaks because of D5. This change adds a second place that has to be edited.
+5. No browser is available in this sandbox. The CSP cannot be tested at runtime, so a page that breaks under the policy (for example, pdf.js falling back when `eval` is blocked) would not be detected. A static check can only catch missing or inline markup.
+6. Moving inline scripts to external files changes caching and error reporting, but not order, as long as each tag stays at the same position and is not `defer`/`async`.
+
+**Judge (verdict: ACCEPT WITH CHANGES).**
+- Implement the proposer's policy. Keep `style-src 'unsafe-inline'` and record it as a residual, not a closed item.
+- State plainly in the PR that `frame-ancestors` and reporting need a server header, and that the frontend server cannot send one. Clickjacking is not addressed here.
+- Add a static test (`backend/tests/test_frontend_csp.py`). It must assert that every HTML page has the meta CSP, that the CSP has no `unsafe-inline` or `unsafe-eval` in `script-src`, that no inline script or `on*=` attribute or `javascript:` URL remains, and that every external host in `src`/`href` is in the allowlist.
+- Runtime verification in a real browser is required before merge. It was not done here, so the PR must say it is unverified.
+- Keep scripts at their original position with no `defer` or `async`, so ordering is unchanged.
+
+**Implementation record (D6).**
+- All 20 HTML pages carry one `<meta http-equiv="Content-Security-Policy">` tag, placed first in `<head>`.
+- The 7 inline script blocks moved verbatim to `frontend/js/pages/{error-404,forgot-password,index,reset-password,screenshots-gallery,unauthorized}.js`, at the same position, with no `defer` or `async`.
+- The inline `onclick` on `#cert-print-btn` (`case-viewer.html`) is now bound in `js/pages/case-viewer.js`.
+- The `onerror` attribute the gallery generated is now bound per card after insertion. It falls back to the same image once, which avoids a loop when the fallback is also missing.
+- `href="javascript:void(0);"` in the nav became `href="#"`. The existing click handler already calls `preventDefault()`.
+- `backend/tests/test_frontend_csp.py` (127 static checks) passes. Four deliberately reintroduced violations were each caught (inline script, `onclick`, `unsafe-inline` in `script-src`, `javascript:` URL).
+
+**Residuals and not verified.**
+- `style-src 'unsafe-inline'` stays, for the inline `style=` attributes and `<style>` blocks. This is a known gap.
+- `frame-ancestors`, `report-uri`, and `sandbox` cannot be set by a meta tag. Clickjacking and CSP reporting are not addressed. A server that sends headers is needed for those.
+- `connect-src` hardcodes `http://127.0.0.1:8000`, matching D5. Any other API host needs a policy edit.
+- No browser was available. The policy has NOT been checked at runtime: a page can still break under it (for example, pdf.js falling back when `eval` is blocked), and the static tests cannot see that. A browser pass over all 20 pages is required before merge.
+- A pre-existing dead button, `#cert-copy-hash-btn` in `case-viewer.html`, has no click handler. It was already like that and is not changed here.

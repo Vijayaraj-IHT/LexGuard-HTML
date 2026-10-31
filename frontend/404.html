@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light" data-bs-theme="light">
 <head>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://code.jquery.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' http://127.0.0.1:8000; worker-src 'self' blob: https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -158,19 +159,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
   <script src="js/lexguard-core.js"></script>
-  <script>
-    $(document).ready(function () {
-      $('#req-path').text(window.location.pathname + window.location.search);
-      $('#diag-time').text(new Date().toUTCString());
-
-      $('#error-search-form').on('submit', function (e) {
-        e.preventDefault();
-        const q = $('#error-search-input').val().trim();
-        if (q) {
-          window.location.href = 'search.html?q=' + encodeURIComponent(q);
-        }
-      });
-    });
-  </script>
+  <script src="js/pages/error-404.js"></script>
 </body>
 </html>

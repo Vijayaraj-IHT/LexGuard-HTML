@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light" data-bs-theme="light">
 <head>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://code.jquery.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' http://127.0.0.1:8000; worker-src 'self' blob: https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
@@ -659,7 +660,7 @@ Loading JSON...
             <button type="button" class="btn btn-sm btn-outline-danger" id="cert-copy-hash-btn">
               <i class="bi bi-clipboard me-1"></i>Copy SHA-256
             </button>
-            <button type="button" class="btn btn-sm btn-danger" onclick="window.print()">
+            <button type="button" class="btn btn-sm btn-danger" id="cert-print-btn">
               <i class="bi bi-printer me-1"></i>Print Certificate
             </button>
           </div>
