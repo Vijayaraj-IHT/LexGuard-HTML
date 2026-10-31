@@ -1,6 +1,7 @@
 # LexGuard-HTML — Independent Project Audit & Code-Plagiarism Assessment
 
 **Repository:** `Vijayaraj-IHT/LexGuard-HTML` · branch `arena/64b06a8b-lexguard-html` · commit `8d240fc` (2026-10-31)
+**Repository state:** analysed at `8d240fc`. `main` has since advanced to `1b2068e` (2026-11-01), which fixes the malformed-JSON crash and adds an XHR abort guard — see the inline *Status* notes in §5.1 for what that changes.
 **Audit date:** 31 October 2026 · **Auditor:** Arena agent (automated + manual source review)
 **Scope:** whole repository — backend, frontend, database, corpus, scripts, reports, third-party assets
 **Deliverable:** project overview + originality/plagiarism findings + defects + remediation plan
@@ -19,7 +20,7 @@
 
 **Also found (none of it is plagiarism, all of it matters):**
 - The backend **cannot even import on Python 3.10/3.11** (an f-string backslash at `bookmarks.py:247` requires Python 3.12), contradicting the README's "Python 3.10+".
-- **6 malformed JSON cells in the shipped database** make the search endpoint throw 500s (3 test failures reproduce this).
+- **6 malformed JSON cells in the shipped database** made the search endpoint throw 500s. **Fixed on `main` after this audit** (`1b2068e`, 2026-11-01) — the 6 cells were sanitised and a resilient deserialiser added; re-measured today at 0 malformed rows.
 - The front end **hard-codes `http://127.0.0.1:8000`**, so it only works on the developer's own machine.
 - **475 of 607 cases (78 %) have no embedding** and **299 (49 %) have no extracted full text**, so "semantic hybrid search" mostly degrades to keyword matching in the shipped data.
 - A **4.2 MB SQLite database plus two SQL dumps are committed** with 26 bcrypt hashes and real personal Gmail addresses.
@@ -318,6 +319,7 @@ This is an inference section, not a finding of misconduct. Signals:
    - `comparison_profile` — cases `0b8c4db5`, `759908c8`, `45674d77`, `52dd984d`, `5c2b7bf1`
    - `issues_framed` — case `326f70b2`
    Cause: literal `\` escapes written into JSON text. `query_obj.all()` hydrates these rows and SQLAlchemy's JSON deserialiser raises `JSONDecodeError`. Reproduced as 3 test failures. Fix: sanitise with `json.dumps` at write time, validate with a DB check, migrate the 6 rows.
+   **Status (2026-11-01):** resolved on `main` in `1b2068e` — the 6 rows were cleaned, `database_dump.sql` re-synced, and a `safe_json_deserializer` added to the SQLite engine (`backend/app/core/database.py`). Re-verified: `select count(*) from cases where json_valid(issues_framed)=0` → 0, same for `comparison_profile`. The generic `json.dumps` guard in the write paths is still missing.
 
 3. **Front end cannot talk to any backend but the developer's laptop.**
    `frontend/js/lexguard-core.js:13` → `API_BASE: 'http://127.0.0.1:8000/api/v1'`, duplicated as a literal fallback in `acts-explorer.js:43,178`. Any deployment (or sandboxed preview) fails. Fix: resolve from `window.location` / a `<meta>` config, and proxy `/api` in dev.
@@ -383,7 +385,7 @@ Without the one-line fix, **6 of 13 test modules fail at collection** (25 of 49 
 **Before submission (same day)**
 
 1. Fix `bookmarks.py:247` and add a Python-version marker (`requires-python = ">=3.12"` or make it 3.11-compatible).
-2. Repair the 6 malformed JSON rows; add a `json.dumps` guard in extraction/seed paths.
+2. ~~Repair the 6 malformed JSON rows~~ — **done on `main` (`1b2068e`)**; still add the `json.dumps` guard in extraction/seed paths so new rows cannot reintroduce it.
 3. Add `PROVENANCE.md` (reuse from `Sem-5-Project` + commit links + what is new) and an AI-use statement.
 4. Add `THIRD_PARTY_NOTICES.md` (Mermaid MIT text, Bootstrap/jQuery/Chart.js/PDF.js/Google Fonts), delete the unused `mermaid.min.js`, remove `pymupdf` from `requirements.txt`.
 5. Stop shipping the DB/dumps with real emails and hashes: scrub users, keep only demo accounts, rotate anything reused.

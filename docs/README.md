@@ -2,6 +2,14 @@
 
 Planning and audit documents produced for the project. Start with the search-card plan if you are working on the UI; start with the audit if you need the project-wide picture.
 
+> **Repository state.** The analysis below was made at commit `8d240fc`. `main` has since moved to `1b2068e` (*fix(search): resolve JSONDecodeError…*, 2026-11-01), which:
+> - cleaned the 6 malformed JSON cells and re-synced `database/database_dump.sql` (verified: 0 malformed rows today);
+> - added a `safe_json_deserializer` to the SQLite engine (`backend/app/core/database.py`);
+> - added an XHR abort guard in `frontend/js/pages/search.js` (line 127), so cancelled searches no longer flash an error banner;
+> - added `scripts/verify_users.py` (one-off suite is now 39 Python scripts).
+>
+> Everything else in these documents still holds. Items already resolved are marked with a *Status* note where they appear.
+
 | Document | What it answers |
 |---|---|
 | [`../PROJECT_AUDIT.md`](../PROJECT_AUDIT.md) | Full project overview + plagiarism/originality audit, defect list, remediation plan, reproduction commands |
@@ -17,9 +25,9 @@ Planning and audit documents produced for the project. Start with the search-car
 
 - **Duplication with the author's earlier repo:** 121 byte-identical + 31 near-identical files → 97.1 % of 42,799 overlapping lines.
 - **Internal duplication:** 6.94 % of lines (HTML 22.3 %), 123 clone pairs.
-- **Dead code:** 0 unused JS definitions outside the API layer, but 10 unused API wrappers, 6 real unused Python functions, 14 unused `LG.*` members, 14 unused CSS selectors/variables, 20 undefined CSS classes in use.
+- **Dead code:** 0 unused JS definitions outside the API layer, but 10 unused API wrappers, 6 real unused Python functions, 14 unused `LG.*` members, 14 unused CSS selectors/variables, 4 undefined CSS classes in use.
 - **Reclaimable disk:** ≈ 75 MB of 299 MB (duplicate PDFs, unused Mermaid bundle, screenshots archive, docx archive, staging PDFs, stale dump).
-- **Blocking bugs:** f-string syntax (`bookmarks.py:247`, Python 3.12 only), 6 malformed JSON rows, hard-coded `http://127.0.0.1:8000`.
+- **Blocking bugs:** f-string syntax (`bookmarks.py:247`, Python 3.12 only) and the hard-coded `http://127.0.0.1:8000`. The 6 malformed JSON rows were fixed on `main` after this analysis.
 
 ## Suggested order of work
 

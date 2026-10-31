@@ -66,7 +66,7 @@ summary             "Certified judgment from Supreme Court of India - Civil Appe
 | # | Problem | Code |
 |---|---|---|
 | R1 | **Raw HTML injection** — `matched_snippets` is interpolated unescaped; the server wraps `<mark>` around *substrings of PDF text*, so any `<`, `>` or `&` in the judgment breaks the layout and is a stored-XSS vector | 156–162 |
-| R2 | **Undefined CSS classes** — `badge-gold` (outcome), `fs-7` (score) are referenced but never defined; `btn-xs` used on the page is also undefined | 190, 201; `components.css` has no such selectors |
+| R2 | **Undefined CSS classes** — `fs-7` (score) and `btn-xs` are referenced but defined nowhere; `query-chip` (the suggestion chips above the form) is also undefined. `badge-gold` *is* defined (`lexguard.css:477`) but is misnamed: it paints a red outline, not gold | 190, 201; no matching selector in `components.css`/`lexguard.css` |
 | R3 | **Green status pill renders as a blank chip** in the screenshot: `bg-success bg-opacity-15 text-success` + icon at `font-size:0.72rem` is low-contrast and indistinguishable from the "100% Match" green | 191 |
 | R4 | **Citation copy format is non-standard**: `` `${title}, (${year}) ${court}` `` → "In re Civil Appeal No 3843 of 2020, (1961) Supreme Court of India" | 152 |
 | R5 | Tags are acts + sections concatenated with no type distinction, no de-duplication, hard cap 6 | 168–177 |
@@ -373,7 +373,7 @@ Client renders highlights by slicing text and escaping each segment — XSS is s
 
 1. `search.js:159` — escape snippet text (hotfix, 2 lines) and `search.js:150` — hide match badge for browse queries.
 2. `search.py` fast path — `relevance_score = None`.
-3. `components.css` — add the missing `badge-gold`, `btn-xs`, `fs-7` definitions (or delete their usage).
+3. `components.css` — add the missing `btn-xs`, `fs-7`, `query-chip` definitions (or delete their usage); `badge-gold` exists but is misnamed, so either rename it or restyle it as a real gold token.
 4. Data migration for year / citation / judge placeholders.
 5. Extract `case-card.js` + delegated handlers (Phase 1), then style tokens (Phase 2).
 

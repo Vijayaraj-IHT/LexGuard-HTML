@@ -41,7 +41,7 @@
 | Unused settings | 4 | — | Remove or implement |
 | Unused frontend JS members | 14 | ~120 lines | Delete 11 |
 | Unused CSS selectors / variables | 14 | ~40 lines | Delete |
-| Undefined CSS classes in use | 20 | — | Define or replace |
+| Undefined CSS classes in use | 4 | — | Define or replace |
 | Dead DB column | 1 | — | Drop in migration |
 | One-off / superseded scripts | 39 | 1.4 MB | Archive 30 |
 | Stale dump shipped as canonical | 1 | 2.1 MB | Delete or relabel |
@@ -175,10 +175,11 @@ Unused custom selectors (6): `.badge-status-published`, `.btn-court-red`, `.lg-l
 
 Unused custom properties (8): `--lg-court-red`, `--lg-court-red-dark`, `--lg-court-red-light`, `--lg-court-red-subtle`, `--lg-court-red-border`, `--lg-gold`, `--lg-gold-hover`, `--lg-gold-subtle` (components hard-code the hex values instead of using the tokens).
 
-Referenced but **never defined** (20) — these silently fall back to Bootstrap defaults, which is why the search card looks inconsistent:
-`btn-xs`, `query-chip`, `query-pill`, `status-pill`, `status-in-session`, `status-next`, `status-passed-over`, `status-disposed`, `badge-gold`, `badge-phase1`, `badge-phase2`, `btn-check`, `fs-7`, plus Bootstrap classes that ship anyway (`btn-close`, `btn-group`, `btn-group-sm`, `btn-link`, `btn-danger`, `btn-outline-danger`, `btn-outline-info`, `btn-outline-warning`).
+Referenced but **never defined** (4) — these silently fall back to browser/Bootstrap defaults, which is why the search card looks inconsistent: `btn-xs` (34 uses), `fs-7` (9 uses), `query-chip` (the 5 suggestion chips on `search.html`), `btn-check`.
 
-> `badge-gold` and `fs-7` are used by the hybrid-search card itself, so this is a *visual bug*, not just dead code.
+> `fs-7` and `btn-xs` are used by the hybrid-search result card itself, so this is a *visual bug*, not just dead code.
+>
+> **Correction (2026-11-01):** an earlier pass reported 20 undefined classes. Most were false positives — `badge-gold` is defined at `lexguard.css:477`, and `badge-phase1/2`, `status-pill`, `status-in-session`, `status-next`, `status-passed-over`, `status-disposed`, `query-pill` are all defined in `lexguard.css` too. The remaining names in the old list (`btn-close`, `btn-group`, `btn-danger`, `btn-outline-*`) ship with Bootstrap, which was excluded from the CSS corpus. One real naming defect survives: **`.badge-gold` is not gold** — it renders `#fef2f2` on `#991b1b`, i.e. a red outline badge.
 
 Other CSS hygiene: **188 `!important`** occurrences (156 in `lexguard.css`) and 104 inline `style="…"` attributes across pages — both signals of style specificity fights rather than design tokens.
 

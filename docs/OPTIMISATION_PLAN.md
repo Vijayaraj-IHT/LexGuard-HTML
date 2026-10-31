@@ -95,7 +95,7 @@ for c in candidates:
 | Technique | Detail |
 |---|---|
 | Indexes | `(status, created_at DESC)`, `court`, `year`, `file_hash UNIQUE`, GIN on `act_tags`, `section_tags`, `keyword_tags` |
-| Data sanity | fix 6 malformed JSON cells; 9 duplicate hashes; 2 dangling file paths; 475 missing embeddings |
+| Data sanity | ~~6 malformed JSON cells~~ (fixed on `main`, `1b2068e`); 9 duplicate hashes; 2 dangling file paths; 475 missing embeddings |
 | pgvector optionality | `models/case.py` falls back to JSON when pgvector is absent — good; document that SQLite mode = lexical-only |
 | Sessions | `pool_size=10/max_overflow=20` is fine for a demo; add `pool_pre_ping` (present) and a `/health` that runs `SELECT 1` |
 | Migrations | replace 5 `migrate_*.py` scripts with one Alembic baseline + versions |
@@ -148,7 +148,7 @@ Measured local assets for the search page:
 
 - Extract `assets/js/components/case-card.js` (see `SEARCH_CARD_REDESIGN.md`) and reuse it in search, bookmarks, compare tray.
 - Replace the 5 identical `<script>` blocks per page with one `bootstrap.js` include list (or ES modules with `type="module"`).
-- Remove the 14 dead `LG.*` members and 6 undefined classes; fix `badge-gold`/`fs-7`/`btn-xs`.
+- Remove the 14 dead `LG.*` members and the 6 unused custom selectors; define the 4 missing ones (`fs-7`, `btn-xs`, `query-chip`, `btn-check`); rename `badge-gold` to something truthful.
 - Replace per-render `.on()` binding in `search.js` with delegated handlers (prevents handler churn on every keystroke).
 - Escape server snippets client-side; never inject HTML from the API.
 - Add `aria-live="polite"` on `#results-container`, `scope` on table headers, `aria-label` on icon buttons.
@@ -238,7 +238,7 @@ Measured local assets for the search page:
 
 **Day 1 — stop the bleeding**
 1. Fix `bookmarks.py:247` (Python 3.12 syntax) → makes tests runnable.
-2. Repair 6 malformed JSON rows.
+2. ~~Repair 6 malformed JSON rows~~ — done on `main` (`1b2068e`); add the `json.dumps` guard instead.
 3. `git rm` the zero-reference artefacts (Mermaid, screenshots.zip, archive, duplicate index/seed/dump).
 4. Make `API_BASE` configurable + add `serve.py` (static + `/api` proxy + gzip + cache headers).
 
