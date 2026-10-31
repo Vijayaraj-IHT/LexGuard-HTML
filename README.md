@@ -45,7 +45,7 @@
   * See [`docs/CASE_FILE_PATTERNS.md`](docs/CASE_FILE_PATTERNS.md) and [`docs/pattern_analysis/case_pattern_report.md`](docs/pattern_analysis/case_pattern_report.md).
 * **Robust FastAPI & PostgreSQL Backend**:
   * Precedent judgments indexed with statutory embeddings and full-text vectors (the case count depends on the database you load; see the integrity report below).
-  * Linear SHA-256 hash-chained audit ledger (not a Merkle tree). Run `python backend/integrity_report.py --db backend/lexguard.db` for its current state. At the time of writing, the tracked `backend/lexguard.db` has 607 case rows, 1661 audit records, and 505 records whose hash does not recompute.
+  * Linear SHA-256 hash-chained audit ledger (not a Merkle tree). Run `python backend/integrity_report.py --db backend/lexguard.db` for its current state. At the time of writing, the tracked `backend/lexguard.db` has 614 case rows, 1734 audit records, and 506 records whose hash does not recompute.
   * OWASP A02/A07 defense: SecurityHeadersMiddleware, Double-Submit Cookie CSRF protection, and HttpOnly JWT cookies.
 
 ---
