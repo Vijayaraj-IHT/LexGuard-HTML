@@ -216,8 +216,20 @@ def main():
     print(f"  storage/cases/:         {len(all_storage_pdfs)} PDFs")
     print(f"  backend/storage/cases/: {len(all_backend_pdfs)} PDFs")
 
-    # Combine unique files by absolute path or basename
-    files_to_process = list(set(all_storage_pdfs))
+    # Combine unique files across both storage directories
+    seen_basenames = set()
+    files_to_process = []
+    for p in all_storage_pdfs:
+        b = os.path.basename(p)
+        if b not in seen_basenames:
+            seen_basenames.add(b)
+            files_to_process.append(p)
+    for p in all_backend_pdfs:
+        b = os.path.basename(p)
+        if b not in seen_basenames:
+            seen_basenames.add(b)
+            files_to_process.append(p)
+
     renamed_count = 0
     already_canonical_count = 0
     newly_registered_count = 0
@@ -265,10 +277,11 @@ def main():
         if BACKEND_STORAGE_DIR.exists():
             shutil.copy2(filepath, new_backend_path)
 
-        # Remove old non-canonical file if different
-        if os.path.abspath(filepath) != os.path.abspath(new_storage_path):
+        # Remove old non-canonical file from storage/cases if exists
+        old_storage_file = STORAGE_DIR / old_basename
+        if old_storage_file.exists() and os.path.abspath(old_storage_file) != os.path.abspath(new_storage_path):
             try:
-                os.remove(filepath)
+                os.remove(old_storage_file)
             except Exception:
                 pass
 
@@ -319,6 +332,10 @@ def main():
                 f"Plain English summary for {title}.", f"{year} LexGuard HC {short_id.upper()}",
                 new_rel_path, sha, now_iso, now_iso, now_iso
             ))
+            cases_by_hash[sha] = {
+                "id": case_id, "case_no": case_no, "court": court, "year": year,
+                "file_path": new_rel_path, "file_hash": sha, "title": title
+            }
 
         renamed_count += 1
         if renamed_count % 15 == 0:
