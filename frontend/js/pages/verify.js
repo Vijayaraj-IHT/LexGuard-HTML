@@ -32,7 +32,7 @@ $(document).ready(function () {
     $resultBox.removeClass('d-none');
     $resultAuthentic.addClass('d-none');
     $resultUnregistered.addClass('d-none');
-    $auditTableBody.html('<tr><td colspan="4" class="text-secondary text-center">Verifying digest against Merkle ledger...</td></tr>');
+    $auditTableBody.html('<tr><td colspan="4" class="text-secondary text-center">Verifying digest against the audit ledger...</td></tr>');
 
     LG.api.verification.lookup(hash)
       .done(function (res) {
@@ -56,15 +56,21 @@ $(document).ready(function () {
         }
 
         // Render Audit Logs
+        // Backend returns audit_trail (last entries, each locally checked). The badge
+        // reflects the real check result; it is never a static label.
         const audit = res.audit_trail || [];
         if (audit.length > 0) {
           const rows = audit.map(function (log) {
+            const ok = log.recomputed_ok === true && log.link_ok === true;
+            const badge = ok
+              ? '<span class="text-success small font-mono"><i class="bi bi-shield-check me-1"></i>Verified</span>'
+              : '<span class="text-danger small font-mono"><i class="bi bi-shield-x me-1"></i>Failed check</span>';
             return `
               <tr>
                 <td class="text-secondary">${LG.utils.formatDateTime(log.timestamp || log.created_at)}</td>
                 <td><span class="badge bg-secondary">${LG.utils.escapeHtml(log.action)}</span></td>
                 <td class="text-light">${LG.utils.escapeHtml(log.details || 'System recorded event')}</td>
-                <td><span class="text-success small font-mono"><i class="bi bi-shield-check me-1"></i>Verified</span></td>
+                <td>${badge}</td>
               </tr>
             `;
           }).join('');

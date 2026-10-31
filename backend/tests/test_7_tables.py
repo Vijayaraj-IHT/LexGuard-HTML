@@ -24,10 +24,18 @@ from app.models.audit_log import AuditLog
 from app.models.bookmark import Bookmark
 from app.models.draft_session import DraftSession
 from app.models.approval_queue import ApprovalQueue
-from app.services.crypto_service import compute_sha256, compute_audit_log_hash, verify_audit_chain
+from app.services.crypto_service import compute_sha256, verify_audit_chain
+from app.services.audit_service import build_audit_entry, get_chain_head_hash
 
 
 def run_full_7_table_check():
+    # This script INSERTS rows (users, cases, audit entries...) into whatever database
+    # settings point to. Refuse unless the operator opts in explicitly.
+    if os.environ.get("LEXGUARD_ALLOW_TEST_WRITES") != "1":
+        raise SystemExit(
+            "Refusing to run: this script writes test rows into the configured database. "
+            "Set LEXGUARD_ALLOW_TEST_WRITES=1 to run it against a disposable database."
+        )
     print("=" * 60)
     print("LEXGUARD POSTGRESQL 7-TABLE VERIFICATION SUITE")
     print(f"Target DB: {engine.url}")
@@ -112,27 +120,18 @@ def run_full_7_table_check():
         # Table 4: audit_logs
         # ---------------------------------------------------------
         print("\n[4/7] Testing 'audit_logs' table & cryptographic hash-chaining...")
-        ts = datetime.datetime.now(datetime.timezone.utc)
-        log_hash = compute_audit_log_hash(
-            previous_hash="0" * 64,
-            user_id=test_user.id,
-            case_id=test_case.id,
-            action="TEST_VERIFY_ACTION",
-            ip_address="127.0.0.1",
-            timestamp_iso=ts,
-            details=f"Automated verification test run {run_id}",
-        )
-
-        audit_entry = AuditLog(
+        # Chain from the REAL head via the shared builder (previously used the genesis
+        # hash as parent, which forked the production chain at record 31).
+        entry = build_audit_entry(
+            get_chain_head_hash(db),
             action="TEST_VERIFY_ACTION",
             user_id=test_user.id,
             case_id=test_case.id,
-            previous_log_hash="0" * 64,
-            current_hash=log_hash,
-            details=f"Automated verification test run {run_id}",
             ip_address="127.0.0.1",
+            details=f"Automated verification test run {run_id}",
             user_agent="Lexguard-Verifier/1.0",
         )
+        audit_entry = AuditLog(**entry)
         db.add(audit_entry)
         db.commit()
         db.refresh(audit_entry)

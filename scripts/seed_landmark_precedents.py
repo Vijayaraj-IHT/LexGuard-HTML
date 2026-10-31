@@ -18,6 +18,7 @@ from reportlab.lib import colors
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backend"))
 from app.core.database import SessionLocal
 from app.models.case import Case
+from app.services.audit_service import get_chain_head_hash, build_audit_entry
 from app.models.document_version import DocumentVersion
 from app.models.audit_log import AuditLog
 from app.models.user import User
@@ -695,13 +696,13 @@ Precedential Status: {item['precedential_status']}.
             dv.file_hash = file_hash
 
         # Audit Log
-        log_audit = AuditLog(
+        log_audit = AuditLog(**build_audit_entry(
+            get_chain_head_hash(db),
+            action="LANDMARK_SEED",
             user_id=admin_id,
             case_id=case_obj.id,
-            action="LANDMARK_SEED",
             details=f"Registered Supreme Court Landmark Precedent: {item['title']} [{item['official_citation']}]",
-            current_hash=file_hash,
-        )
+        ))
         db.add(log_audit)
 
         seeded_count += 1

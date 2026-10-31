@@ -18,6 +18,7 @@ import psycopg2
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "backend"))
 from app.services.text_sanitizer import text_sanitizer
 from app.services.embedding_service import embedding_service
+from app.services.audit_service import build_audit_entry
 
 DB_URI = "postgresql://lexguard:lexguard123@localhost:5432/lexguard"
 
@@ -226,18 +227,27 @@ def ingest_batch(incoming_dir: str = DEFAULT_INCOMING_DIR):
             ))
 
             # 7. Record Immutable Cryptographic Audit Log
+            # Chain link via the shared audit builder (same canonical formula as the app).
             cur.execute("SELECT current_hash FROM audit_logs ORDER BY timestamp DESC LIMIT 1;")
             prev_row = cur.fetchone()
             prev_hash = prev_row[0] if prev_row else "0" * 64
             audit_id = str(uuid.uuid4())
             audit_action = "INGEST_OFFICIAL_JUDGMENT"
             audit_details = f"Ingested official court judgment {case_no} as {canonical_filename} (SHA-256: {file_hash[:16]}...)"
-            cur_hash = hashlib.sha256(f"{audit_action}:{audit_details}:{prev_hash}".encode()).hexdigest()
+            entry = build_audit_entry(
+                prev_hash,
+                action=audit_action,
+                user_id=staff_user_id,
+                case_id=case_id,
+                details=audit_details,
+                timestamp=datetime.now(timezone.utc),
+            )
 
             cur.execute("""
                 INSERT INTO audit_logs (id, case_id, user_id, action, details, previous_log_hash, current_hash, timestamp)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
-            """, (audit_id, case_id, staff_user_id, audit_action, audit_details, prev_hash, cur_hash, datetime.now(timezone.utc)))
+            """, (audit_id, case_id, staff_user_id, audit_action, audit_details,
+                  entry["previous_log_hash"], entry["current_hash"], entry["timestamp"]))
 
             conn.commit()
             successful += 1

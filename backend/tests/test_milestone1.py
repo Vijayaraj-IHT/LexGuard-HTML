@@ -193,13 +193,45 @@ def test_case_upload_tamper_detection_and_approval():
     assert verify_res.json()["is_valid"] is True
     assert verify_res.json()["status_badge"] == "VERIFIED_UNTAMPERED"
 
-    # 4. Approve case
-    approve_res = client.post(
+    # 4. Approve case. Maker-checker (F7): the uploader may not publish their own submission,
+    #    so a second senior-staff account approves it.
+    self_res = client.post(
         f"/api/v1/admin/approve/{case_id}",
-        json={"status": "published", "review_note": "Verified by Chief Registrar"},
+        json={"status": "published", "review_note": "self-approval attempt"},
         headers=headers,
     )
-    assert approve_res.status_code == 200
+    assert self_res.status_code == 403, self_res.text
+
+    from app.core.database import SessionLocal as _SessionLocal
+    _db = _SessionLocal()
+    if not _db.query(User).filter(User.email == "second.registrar@lexguard.gov.in").first():
+        _db.add(User(
+            name="Second Registrar",
+            email="second.registrar@lexguard.gov.in",
+            password_hash=get_password_hash("Second@Lexguard2026"),
+            role="senior_staff",
+            status="active",
+            credential_id="COURT-REG-002",
+        ))
+        _db.commit()
+    _db.close()
+    # Separate client: the second login must not replace the first user's cookies.
+    from fastapi.testclient import TestClient as _TC
+    second_client = _TC(client.app)
+    second_login = second_client.post(
+        "/api/v1/auth/login",
+        json={"email": "second.registrar@lexguard.gov.in", "password": "Second@Lexguard2026"},
+    )
+    assert second_login.status_code == 200, second_login.text
+    second_headers = {"Authorization": f"Bearer {second_login.json()['access_token']}"}
+    if second_login.json().get("csrf_token"):
+        second_headers["X-CSRF-Token"] = second_login.json()["csrf_token"]
+    approve_res = second_client.post(
+        f"/api/v1/admin/approve/{case_id}",
+        json={"status": "published", "review_note": "Verified by second registrar"},
+        headers=second_headers,
+    )
+    assert approve_res.status_code == 200, approve_res.text
     assert approve_res.json()["status"] == "published"
 
     # 5. Search case

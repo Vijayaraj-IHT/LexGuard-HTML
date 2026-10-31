@@ -14,6 +14,10 @@ from app.services.audit_service import log_audit_event
 
 router = APIRouter()
 
+# Fallback bench label for memo export. Kept outside f-strings: backslashes
+# inside f-string expressions are a SyntaxError before Python 3.12.
+BENCH_FALLBACK = "Hon'ble Bench"
+
 
 class BookmarkCreate(BaseModel):
     case_id: str
@@ -245,7 +249,7 @@ def export_research_memorandum(
             f"- **Court:** {c.court} ({c.year})",
             f"- **Case Number:** {c.case_no}",
             f"- **Official Citation:** {c.official_citation or 'LexGuard Precedent'}",
-            f"- **Bench:** {bench_name}",
+            f"- **Bench:** {c.judge or BENCH_FALLBACK}",
             f"- **Precedential Authority:** {c.precedential_status or 'Good Law'}",
             f"- **Judicial Ratio:** {c.ratio_decidendi or 'Principles affirmed on record.'}",
             f"- **Advocate Research Note:** {b.notes or 'No private notes attached.'}",
