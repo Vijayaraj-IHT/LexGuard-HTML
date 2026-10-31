@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, Dict, Any
+from typing import Any, Dict, List, Optional, Tuple
 import re
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session, defer
@@ -81,37 +81,81 @@ def parse_advanced_query(raw_query: str) -> Dict[str, Any]:
     }
 
 
-def _extract_matched_snippets(text: str, tokens: List[str], max_snippets: int = 2) -> Tuple[List[str], List[str]]:
+def _build_snippets(
+    text: str, tokens: List[str], max_snippets: int = 2
+) -> Tuple[List[str], List[Dict[str, Any]], List[str]]:
+    """Return (plain_lines, snippet_objects, matched_keywords).
+
+    Snippet text is never HTML: highlights are returned as [start, end] ranges so the
+    client can escape the text and then wrap the ranges. This removes the injection
+    path that existed when the server interleaved <mark> tags into judgment text.
+    """
     if not text or not tokens:
-        return [], []
-    snippets = []
+        return [], [], []
+
+    plain: List[str] = []
+    snippets: List[Dict[str, Any]] = []
     matched_kws = set()
-    lines = text.split("\n")
     current_page = 1
-    for line in lines:
+
+    for line in text.split("\n"):
         stripped = line.strip()
         if stripped.startswith("--- PAGE "):
-            m_pg = re.search(r'\d+', stripped)
+            m_pg = re.search(r"\d+", stripped)
             if m_pg:
                 try:
                     current_page = int(m_pg.group())
                 except Exception:
                     pass
             continue
-        line_lower = stripped.lower()
-        for tok in tokens:
-            if tok in line_lower:
-                matched_kws.add(tok)
-                if len(snippets) < max_snippets:
-                    pattern = re.compile(re.escape(tok), re.IGNORECASE)
-                    highlighted = pattern.sub(lambda m: f"<mark>{m.group(0)}</mark>", stripped)
-                    if len(highlighted) > 220:
-                        m_pos = highlighted.lower().find("<mark>")
-                        start_pos = max(0, m_pos - 40)
-                        end_pos = min(len(highlighted), m_pos + 160)
-                        highlighted = ("..." if start_pos > 0 else "") + highlighted[start_pos:end_pos] + ("..." if end_pos < len(highlighted) else "")
-                    snippets.append(f"[Page {current_page}] {highlighted}")
-    return snippets, list(matched_kws)
+
+        lower = stripped.lower()
+        hits = [t for t in tokens if t and t in lower]
+        if not hits:
+            continue
+        matched_kws.update(hits)
+        if len(snippets) >= max_snippets:
+            continue
+
+        first = min(lower.find(t) for t in hits)
+        start = max(0, first - 60)
+        end = min(len(stripped), first + 200)
+        window = stripped[start:end]
+        spans: List[List[int]] = []
+        for tok in hits:
+            for m in re.finditer(re.escape(tok), window, re.IGNORECASE):
+                spans.append([m.start(), m.end()])
+        spans.sort()
+        snippets.append({"page": current_page, "text": window, "highlights": spans})
+        plain.append(f"[Page {current_page}] {window}")
+
+    return plain, snippets, sorted(matched_kws)
+
+
+def _display_year(case: Case) -> Optional[int]:
+    """Prefer the decision date; fall back to the stored year."""
+    try:
+        if case.decision_date:
+            return case.decision_date.year
+    except Exception:
+        pass
+    return case.year
+
+
+def _citation_display(case: Case) -> str:
+    parts = [case.case_no, case.court]
+    year = _display_year(case)
+    if year:
+        parts.append(str(year))
+    return " · ".join(p for p in parts if p)
+
+
+def _source_verified(case: Case) -> bool:
+    return (case.source_verification_state or "").strip().lower() == "verified"
+
+
+def _repository_id(case: Case) -> str:
+    return f"LG-{(case.id or '')[:8].upper()}"
 
 
 @router.post("/", response_model=SearchResponse)
@@ -188,7 +232,11 @@ def search_cases(
                 court=c.court,
                 year=c.year,
                 matched_sections=[],
-                relevance_score=1.0,
+                relevance_score=None,
+                match_type="browse",
+                citation_display=_citation_display(c),
+                source_verified=_source_verified(c),
+                repository_id=_repository_id(c),
                 outcome=c.outcome,
                 disposition=c.disposition or c.outcome or "Decided",
                 judge=c.judge or "Hon'ble Court",
@@ -308,6 +356,7 @@ def search_cases(
     lexical_scores = {}
     statute_scores = {}
     case_snippets = {}
+    case_snippet_objs = {}
     case_matched_kws = {}
     case_matched_sections = {}
     case_search_modes = {}
@@ -382,8 +431,11 @@ def search_cases(
 
         # Extract Snippets & Matched Keywords
         snip_tokens = all_query_terms or tokens
-        snips, kws = _extract_matched_snippets(c.full_text or c.summary or "", snip_tokens, max_snippets=2)
-        case_snippets[c.id] = snips
+        plain_snips, snip_objs, kws = _build_snippets(
+            c.full_text or c.summary or "", snip_tokens, max_snippets=2
+        )
+        case_snippets[c.id] = plain_snips
+        case_snippet_objs[c.id] = snip_objs
         case_matched_kws[c.id] = kws
 
         # Statutory Score
@@ -440,6 +492,12 @@ def search_cases(
     results_tuples = []
     for c, raw_rrf in rrf_scored:
         norm_score = round(raw_rrf / max_raw_rrf, 4)
+        if statute_scores.get(c.id, 0.0) > 0:
+            match_type = "statute"
+        elif lexical_scores.get(c.id, 0.0) > 0:
+            match_type = "keyword"
+        else:
+            match_type = "related"
         c_ts = c.created_at.timestamp() if c.created_at else 0.0
         results_tuples.append((
             norm_score,
@@ -453,6 +511,10 @@ def search_cases(
                 year=c.year,
                 matched_sections=case_matched_sections.get(c.id, []),
                 relevance_score=norm_score,
+                match_type=match_type,
+                citation_display=_citation_display(c),
+                source_verified=_source_verified(c),
+                repository_id=_repository_id(c),
                 outcome=c.outcome,
                 disposition=c.disposition or c.outcome or "Decided",
                 judge=c.judge or "Hon'ble Court",
@@ -464,6 +526,7 @@ def search_cases(
                 section_tags=c.section_tags or [],
                 keyword_tags=c.keyword_tags or [],
                 matched_snippets=case_snippets.get(c.id, []),
+                snippets=case_snippet_objs.get(c.id, []),
                 matched_keywords=case_matched_kws.get(c.id, []),
                 source_url=c.source_url,
                 rrf_score=round(raw_rrf, 5),

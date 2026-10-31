@@ -791,3 +791,301 @@
     width: 20%;
   }
 }
+
+/* ==============================================================================
+   Case Card — rebuilt result block (Hybrid Search, Bookmarks, Compare tray)
+   Supersedes the earlier .lg-case-card rules above; later rules win.
+   ============================================================================== */
+.lg-case-card {
+  background: #fff;
+  border: 1px solid var(--lg-border, rgba(153, 27, 27, 0.14));
+  border-radius: var(--lg-radius, 12px);
+  padding: var(--lg-card-pad, clamp(1rem, 2.2vw, 1.5rem));
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.lg-case-card:hover {
+  transform: none;
+  border-color: #991b1b;
+  box-shadow: 0 10px 28px -12px rgba(153, 27, 27, 0.25);
+}
+
+.lg-case-card:focus-within {
+  outline: 3px solid rgba(153, 27, 27, 0.35);
+  outline-offset: 2px;
+}
+
+.lg-case-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.lg-case-card__title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.lg-case-card__title a {
+  color: #0f172a;
+  text-decoration: none;
+}
+
+.lg-case-card__title a:hover {
+  color: #991b1b;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.lg-case-card__badges {
+  flex: 0 0 auto;
+}
+
+.lg-case-card__meta {
+  color: #475569;
+  font-size: 0.85rem;
+  margin: 0.35rem 0 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.lg-case-card__cite-main {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.lg-case-card__cite-official {
+  color: #334155;
+}
+
+.lg-case-card__cite-repo {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.78rem;
+  color: #475569;
+  border: 1px dashed rgba(15, 23, 42, 0.2);
+  border-radius: 6px;
+  padding: 0.05rem 0.35rem;
+}
+
+.lg-case-card__bench {
+  color: #475569;
+}
+
+.lg-case-card__bench--missing {
+  font-style: italic;
+  color: #64748b;
+}
+
+.lg-dot {
+  color: #94a3b8;
+}
+
+.lg-case-card__chips,
+.lg-case-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.65rem;
+}
+
+.lg-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--lg-border, rgba(153, 27, 27, 0.14));
+  background: #f8fafc;
+  color: #475569;
+}
+
+.lg-chip--court {
+  background: #fef2f2;
+  border-color: rgba(153, 27, 27, 0.25);
+  color: #991b1b;
+}
+
+.lg-chip--outcome {
+  background: #fffbeb;
+  border-color: rgba(180, 83, 9, 0.3);
+  color: #b45309;
+}
+
+.lg-chip--verified {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+}
+
+.lg-chip--unverified {
+  background: #f8fafc;
+  border-style: dashed;
+  color: #475569;
+}
+
+.lg-chip--match {
+  background: #f1f5f9;
+  color: #334155;
+  cursor: help;
+}
+
+.lg-chip--act {
+  background: #fff;
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #334155;
+}
+
+.lg-chip--section {
+  background: #fff;
+  border-color: rgba(153, 27, 27, 0.2);
+  color: #991b1b;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+.lg-chip--page {
+  margin-left: 0.35rem;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.66rem;
+}
+
+.lg-case-card__snippet {
+  margin: 0.75rem 0;
+  padding: 0.65rem 0.85rem;
+  border-left: 3px solid rgba(153, 27, 27, 0.35);
+  background: #fffbfb;
+  color: #1f2937;
+  font-size: 0.88rem;
+  line-height: 1.65;
+  border-radius: 0 8px 8px 0;
+}
+
+.lg-case-card__snippet p {
+  margin: 0 0 0.4rem;
+}
+
+.lg-case-card__snippet p:last-child {
+  margin-bottom: 0;
+}
+
+.lg-case-card__snippet--summary {
+  color: #475569;
+}
+
+.lg-case-card__snippet mark {
+  background: #fde68a;
+  color: #7c2d12;
+  padding: 0 0.15rem;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.lg-case-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.lg-case-card__actions .btn {
+  min-height: 38px;
+}
+
+.lg-case-card__actions-end {
+  margin-left: auto;
+  display: flex;
+  gap: 0.5rem;
+}
+
+@media (max-width: 575.98px) {
+  .lg-case-card__head {
+    flex-direction: column;
+  }
+
+  .lg-case-card__actions .btn {
+    padding-inline: 0.6rem;
+  }
+
+  .lg-case-card__actions-end {
+    margin-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lg-case-card {
+    transition: none;
+  }
+}
+
+/* ==============================================================================
+   Missing utility classes that pages already reference
+   (fs-7 appeared 9x, btn-xs 34x, query-chip on search.html, btn-check on forms)
+   ============================================================================== */
+.fs-7 {
+  font-size: 0.8rem !important;
+  line-height: 1.35;
+}
+
+.btn-xs {
+  --bs-btn-padding-y: 0.15rem;
+  --bs-btn-padding-x: 0.45rem;
+  --bs-btn-font-size: 0.72rem;
+  --bs-btn-border-radius: 0.35rem;
+  min-height: 26px;
+  line-height: 1.2;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.query-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  margin: 0 0.35rem 0.35rem 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #991b1b;
+  background: #fff;
+  border: 1px solid rgba(153, 27, 27, 0.25);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.query-chip:hover,
+.query-chip:focus-visible {
+  background: #fef2f2;
+  border-color: #991b1b;
+  color: #7f1d1d;
+}
+
+.query-chip:focus-visible {
+  outline: 2px solid rgba(153, 27, 27, 0.45);
+  outline-offset: 2px;
+}
+
+.btn-check {
+  position: absolute;
+  clip: rect(0, 0, 0, 0);
+  pointer-events: none;
+}
+
+.btn-check:checked + .btn {
+  background-color: #991b1b;
+  border-color: #991b1b;
+  color: #fff;
+}
