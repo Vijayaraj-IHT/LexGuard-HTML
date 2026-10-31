@@ -42,7 +42,7 @@ if not exist "backend\.env" (
 :: 4. Start FastAPI Backend (Port 8000)
 echo.
 echo [1/3] Starting FastAPI Backend on http://127.0.0.1:8000...
-start "LexGuard FastAPI Backend (Port 8000)" cmd /k "title LexGuard Backend && cd backend && python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
+start "LexGuard FastAPI Backend (Port 8000)" cmd /k "title LexGuard Backend && cd backend && call venv\Scripts\activate.bat && python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
 
 :: 5. Start Frontend HTTP Server (Port 8888)
 echo [2/3] Starting HTML5 Static Web Server on http://127.0.0.1:8888...
