@@ -12,7 +12,7 @@ from app.models.user import User
 from app.models.case import Case
 from app.models.audit_log import AuditLog
 from app.schemas.verification import HashLookupResponse, HashLookupRequest, MatchedCaseSummary
-from app.services.crypto_service import verify_sha256, verify_sha256_stream
+from app.services.crypto_service import verify_sha256_stream
 from app.services.audit_service import log_audit_event, check_audit_entry
 from app.core.rate_limit import rate_limit
 

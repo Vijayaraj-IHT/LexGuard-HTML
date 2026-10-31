@@ -243,7 +243,6 @@ def export_research_memorandum(
             "file_hash": c.file_hash,
         })
 
-        bench_name = c.judge or "Hon'ble Bench"
         md_lines.extend([
             f"### [{idx}] {c.title}",
             f"- **Court:** {c.court} ({c.year})",

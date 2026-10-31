@@ -3,7 +3,6 @@ import hmac
 import secrets
 from pathlib import Path
 from typing import Optional, List, Dict, Any
-from app.core.config import settings
 
 # Genesis hash for the initial block in the audit trail chain
 GENESIS_HASH = "0" * 64
