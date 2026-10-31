@@ -124,6 +124,9 @@ $(document).ready(function () {
         renderPagination(totalResults, page);
       })
       .fail(function (xhr) {
+        if (xhr.statusText === 'abort' || xhr.status === 0) {
+          return;
+        }
         let msg = 'Failed to load search results.';
         if (xhr.responseJSON && xhr.responseJSON.detail) {
           msg = typeof xhr.responseJSON.detail === 'string'

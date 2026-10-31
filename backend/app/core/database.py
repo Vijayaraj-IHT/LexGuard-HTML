@@ -1,4 +1,6 @@
 import os
+import json
+import re
 import logging
 from typing import Generator
 from sqlalchemy import create_engine
@@ -7,12 +9,28 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+
+def safe_json_deserializer(val):
+    if not val:
+        return None
+    try:
+        return json.loads(val)
+    except Exception:
+        try:
+            cleaned = re.sub(r'\\(\r?\n)', r' ', str(val))
+            cleaned = cleaned.replace('\r\n', ' ').replace('\n', ' ')
+            return json.loads(cleaned)
+        except Exception:
+            return []
+
+
 # Configure engine with engine-specific options and resilient PostgreSQL -> SQLite fallback
 target_url = settings.DATABASE_URL
 connect_args = {}
 engine_kwargs = {
     "pool_pre_ping": True,
     "echo": False,
+    "json_deserializer": safe_json_deserializer,
 }
 
 if target_url.startswith("sqlite"):
@@ -43,6 +61,7 @@ except Exception as e:
             connect_args={"check_same_thread": False},
             pool_pre_ping=True,
             echo=False,
+            json_deserializer=safe_json_deserializer,
         )
     else:
         raise e
