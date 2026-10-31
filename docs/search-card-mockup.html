@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LexGuard · Hybrid Search Result Card — Design Comparison</title>
+<style>
+  :root{
+    --lg-red:#991b1b; --lg-red-dark:#7f1d1d; --lg-red-soft:#fef2f2;
+    --lg-gold:#b45309; --lg-gold-soft:#fffbeb;
+    --lg-ok:#047857; --lg-ok-soft:#ecfdf5;
+    --lg-ink:#0f172a; --lg-ink-2:#475569; --lg-ink-3:#64748b;
+    --lg-line:rgba(153,27,27,.14); --lg-line-2:#e2e8f0;
+    --lg-bg:#f8fafc; --lg-radius:12px;
+    --font-sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    --font-serif:'Playfair Display',Georgia,Cambria,'Times New Roman',serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--lg-bg);color:var(--lg-ink);font-family:var(--font-sans);
+       line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto;padding:32px 20px 80px}
+  h1{font-family:var(--font-serif);font-size:30px;line-height:1.2;margin:0 0 6px}
+  h2{font-size:15px;text-transform:uppercase;letter-spacing:.09em;color:var(--lg-red);
+     margin:44px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--lg-line)}
+  .lede{color:var(--lg-ink-2);margin:0 0 8px;font-size:15px}
+  .note{color:var(--lg-ink-3);font-size:13px;margin:10px 0 0}
+  .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+       padding:3px 8px;border-radius:999px;background:var(--lg-red-soft);color:var(--lg-red);border:1px solid var(--lg-line)}
+  .tag.bad{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
+  .tag.good{background:var(--lg-ok-soft);color:var(--lg-ok);border-color:#a7f3d0}
+
+  /* ---------- shared bits ---------- */
+  .card{background:#fff;border:1px solid var(--lg-line);border-radius:var(--lg-radius);padding:22px 24px}
+  .card + .card{margin-top:14px}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;line-height:1;
+        padding:6px 9px;border-radius:999px;border:1px solid var(--lg-line-2);background:#f8fafc;color:var(--lg-ink-2)}
+  .chip--court{background:var(--lg-red-soft);border-color:rgba(153,27,27,.25);color:var(--lg-red)}
+  .chip--outcome{background:var(--lg-gold-soft);border-color:rgba(180,83,9,.3);color:var(--lg-gold)}
+  .chip--ok{background:var(--lg-ok-soft);border-color:#a7f3d0;color:var(--lg-ok)}
+  .chip--dashed{border-style:dashed;background:#fff;color:var(--lg-ink-3)}
+  .chip--page,.chip--kw{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
+  .btn{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:8px 13px;border-radius:8px;
+       border:1px solid var(--lg-line);background:#fff;color:var(--lg-red);font:inherit;font-size:13.5px;
+       font-weight:600;cursor:pointer;text-decoration:none}
+  .btn:focus-visible,.link:focus-visible,.iconbtn:focus-visible,.card:focus-within{
+      outline:3px solid rgba(153,27,27,.35);outline-offset:2px}
+  .btn--primary{background:var(--lg-red);border-color:var(--lg-red);color:#fff}
+  .btn--primary:hover{background:var(--lg-red-dark)}
+  .iconbtn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;
+           border-radius:8px;border:1px solid var(--lg-line);background:#fff;color:var(--lg-red);cursor:pointer}
+  .link{color:var(--lg-ink);text-decoration:none}
+  .link:hover{color:var(--lg-red);text-decoration:underline;text-underline-offset:3px}
+  .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;border-top:1px solid #f1f5f9;
+           padding-top:14px;margin-top:14px}
+  .actions .end{margin-left:auto;display:flex;gap:8px}
+  svg{flex:none}
+
+  /* ---------- CURRENT (as shipped) ---------- */
+  .current .title{font-size:19px;font-weight:700;color:var(--lg-ink);margin:0 0 8px}
+  .current .badge{display:inline-block;font-size:11.5px;font-weight:600;padding:6px 9px;border-radius:6px;
+                  border:1px solid #e2e8f0;background:#f1f5f9;color:#334155}
+  .current .b-court{background:#fffbeb;color:#b45309;border-color:#fcd34d}
+  .current .b-red{background:#fee2e2;color:#b91c1c;border-color:#fecaca}
+  .current .b-green{background:#059669;color:#059669;border:0;width:86px;height:24px;border-radius:6px}
+  .current .b-dark{background:#f8fafc;color:#991b1b;border-color:#fecaca;font-family:ui-monospace,monospace}
+  .current .summary{color:var(--lg-ink-2);font-size:14px;margin:14px 0}
+  .current .score{margin-left:auto;background:#059669;color:#fff;font-size:12px;font-weight:700;
+                  padding:6px 10px;border-radius:6px}
+
+  /* ---------- PROPOSED ---------- */
+  .new .head{display:flex;gap:14px;align-items:flex-start;justify-content:space-between}
+  .new h3{font-size:19px;line-height:1.3;margin:0;font-weight:700}
+  .new .meta{color:var(--lg-ink-2);font-size:13.5px;margin:7px 0 10px}
+  .new .meta b{color:var(--lg-ink);font-weight:600}
+  .new blockquote{margin:14px 0 10px;padding:11px 14px;background:#fffbfb;
+                  border-left:3px solid rgba(153,27,27,.35);font-size:14px;color:#1f2937;line-height:1.65}
+  .new blockquote mark{background:#fde68a;color:#7c2d12;padding:0 2px;border-radius:3px}
+  .new .why{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--lg-ink-3)}
+  .new .why b{color:var(--lg-ink-2);font-weight:600;letter-spacing:.04em;text-transform:uppercase;font-size:10.5px}
+  .new .tags{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 0}
+
+  /* mobile preview */
+  .phone{max-width:360px;border:1px solid var(--lg-line-2);border-radius:16px;padding:14px;background:#fff}
+
+  table{border-collapse:collapse;width:100%;font-size:13.5px;margin-top:12px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--lg-line-2);vertical-align:top}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--lg-ink-3)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;background:#f1f5f9;
+       padding:1px 5px;border-radius:4px;color:#7f1d1d}
+  ul.issues{margin:12px 0 0;padding-left:18px;color:var(--lg-ink-2);font-size:13.5px}
+  ul.issues li{margin:5px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <span class="tag">Design comparison</span>
+  <h1>Hybrid Search — result card</h1>
+  <p class="lede">The card from <code>frontend/js/pages/search.js</code> (renderResults) as shipped today, next to the proposed redesign. Same data, different hierarchy and truthfulness.</p>
+
+  <!-- ============ CURRENT ============ -->
+  <h2>1 · Current card (as shipped)</h2>
+  <div class="card current">
+    <div class="head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+      <div>
+        <p class="title">In re Civil Appeal No 3843 of 2020</p>
+        <div class="row">
+          <span class="badge b-court">Supreme Court of India</span>
+          <span class="badge b-red">Judgment</span>
+          <span class="badge">1961</span>
+          <span class="badge b-red">Decided on Merits</span>
+          <span class="badge b-green" aria-hidden="true"></span>
+          <span class="badge b-dark">1961 LexGuard HC FEE6CF7B</span>
+          <span style="font-size:13px;color:#64748b">👤 Hon'ble Bench</span>
+        </div>
+      </div>
+      <span class="score">📈 100% Match</span>
+    </div>
+    <p class="summary">Certified judgment from Supreme Court of India - Civil Appeal No. 3843 of 2020....</p>
+    <div class="row">
+      <span class="badge b-red">Constitution of India</span>
+      <span class="badge b-red">Cr.P.C.</span>
+      <span class="badge b-red">Section 482</span>
+    </div>
+    <div class="actions">
+      <span class="btn btn--primary">📖 Read Judgment</span>
+      <span class="btn">▦ Compare</span>
+      <span class="end"><span class="btn">❝ Copy Citation</span><span class="iconbtn">🔖</span></span>
+    </div>
+  </div>
+
+  <ul class="issues">
+    <li><b>Wrong year.</b> 2020 appeal rendered as <b>1961</b> — 178 of 434 rows whose case number ends in a year have a contradicting <code>year</code> field.</li>
+    <li><b>Fabricated "official" citation.</b> <code>1961 LexGuard HC FEE6CF7B</code> — 535 of 607 citations contain an internal “LexGuard” ID; they are not official citations.</li>
+    <li><b>Placeholder bench.</b> “Hon'ble Bench” is stored as a judge name in 308 rows and gets a person icon.</li>
+    <li><b>100% Match is meaningless.</b> Empty/browse queries return <code>relevance_score = 1.0</code>, so every card claims 100%.</li>
+    <li><b>Empty green pill</b> — low-contrast status badge carries no readable label.</li>
+    <li><b>No hierarchy.</b> Eight pills compete; court, year, outcome and status all look equally important.</li>
+    <li><b>Gold text (#d97706) fails WCAG AA</b> at 3.19 : 1 on white.</li>
+  </ul>
+
+  <!-- ============ PROPOSED ============ -->
+  <h2>2 · Proposed card</h2>
+  <div class="card new">
+    <article aria-labelledby="caseTitle1">
+      <div class="head">
+        <h3 id="caseTitle1"><a class="link" href="#">In re Civil Appeal No 3843 of 2020</a></h3>
+        <span class="chip chip--dashed" title="This match has not been verified against an official reporter">
+          Not yet verified
+        </span>
+      </div>
+
+      <p class="meta">Civil Appeal No. 3843 of 2020 · <b>Supreme Court of India</b> · 2020</p>
+
+      <div class="row">
+        <span class="chip chip--court">Supreme Court</span>
+        <span class="chip">Judgment</span>
+        <span class="chip chip--outcome">Decided on merits</span>
+        <span class="chip">Repository ID · FEE6CF7B</span>
+      </div>
+
+      <blockquote>
+        “…the question of law raised in this appeal is whether the High Court was justified in
+        <mark>quashing the FIR</mark> without examining the statutory bar under Section 482…”
+        <span class="chip chip--page">p. 4</span>
+      </blockquote>
+
+      <div class="why">
+        <b>Matched</b>
+        <span class="chip chip--kw">quashing FIR</span>
+        <span class="chip chip--kw">Section 482</span>
+        <span class="chip chip--kw">inherent power</span>
+        <span style="color:var(--lg-ink-3)">· semantic 0.81 · keyword 0.64</span>
+      </div>
+
+      <div class="tags">
+        <span class="chip">Constitution of India</span>
+        <span class="chip">Cr.P.C.</span>
+        <span class="chip">§ 482</span>
+      </div>
+
+      <div class="actions">
+        <a class="btn btn--primary" href="#" aria-label="Read judgment: In re Civil Appeal No 3843 of 2020">Read judgment</a>
+        <a class="btn" href="#">Compare</a>
+        <span class="end">
+          <button class="btn" type="button" aria-label="Copy citation">Copy citation</button>
+          <button class="iconbtn" type="button" aria-label="Save to bookmarks" aria-pressed="false">🔖</button>
+        </span>
+      </div>
+    </article>
+  </div>
+
+  <p class="note">Nothing above is invented: the year comes from <code>decision_date</code>, the internal ID is labelled as such, the status is honest (“not yet verified”), and the match explanation is derived from the RRF components the API already computes.</p>
+
+  <!-- ============ VARIANTS ============ -->
+  <h2>3 · Variants the same component must support</h2>
+
+  <div class="card new">
+    <div class="head">
+      <h3><a class="link" href="#">State of Maharashtra v. Ramesh Sharma</a></h3>
+      <span class="chip chip--ok">✓ Verified source</span>
+    </div>
+    <p class="meta">Criminal Appeal No. 1123 of 2019 · <b>Bombay High Court</b> · 2021</p>
+    <div class="row">
+      <span class="chip chip--court">Bombay HC</span>
+      <span class="chip">Judgment</span>
+      <span class="chip chip--outcome">Allowed</span>
+      <span class="chip">AIR 2021 Bom 214</span>
+      <span class="chip">Cited in 12</span>
+    </div>
+    <blockquote>“…the <mark>triple test for bail</mark> requires the court to consider flight risk, tampering and witness influence…” <span class="chip chip--page">p. 9</span></blockquote>
+    <div class="tags"><span class="chip">NDPS Act</span><span class="chip">§ 37</span><span class="chip">Art. 21</span></div>
+    <div class="actions">
+      <a class="btn btn--primary" href="#">Read judgment</a><a class="btn" href="#">Compare</a>
+      <span class="end"><button class="btn" type="button">Copy citation</button><button class="iconbtn" type="button" aria-label="Saved" aria-pressed="true">🔖</button></span>
+    </div>
+  </div>
+
+  <div style="margin-top:16px">
+    <p class="note" style="margin-bottom:10px">Compact 360 px layout — actions keep 40 px targets, title stays on one line where possible:</p>
+    <div class="phone new">
+      <div class="head"><h3 style="font-size:16px"><a class="link" href="#">Arnav Mandhana v. Directorate of Enforcement</a></h3></div>
+      <p class="meta" style="font-size:12px">PMLA Appeal · Bombay HC · 2024</p>
+      <div class="row">
+        <span class="chip chip--court" style="font-size:10.5px">Bombay HC</span>
+        <span class="chip chip--outcome" style="font-size:10.5px">Bail granted</span>
+        <span class="chip chip--dashed" style="font-size:10.5px">Unverified</span>
+      </div>
+      <div class="actions" style="margin-top:12px">
+        <a class="btn btn--primary" href="#" style="font-size:12.5px">Read</a>
+        <a class="btn" href="#" style="font-size:12.5px">Compare</a>
+        <span class="end"><button class="iconbtn" type="button" aria-label="Copy citation">❝</button><button class="iconbtn" type="button" aria-label="Bookmark">🔖</button></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SPEC ============ -->
+  <h2>4 · What changes in the code</h2>
+  <table>
+    <tr><th>Layer</th><th>Change</th></tr>
+    <tr><td><code>case-card.js</code> (new)</td><td>Pure render function, escaped output, honest labels, delegated events, page chunk from server.</td></tr>
+    <tr><td><code>search.js</code></td><td>Remove the inline template; hide the match badge for browse; pass <code>match_type</code> and <code>matched_keywords</code>.</td></tr>
+    <tr><td><code>components.css</code></td><td>New <code>lg-case-card</code> + <code>lg-chip</code> system; delete undefined <code>badge-gold</code>/<code>fs-7</code> usage.</td></tr>
+    <tr><td><code>lexguard.css</code></td><td>Gold token <code>#d97706 → #b45309</code>; add success/slate tokens.</td></tr>
+    <tr><td><code>search.py</code></td><td>Snippets as <code>{page, text, highlights}</code> (no HTML); <code>relevance_score=None</code> on browse; <code>source_verified</code>, <code>repository_id</code>.</td></tr>
+    <tr><td>DB migration</td><td>Fix 178 mismatched years, 535 internal citations, 308 placeholder judges; validate JSON columns.</td></tr>
+  </table>
+
+  <p class="note">Full rationale, code snippets and phasing: <code>docs/SEARCH_CARD_REDESIGN.md</code>.</p>
+</div>
+</body>
+</html>
