@@ -319,3 +319,192 @@ Facts gathered before the review:
 - `connect-src` hardcodes `http://127.0.0.1:8000`, matching D5. Any other API host needs a policy edit.
 - No browser was available. The policy has NOT been checked at runtime: a page can still break under it (for example, pdf.js falling back when `eval` is blocked), and the static tests cannot see that. A browser pass over all 20 pages is required before merge.
 - A pre-existing dead button, `#cert-copy-hash-btn` in `case-viewer.html`, has no click handler. It was already like that and is not changed here.
+
+---
+
+# Round 3 — Cryptographic Integrity & Security Specialist (Agent 2)
+
+Scope: SHA-256 fresh-byte download defence, maker-checker publication controls, the
+unified UTC audit chain, and the digital-seal surface. Files touched are listed at
+the end. The 19 existing integrity tests were green before this round; the question
+was whether the *mechanisms* they assert actually hold outside the asserted paths.
+
+## DB-1. Verify-then-reopen is not verification (TOCTOU)
+
+**Proposer.** `GET /cases/{id}/download` and `GET /verification/documents/{id}/stream`
+both verified `verify_sha256_stream(path, expected)` and then returned
+`FileResponse(path=…)`. Two reads of one path: the digest describes read #1, the
+bytes served come from read #2.
+
+**Skeptic.** The window is microseconds and the file lives on a server mount. Who can
+swap it in that window? Also, reading whole files into memory changes memory
+behaviour: the largest corpus judgment is a few MB, but the endpoint accepts
+arbitrary uploads.
+
+**Judge (verdict: ACCEPT).** The attack does not need to hit the window — it needs
+the *property*. "Serves verified bytes" is a claim about the response, and
+verify-then-reopen cannot support it. Reading once also removes the double I/O, so
+the change is not a pure cost.
+
+**Decision.**
+- `crypto_service.read_verified_bytes(path, expected)` reads once, returns
+  `(content, computed_hash, ok)`, compares with `hmac.compare_digest`, normalises
+  case, and treats an empty expected digest as a failure rather than a pass.
+- Both endpoints now serve `Response(content=…)` built from exactly the verified
+  buffer. `X-Lexguard-SHA256` reports the digest of the bytes in *this* response, so
+  the header cannot outlive the data it describes.
+- Memory bound: the download path buffers the file. Judgments in this corpus are
+  ≤ ~5 MB. A streaming-verified file handle (read, digest, rewind the same handle)
+  is the better long-term shape and is recorded as a residual for large uploads.
+- Test: `test_h2_download_serves_exactly_the_verified_bytes` swaps the file *after*
+  the verified read and asserts the response carries the authentic bytes, not the
+  swapped ones.
+
+## DB-2. Maker-checker must name the maker, not the uploader column
+
+**Proposer.** The guard reads `case.uploaded_by_id == current_user.id`. Queued
+records also carry `ApprovalQueue.submitted_by_id`, which can differ (imported
+records, re-queues, staff who queue on someone's behalf). A reviewer who queues a
+record can approve it.
+
+**Skeptic.** Two sources of truth for "maker" invites gaps elsewhere; the cleanest
+fix is to derive the maker in one place.
+
+**Judge (verdict: ACCEPT, narrower).** Treat the maker set as
+`{uploaded_by_id, queue.submitted_by_id}` (non-null). Anything wider (approving a
+record you merely edited) needs a product decision and is out of scope.
+
+**Decision.**
+- Self-approval compares against the maker *set* → `403`.
+- Re-approving an already-published record as the same reviewer → `403`.
+- A `quarantined` record cannot be published while its stored bytes still fail
+  SHA-256 → `409`. Without this, the seal would be affixed to a file nothing
+  re-verified, which makes `H_doc` a claim rather than a check.
+- Published records stay frozen against `PATCH /cases/{id}` and `POST /cases/{id}/re-extract`
+  (both `409`); the only way back is an explicit `rejected`/`quarantined` status,
+  which is what the existing message tells the operator to do.
+
+## DB-3. The ledger has no sequence — and that matters
+
+**Proposer.** I first re-pointed head selection at `AuditLog.id` on the assumption
+that it was an autoincrement sequence, so the chain would follow append order. It is
+**not**: `AuditLog.id` is a UUID string. Ordering by it is arbitrary, and the chain
+forked immediately — `test_f1` and `test_f5` failed.
+
+**Skeptic.** Then the timestamp is the only order, and timestamps can tie inside the
+same second (hashing truncates to seconds) or move backwards (backdated imports,
+clock corrections).
+
+**Judge (verdict: ACCEPT WITH CHANGES; sequence column deferred).**
+- Revert to timestamp ordering, and add a deterministic `id` tiebreak so two
+  same-instant rows order identically on every read.
+- Crucially, the tiebreak must **not** decide which row came first: comparing
+  second-truncated timestamps and then UUID strings made a legitimate parent look
+  like a future link (measured: `test_f5` failed because a same-second parent sorted
+  after its child by UUID). `check_audit_entry` therefore compares **full-precision**
+  UTC datetimes (naive = UTC, matching the writer) and allows equal timestamps.
+- `link_ok` now requires the parent to exist, to not be the row itself, and to not
+  be strictly in the future. "Hash appears somewhere in the table" accepted
+  forward and self links, which is what a spliced or replayed row looks like.
+- Head selection and verification share `LEDGER_ORDER_ASC` / `LEDGER_ORDER_DESC`,
+  so the verifier walks the ledger in the order the writer linked it.
+- **Residual (needs a migration, so not done here):** a monotonic `sequence INTEGER`
+  column. Until then, two rows written within the same microsecond have no defined
+  order, and a backdated insert is indistinguishable from a legitimate historical
+  row. `integrity_report.py` should be run with that in mind.
+- Hashing itself was already correct: genesis `"0"*64`, `normalize_timestamp` to UTC
+  ISO seconds for every form, naive input treated as UTC.
+
+## DB-4. Seal status was not part of the integrity response
+
+**Proposer.** `GET /cases/{id}/verify-integrity` answered only "does the file match
+`file_hash`". The composite seal `Phi_case` (`/admin/cases/{id}/seal-check`) was
+staff-only, so a client could present a file-level pass as if the record were sealed.
+
+**Skeptic.** Widening the response risks clients reading `seal_reproducible` without
+knowing it is a local check.
+
+**Judge (verdict: ACCEPT).** Report the three checks separately and never merge them
+into one boolean.
+
+**Decision.**
+- `CaseIntegrityReport` (defined in `cases.py`, extending `CaseVerificationResponse`,
+  so `schemas/case.py` is untouched) adds: `integrity_status`
+  (`SEAL_VERIFIED` / `SEAL_MISMATCH` / `FILE_VERIFIED` / `FILE_HASH_MISMATCH` /
+  `FILE_MISSING`), `composite_seal`, `recomputed_seal`, `seal_present`,
+  `seal_reproducible`, `approve_log_found`, `sealed_components`
+  (`H_doc`/`H_meta`/`H_text`/`T_approved`), and `audit_entries_checked` /
+  `audit_link_ok` / `audit_hashes_ok` / `audit_trail` with `audit_scope`.
+- `seal_reproduced()` in `crypto_service` is constant-time and returns `False` for a
+  missing seal, so "no seal" can never read as "seal verified".
+- A failed file check here is logged as `INTEGRITY_VIOLATION` (previously only an
+  informational `VERIFY_INTEGRITY`), because an accessed record that no longer
+  matches is a tamper event.
+- The endpoint does **not** quarantine on its own: download and stream own that
+  transition, and the status write is kept in one place.
+
+## Measured
+
+- `pytest backend/tests/test_integrity_fixes.py` → **28 passed** (19 pre-existing +
+  9 new: fresh-byte read, TOCTOU swap, missing file, seal+audit report, seal drift,
+  queue-maker self-approval, quarantined publish, ledger order, forward/self links).
+- Full backend suite: **266 passed, 7 skipped, 1 failed**. The failure is
+  `test_milestone1.py::test_case_upload_tamper_detection_and_approval` (search
+  returns no hit) and it fails identically on the unmodified tree: the sandbox
+  cannot download the embedding model (`huggingface.co` unreachable). Not caused by
+  this round.
+- Acceptance: tampered download → `409` with no `X-Lexguard-Verified` header and the
+  case quarantined with one `INTEGRITY_VIOLATION` audit row; self-approval → `403`.
+
+## Files
+
+`backend/app/services/crypto_service.py`, `backend/app/services/audit_service.py`,
+`backend/app/api/v1/endpoints/cases.py`,
+`backend/app/api/v1/endpoints/verification.py`,
+`backend/app/api/v1/endpoints/admin.py`, `backend/integrity_report.py`,
+`backend/tests/test_integrity_fixes.py`, `docs/integrity/FIX_DEBATES.md`.
+
+## DB-2a. Addendum — how strict may the quarantine gate be?
+
+**Proposer.** Block publishing any `quarantined` record.
+
+**Skeptic (measured).** That broke a pre-existing test: `test_case_review_integration`
+publishes "any non-published record" and picked a quarantined row whose file was
+simply **absent** (legacy Windows-era import path). Refusing those would make every
+imported-but-not-yet-reuploaded record unpublishable — a product regression dressed
+up as a security fix.
+
+**Judge (verdict: ACCEPT WITH CHANGES).**
+- Refuse only on **positive evidence of tampering**: the file exists *and* fails
+  SHA-256 → `409`.
+- File absent/unreadable → allow, and append `[UNVERIFIED: stored file not present at
+  approval; seal covers the registered digest only]` to the `APPROVE` audit details,
+  so the gap is recorded rather than implied to be verified.
+- The gate is therefore about "known bad bytes", never about "no bytes".
+
+**Determinism note.** A second, unrelated flake surfaced while measuring: this
+module's fixture writes land in the repository `lexguard.db` during a full-suite run
+(the engine is built once per process, so the module's `DATABASE_URL` only wins if it
+is imported first — documented in the file header). A leftover `quarantined` row made
+the approval test above order-dependent on the *next* run. `tests/test_integrity_fixes.py`
+now resets the rows it created at module teardown (`_cleanup_shared_db`); no assertion
+was relaxed. Two consecutive full-suite runs are now identical.
+
+## DB-5. Frozen-forever is not a control, it is a dead end
+
+**Proposer.** `PATCH /cases/{id}` blocks any published record with `409`.
+
+**Skeptic.** The spec says "cannot be mutated *without explicit quarantine status*".
+Blocking unconditionally satisfies the first half and quietly drops the second:
+a record found bad **after** publication then has no in-place correction path, and
+the only advice the handler gives is "reject and resubmit", which re-uploads bytes.
+
+**Judge (verdict: ACCEPT, verified).** Keep the `409` and prove the escape hatch
+exists. `POST /admin/approve/{id}` already accepts `status: quarantined`
+(`CaseStatusUpdate` allows it), and `PATCH` gates on `status == "published"` only,
+so the sanctioned flow is: quarantine → edit → re-verify → re-publish.
+
+**Decision.** `test_h10_published_is_frozen_until_explicitly_quarantined` walks the
+whole path in one test: published → `409`; approve with `quarantined` → `200`;
+`PATCH` → `200` with the changed field; and exactly one `UPDATE_METADATA` audit row
+for the post-quarantine edit. Total in this file: **29 tests**.

@@ -58,6 +58,41 @@ def verify_sha256_stream(file_path_or_stream: Any, expected_hash: str, chunk_siz
     return hmac.compare_digest(computed.lower(), expected_hash.strip().lower())
 
 
+def read_verified_bytes(file_path: Any, expected_hash: str) -> tuple:
+    """
+    Reads a file exactly once and verifies the bytes that were read.
+
+    Returns ``(content, computed_hash, ok)``.  Callers must serve ``content`` —
+    never re-open the path — otherwise a file swapped between the check and the
+    response would be streamed with a "verified" header (TOCTOU).  A missing
+    file raises ``FileNotFoundError`` so the caller can answer 404.
+
+    The comparison is constant time (``hmac.compare_digest``) and the expected
+    digest is lower-cased, so an upper-case digest in the DB still matches.
+    """
+    if isinstance(file_path, (bytes, bytearray)):
+        content = bytes(file_path)
+    else:
+        with open(Path(file_path), "rb") as f:
+            content = f.read()
+
+    computed = compute_sha256(content)
+    expected = (expected_hash or "").strip().lower()
+    ok = bool(expected) and hmac.compare_digest(computed, expected)
+    return content, computed, ok
+
+
+def seal_reproduced(stored_seal: Any, h_doc: str, h_meta: str, h_text: str, approved_at_iso: Any) -> bool:
+    """
+    True when ``stored_seal`` still equals the seal recomputed from the record's
+    current sealed fields.  Constant-time; a missing seal is never "reproduced".
+    """
+    if not stored_seal or not approved_at_iso:
+        return False
+    recomputed = compute_judicial_seal(h_doc or "", h_meta or "", h_text or "", approved_at_iso)
+    return hmac.compare_digest(recomputed, str(stored_seal))
+
+
 def normalize_timestamp(ts: Any) -> str:
     """
     Normalizes any timestamp representation to ISO seconds in UTC.
@@ -95,6 +130,15 @@ def compute_audit_log_hash(
     """
     Computes cryptographic hash for an audit log record linking it to previous_hash.
     Implements a tamper-evident blockchain-style hash chain.
+
+    Contract (shared by every writer):
+      * ``previous_hash`` is always the ``current_hash`` of the newest ledger row,
+        and ``GENESIS_HASH`` ("0" * 64) for the very first row.  A falsy value is
+        therefore treated as genesis, never as "no link".
+      * ``timestamp_iso`` is normalised to a UTC ISO string first, so the same
+        record hashes identically on every machine and timezone.
+      * the payload field order is part of the format: changing it invalidates
+        every existing row.
     """
     prev = previous_hash if previous_hash else GENESIS_HASH
     ts_norm = normalize_timestamp(timestamp_iso)

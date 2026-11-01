@@ -62,7 +62,9 @@ def run(db_path: str) -> dict:
     failures = []
 
     # 1. Audit chain -----------------------------------------------------------
-    logs = db.query(AuditLog).order_by(AuditLog.timestamp.asc()).all()
+    # Chain order shared with the writer (timestamp asc, id tiebreak).
+    from app.services.audit_service import LEDGER_ORDER_ASC
+    logs = db.query(AuditLog).order_by(*LEDGER_ORDER_ASC).all()
     chain = verify_audit_chain(logs)
     per_action = collections.Counter()
     link_breaks = 0
@@ -75,6 +77,7 @@ def run(db_path: str) -> dict:
     naive = sum(1 for lg in logs if getattr(lg.timestamp, "tzinfo", None) is None)
     report["chain"] = {
         "records": len(logs),
+        "order": "chain order (timestamp asc, id tiebreak)",
         "full_chain_valid": chain["is_valid"],
         "first_failure": chain.get("reason") or chain.get("message"),
         "hash_recompute_failures": sum(per_action.values()),

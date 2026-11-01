@@ -50,11 +50,43 @@ app = main_module.app
 client = TestClient(app)  # no `with` block: lifespan seeding is skipped
 
 
+_CREATED_CASE_IDS = set()
+_CREATED_USER_IDS = set()
+
+
 @pytest.fixture(scope="module", autouse=True)
 def _schema():
     Base.metadata.create_all(bind=engine)
     yield
     app.dependency_overrides.clear()
+    _cleanup_shared_db()
+
+
+def _cleanup_shared_db():
+    """
+    Leave no quarantined/pending rows behind.
+
+    In a full-suite run the engine may be bound to the repository's lexguard.db
+    (the engine is created once per process, so this module's DATABASE_URL is
+    ignored), and other modules then pick "any non-published case" when they
+    exercise approval. A leftover quarantined row from this module therefore makes
+    those tests order-dependent. Their assertions here are unchanged; only the
+    end state is reset.
+    """
+    try:
+        db = SessionLocal()
+    except Exception:  # pragma: no cover - defensive
+        return
+    try:
+        for case_id in list(_CREATED_CASE_IDS):
+            row = db.query(Case).filter(Case.id == case_id).first()
+            if row is not None and row.status == "quarantined":
+                row.status = "pending_review"
+        db.commit()
+    except Exception:  # pragma: no cover - best effort cleanup
+        db.rollback()
+    finally:
+        db.close()
 
 
 def _user(db, email, role):
@@ -105,6 +137,7 @@ def _case_with_file(db, uploader, body: bytes, status="pending_review", **extra)
     db.add(c)
     db.commit()
     db.refresh(c)
+    _CREATED_CASE_IDS.add(c.id)
     return c
 
 
@@ -478,3 +511,277 @@ def test_g7_readme_has_no_unmeasured_merkle_or_case_count_claims():
     assert all("Merkle" not in line or "not a Merkle" in line for line in readme.splitlines())
     assert "208" not in readme
     assert "989" not in readme
+
+
+# ---------------------------------------------------------------- Round 3: Agent 2 hardening
+
+
+def test_h1_read_verified_bytes_is_single_read_and_constant_time(tmp_path):
+    """The bytes that are verified are the bytes that get served (no re-read window)."""
+    from app.services.crypto_service import read_verified_bytes, compute_sha256
+
+    p = tmp_path / "doc.pdf"
+    p.write_bytes(b"%PDF-1.4 authentic")
+    good = compute_sha256(b"%PDF-1.4 authentic")
+
+    content, computed, ok = read_verified_bytes(str(p), good)
+    assert ok and computed == good
+    assert content == b"%PDF-1.4 authentic", "caller must receive the verified bytes"
+
+    # Upper-case digest in the DB still matches; comparison is normalised.
+    assert read_verified_bytes(str(p), good.upper())[2] is True
+    # Empty/absent expected digest is never a pass.
+    assert read_verified_bytes(str(p), "")[2] is False
+    # Misspelled digest fails.
+    assert read_verified_bytes(str(p), "0" * 64)[2] is False
+
+    with pytest.raises(FileNotFoundError):
+        read_verified_bytes(str(tmp_path / "missing.pdf"), good)
+
+
+def test_h2_download_serves_exactly_the_verified_bytes(monkeypatch):
+    """
+    A file swapped AFTER the integrity read must not reach the client.
+
+    Regression for a verify-then-reopen window: the old implementation verified the
+    path and then handed the same path to FileResponse, so a swap between the two
+    reads streamed unverified bytes with X-Lexguard-Verified: true.
+    """
+    import app.services.crypto_service as crypto
+
+    db = SessionLocal()
+    staff = _user(db, f"h2_{os.urandom(3).hex()}@t.in", "senior_staff")
+    reader = _user(db, f"h2r_{os.urandom(3).hex()}@t.in", "advocate")
+    case = _case_with_file(db, staff, b"%PDF authentic payload " * 30, status="published")
+    case_id, path = case.id, case.file_path
+    db.close()
+
+    real = crypto.read_verified_bytes
+
+    def read_then_swap(file_path, expected_hash):
+        result = real(file_path, expected_hash)
+        with open(path, "wb") as fh:          # swap the file after verification
+            fh.write(b"%PDF swapped payload " * 30)
+        return result
+
+    monkeypatch.setattr(crypto, "read_verified_bytes", read_then_swap)
+
+    _as(reader)
+    r = client.get(f"/api/v1/cases/{case_id}/download")
+    assert r.status_code == 200, r.text
+    assert r.headers.get("x-lexguard-verified") == "true"
+    assert b"authentic payload" in r.content
+    assert b"swapped payload" not in r.content, "download served bytes it did not verify"
+    # The response digest must describe the served bytes, not just the DB value.
+    assert r.headers.get("x-lexguard-sha256") == hashlib.sha256(r.content).hexdigest()
+
+
+def test_h3_download_missing_file_is_404_and_logs_no_verified_header():
+    db = SessionLocal()
+    staff = _user(db, f"h3_{os.urandom(3).hex()}@t.in", "senior_staff")
+    reader = _user(db, f"h3r_{os.urandom(3).hex()}@t.in", "advocate")
+    case = _case_with_file(db, staff, b"%PDF gone " * 30, status="published")
+    case_id, path = case.id, case.file_path
+    os.remove(path)
+    db.close()
+
+    _as(reader)
+    r = client.get(f"/api/v1/cases/{case_id}/download")
+    assert r.status_code == 404, r.text
+    assert "x-lexguard-verified" not in r.headers
+
+
+def test_h4_verify_integrity_returns_seal_and_audit_link_status():
+    """GET /cases/{id}/verify-integrity must report Phi_case and the audit link state."""
+    db = SessionLocal()
+    uploader = _user(db, f"h4_{os.urandom(3).hex()}@t.in", "senior_staff")
+    approver = _user(db, f"h4a_{os.urandom(3).hex()}@t.in", "senior_staff")
+    case_id = _publish(db, uploader, approver, body=b"%PDF sealed doc " * 40)
+    db.close()
+
+    _as(approver)
+    r = client.get(f"/api/v1/cases/{case_id}/verify-integrity")
+    assert r.status_code == 200, r.text
+    data = r.json()
+
+    # File level (original contract kept)
+    assert data["is_valid"] is True
+    assert data["status_badge"] == "VERIFIED_UNTAMPERED"
+    assert data["file_present"] is True and data["bytes_verified"] is True
+
+    # Digital seal Phi_case
+    assert data["seal_present"] is True
+    assert data["composite_seal"] and len(data["composite_seal"]) == 64
+    assert data["seal_reproducible"] is True
+    assert data["recomputed_seal"] == data["composite_seal"]
+    assert data["approve_log_found"] is True
+    assert data["integrity_status"] == "SEAL_VERIFIED"
+    assert set(data["sealed_components"]) == {"H_doc", "H_meta", "H_text", "T_approved"}
+
+    # Audit link status for this record
+    assert data["audit_entries_checked"] >= 1
+    assert data["audit_link_ok"] is True
+    assert data["audit_hashes_ok"] is True
+    assert all(e["recomputed_ok"] and e["link_ok"] for e in data["audit_trail"])
+
+
+def test_h5_verify_integrity_detects_seal_drift_and_file_mismatch():
+    db = SessionLocal()
+    uploader = _user(db, f"h5_{os.urandom(3).hex()}@t.in", "senior_staff")
+    approver = _user(db, f"h5a_{os.urandom(3).hex()}@t.in", "senior_staff")
+    case_id = _publish(db, uploader, approver, body=b"%PDF drift doc " * 40)
+    case = db.query(Case).filter(Case.id == case_id).one()
+    path = case.file_path
+    case.judge = "Someone Else"                      # breaks H_meta -> seal drift
+    db.commit()
+    db.close()
+
+    _as(approver)
+    data = client.get(f"/api/v1/cases/{case_id}/verify-integrity").json()
+    assert data["is_valid"] is True                  # bytes still fine
+    assert data["seal_reproducible"] is False        # seal does not
+    assert data["integrity_status"] == "SEAL_MISMATCH"
+    assert data["recomputed_seal"] != data["composite_seal"]
+
+    with open(path, "r+b") as fh:                    # now tamper the bytes too
+        fh.write(b"X")
+    data2 = client.get(f"/api/v1/cases/{case_id}/verify-integrity").json()
+    assert data2["is_valid"] is False
+    assert data2["status_badge"] == "INTEGRITY_VIOLATION"
+    assert data2["integrity_status"] == "FILE_HASH_MISMATCH"
+
+    db = SessionLocal()
+    assert db.query(AuditLog).filter(
+        AuditLog.case_id == case_id, AuditLog.action == "INTEGRITY_VIOLATION"
+    ).count() >= 1, "a failed file check must be recorded as a tamper event"
+    db.close()
+
+
+def test_h6_queue_submitter_cannot_approve_their_own_submission():
+    """Maker-checker covers the reviewer who queued the record, not just the uploader."""
+    from app.models.approval_queue import ApprovalQueue
+
+    db = SessionLocal()
+    uploader = _user(db, f"h6_{os.urandom(3).hex()}@t.in", "senior_staff")
+    queue_maker = _user(db, f"h6q_{os.urandom(3).hex()}@t.in", "senior_staff")
+    case = _case_with_file(db, uploader, b"%PDF queued doc " * 40, status="pending_review")
+    case_id = case.id
+    db.add(ApprovalQueue(case_id=case_id, submitted_by_id=queue_maker.id, status="pending"))
+    db.commit()
+    db.close()
+
+    _as(queue_maker)
+    r = client.post(f"/api/v1/admin/approve/{case_id}", json={"status": "published"})
+    assert r.status_code == 403, r.text
+    assert "Maker-checker" in r.text
+
+
+def test_h7_quarantined_record_cannot_be_published_while_bytes_still_fail():
+    db = SessionLocal()
+    uploader = _user(db, f"h7_{os.urandom(3).hex()}@t.in", "senior_staff")
+    approver = _user(db, f"h7a_{os.urandom(3).hex()}@t.in", "senior_staff")
+    case = _case_with_file(db, uploader, b"%PDF quarantined doc " * 40, status="quarantined")
+    case_id, path = case.id, case.file_path
+    db.close()
+
+    with open(path, "r+b") as fh:              # still corrupt
+        fh.write(b"X")
+
+    _as(approver)
+    r = client.post(f"/api/v1/admin/approve/{case_id}", json={"status": "published"})
+    assert r.status_code == 409, r.text
+    assert "Quarantined" in r.text
+
+
+def test_h8_ledger_head_and_verification_use_the_same_order():
+    """
+    Head selection and chain verification must walk the ledger in one order.
+
+    AuditLog.id is a UUID string (no insertion order), so an id-ordered head would
+    fork the chain whenever timestamps and UUIDs disagree.
+    """
+    from app.services.audit_service import get_chain_head_hash, ledger_entries, verify_ledger
+
+    db = _isolated_session()
+    for i in range(4):
+        log_audit_event(db, action=f"H8_EVENT_{i}", details=f"e{i}")
+
+    entries = ledger_entries(db)
+    assert len(entries) == 4
+    assert get_chain_head_hash(db) == entries[-1].current_hash
+
+    result = verify_ledger(db)
+    assert result["is_valid"], result
+    db.close()
+
+
+def test_h9_link_check_rejects_a_forward_or_self_link():
+    from app.services.audit_service import build_audit_entry, check_audit_entry
+
+    db = _isolated_session()
+    first = AuditLog(**build_audit_entry(None, action="H9_FIRST", details="a"))
+    db.add(first)
+    db.commit()
+
+    # A row claiming the genesis parent is fine.
+    assert check_audit_entry(db, first) == {"recomputed_ok": True, "link_ok": True}
+
+    # A row pointing at itself must not verify as a link.
+    selflink = AuditLog(**build_audit_entry("0" * 64, action="H9_SELF", details="b"))
+    db.add(selflink)
+    db.commit()
+    selflink.previous_log_hash = selflink.current_hash
+    db.commit()
+    assert check_audit_entry(db, selflink)["link_ok"] is False
+
+    # A row whose parent is in the future (later timestamp) must not verify either.
+    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+    future = AuditLog(**build_audit_entry("0" * 64, action="H9_FUTURE",
+                                          timestamp=_dt.now(_tz.utc) + _td(days=1), details="c"))
+    db.add(future)
+    db.commit()
+    child = AuditLog(**build_audit_entry(future.current_hash, action="H9_CHILD", details="d"))
+    db.add(child)
+    db.commit()
+    assert check_audit_entry(db, child)["link_ok"] is False
+    db.close()
+
+
+def test_h10_published_is_frozen_until_explicitly_quarantined():
+    """
+    Spec 2, second clause: a published record cannot be mutated *without explicit
+    quarantine status*.
+
+    The positive half matters as much as the 409: without a quarantine step that
+    reopens editing, "reject and resubmit" is the only recovery path, and a record
+    found to be bad after publication could never be corrected in place.
+    """
+    db = SessionLocal()
+    uploader = _user(db, f"h10_{os.urandom(3).hex()}@t.in", "senior_staff")
+    reviewer = _user(db, f"h10r_{os.urandom(3).hex()}@t.in", "senior_staff")
+    case_id = _publish(db, uploader, reviewer, body=b"%PDF quarantine flow " * 40)
+    db.close()
+
+    _as(reviewer)
+
+    # 1. Published -> frozen.
+    blocked = client.patch(f"/api/v1/cases/{case_id}", json={"judge": "Edited While Published"})
+    assert blocked.status_code == 409, blocked.text
+    assert "sealed" in blocked.text.lower()
+
+    # 2. Explicit quarantine (the only sanctioned unlock).
+    q = client.post(f"/api/v1/admin/approve/{case_id}", json={"status": "quarantined",
+                                                             "review_note": "integrity review"})
+    assert q.status_code == 200, q.text
+    assert q.json()["status"] == "quarantined"
+
+    # 3. Quarantined -> mutable again, and the edit is recorded.
+    allowed = client.patch(f"/api/v1/cases/{case_id}", json={"judge": "Corrected After Quarantine"})
+    assert allowed.status_code == 200, allowed.text
+    assert allowed.json()["judge"] == "Corrected After Quarantine"
+
+    db = SessionLocal()
+    assert db.query(AuditLog).filter(
+        AuditLog.case_id == case_id, AuditLog.action == "UPDATE_METADATA"
+    ).count() == 1, "the post-quarantine edit must be in the audit trail"
+    db.close()

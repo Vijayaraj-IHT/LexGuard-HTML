@@ -1,3 +1,4 @@
+import os
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
@@ -21,6 +22,16 @@ import hmac
 from app.services.audit_service import log_audit_event
 
 router = APIRouter()
+
+
+def not_case_file_present(case: Case) -> bool:
+    """True when the record points at no readable file (legacy import / moved storage)."""
+    from app.core.config import resolve_case_pdf_path
+    try:
+        path = str(resolve_case_pdf_path(case.file_path)) if case.file_path else ""
+    except Exception:
+        return True
+    return not path or not os.path.exists(path)
 
 
 @router.get("/queue", response_model=List[Dict[str, Any]])
@@ -74,24 +85,60 @@ def approve_or_reject_case(
     if not case:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case record not found.")
 
-    # Maker-checker: the person who uploaded a submission may not publish it.
-    if review_in.status == "published" and case.uploaded_by_id == current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Maker-checker violation: the uploader cannot publish their own submission. "
-                   "A second staff member must approve it.",
-        )
+    queue_entry = (
+        db.query(ApprovalQueue)
+        .filter(ApprovalQueue.case_id == case_id, ApprovalQueue.status == "pending")
+        .first()
+    )
+
+    # ---- Maker-checker -----------------------------------------------------
+    # The maker is whoever uploaded the bytes OR whoever queued it for review;
+    # checking only uploaded_by_id would let a reviewer queue a record and then
+    # approve it themselves.
+    if review_in.status == "published":
+        maker_ids = {str(case.uploaded_by_id) if case.uploaded_by_id else None}
+        if queue_entry and queue_entry.submitted_by_id:
+            maker_ids.add(str(queue_entry.submitted_by_id))
+        maker_ids.discard(None)
+        if str(current_user.id) in maker_ids:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Maker-checker violation: the uploader cannot publish their own submission. "
+                       "A second staff member must approve it.",
+            )
+        if case.approved_by_id and str(case.approved_by_id) == str(current_user.id) \
+                and case.status == "published":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Maker-checker violation: this record is already published and cannot be "
+                       "re-approved by the same reviewer.",
+            )
+        # A quarantined record whose stored bytes are present AND still wrong must not
+        # be published: the seal would be affixed to bytes nobody re-checked.
+        # A record with no readable file (legacy import, Windows-era path) is not
+        # blocked here — there are no bytes to contradict the record; the absence is
+        # recorded in the audit entry instead of silently passing as "verified".
+        quarantine_bytes_ok: Optional[bool] = None
+        if case.status == "quarantined":
+            from app.services.crypto_service import verify_sha256_stream
+            from app.core.config import resolve_case_pdf_path
+            path = str(resolve_case_pdf_path(case.file_path)) if case.file_path else ""
+            if not path or not os.path.exists(path):
+                quarantine_bytes_ok = None
+            else:
+                quarantine_bytes_ok = verify_sha256_stream(path, case.file_hash or "")
+                if not quarantine_bytes_ok:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="Quarantined record: the stored file still fails SHA-256 verification. "
+                               "Restore an authentic copy before publishing.",
+                    )
 
     case.status = review_in.status
     case.approved_by_id = current_user.id
     case.approved_at = datetime.now(timezone.utc)
 
     # Update approval queue record
-    queue_entry = (
-        db.query(ApprovalQueue)
-        .filter(ApprovalQueue.case_id == case_id, ApprovalQueue.status == "pending")
-        .first()
-    )
     if queue_entry:
         queue_entry.status = review_in.status
         queue_entry.reviewed_by_id = current_user.id
@@ -124,6 +171,9 @@ def approve_or_reject_case(
             f"[H_doc: {h_doc[:8]}.., H_meta: {h_meta[:8]}.., H_text: {h_text[:8]}..]. "
             f"Note: {review_in.review_note or 'Verified'}"
         )
+
+    if review_in.status == "published" and case.status != "quarantined" and not_case_file_present(case):
+        details_str += " [UNVERIFIED: stored file not present at approval; seal covers the registered digest only]"
 
     log_audit_event(
         db=db,
@@ -216,7 +266,8 @@ def get_audit_logs(
     if user_id:
         query = query.filter(AuditLog.user_id == user_id)
 
-    logs = query.order_by(AuditLog.timestamp.desc()).offset(skip).limit(limit).all()
+    from app.services.audit_service import LEDGER_ORDER_DESC
+    logs = query.order_by(*LEDGER_ORDER_DESC).offset(skip).limit(limit).all()
     return logs
 
 
@@ -230,7 +281,10 @@ def verify_audit_ledger_chain(
     Iterates through all chronological audit entries and verifies every
     SHA-256 hash link to ensure zero tampering, deletion, or modification of logs.
     """
-    logs = db.query(AuditLog).order_by(AuditLog.timestamp.asc()).all()
+    # Chain order (timestamp asc, id tiebreak) — shared with the writer, so the
+    # verification walks the ledger in exactly the order it was linked in.
+    from app.services.audit_service import LEDGER_ORDER_ASC
+    logs = db.query(AuditLog).order_by(*LEDGER_ORDER_ASC).all()
     verification = verify_audit_chain(logs)
 
     return AuditChainVerificationResponse(
