@@ -34,10 +34,7 @@
     API_BASE: resolveApiBase(),
     SESSION_STORAGE_KEY: 'lg_session',
     CSRF_COOKIE_NAME: 'lexguard_csrf_token',
-    APP_NAME: 'LexGuard',
-    COURT_MADRAS: 'Madras High Court (Principal Seat)',
-    COURT_MADURAI: 'Madras High Court (Madurai Bench)',
-    COURT_SUPREME: 'Supreme Court of India'
+    COURT_MADRAS: 'Madras High Court (Principal Seat)'
   };
 
   // CSRF token cache
@@ -153,16 +150,6 @@
     getQueryParam: function (param) {
       const urlParams = new URLSearchParams(window.location.search);
       return urlParams.get(param);
-    },
-
-    /**
-     * Format a score float (0-1) to percentage string.
-     */
-    formatScore: function (score) {
-      if (score === null || score === undefined) return '0%';
-      const num = parseFloat(score);
-      if (isNaN(num)) return '0%';
-      return Math.round(num > 1 ? num : num * 100) + '%';
     },
 
     /**
