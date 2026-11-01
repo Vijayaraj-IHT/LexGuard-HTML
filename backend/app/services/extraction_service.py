@@ -263,6 +263,17 @@ class ExtractionService:
             "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
             "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
         }
+        # Month-first wordings: "OCTOBER 22, 2026", "September 21, 2020",
+        # "DATED THIS THE 14TH DAY OF OCTOBER, 2026" (the day-of pattern below
+        # handles the last one; this catches the month-first ordering).
+        m_month_first = re.search(
+            r"\b([A-Za-z]{3,9})\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})\b", clean, re.IGNORECASE)
+        if m_month_first and m_month_first.group(1).lower() in month_map:
+            mon = month_map[m_month_first.group(1).lower()]
+            day = int(m_month_first.group(2))
+            if 1 <= day <= 31:
+                return f"{int(m_month_first.group(3)):04d}-{mon:02d}-{day:02d}"
+
         m_txt = re.search(r"\b(\d{1,2})(?:st|nd|rd|th)?\s+(?:day\s+of\s+)?([A-Za-z]+),?\s+(\d{4})\b", clean, re.IGNORECASE)
         if m_txt:
             d = int(m_txt.group(1))
@@ -697,6 +708,8 @@ class ExtractionService:
             data["pattern_label"] = detection.label
             data["pattern_confidence"] = detection.confidence
             data["pattern_key_set"] = detection.key_set_id
+            data["pattern_key_sets"] = list(detection.key_set_ids or (detection.key_set_id,))
+            data["text_status"] = "insufficient_text" if not (full_text or "").strip() else "ok"
             data["pattern_matched_signals"] = detection.matched_signals
             data["pattern_runner_up"] = detection.runner_up
             data["text_quality"] = detection.text_quality
