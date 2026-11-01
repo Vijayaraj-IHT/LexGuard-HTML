@@ -29,7 +29,7 @@
 
           <!-- Brand Logo -->
           <a class="navbar-brand me-4" href="search.html">
-            <div class="brand-emblem"><i class="bi bi-shield-fill-check"></i></div>
+            <span class="brand-emblem"><img src="logo.png" class="brand-logo-img" width="32" height="32" alt="" aria-hidden="true"><i class="bi bi-shield-fill-check brand-fallback-icon" aria-hidden="true"></i></span>
             <span>LexGuard</span>
           </a>
 
@@ -223,7 +223,80 @@
     $('#theme-toggle').on('click', function () {
       LG.toast('Courtroom Red & White judicial theme is active.', 'info');
     });
+
+    // Non-blocking case-file preflight check (staff only, throttled)
+    LG.preflight.init();
   };
+
+  /**
+   * Case-file preflight hook.
+   *  - Runs at most once every 5 minutes per browser tab session (sessionStorage).
+   *  - Staff roles only. Public and advocate pages make no request.
+   *  - Read-only: it reads the latest run. It never starts a run, never repairs,
+   *    and never quarantines.
+   *  - Reads only numeric counts (missing_count, mismatch_count). Filesystem paths
+   *    in the response are ignored and never shown.
+   *  - Silent on failure (for example, the endpoint is not deployed yet).
+   */
+  LG.preflight = {
+    STORAGE_KEY: 'lg_case_preflight_checked_at',
+    THROTTLE_MS: 5 * 60 * 1000,
+    STAFF_ROLES: ['staff', 'court_staff', 'senior_staff'],
+
+    init: function () {
+      if (!LG.session || !LG.session.user || !LG.session.user()) return;
+      if (!LG.session.hasRole(LG.preflight.STAFF_ROLES)) return;
+      if (!LG.api || !LG.api.system || !LG.api.system.getCasePreflightLatest) return;
+
+      var last = Number(storageRead(LG.preflight.STORAGE_KEY)) || 0;
+      if (Date.now() - last < LG.preflight.THROTTLE_MS) return;
+
+      // Mark the check before the request, so parallel page loads do not repeat it.
+      storageWrite(LG.preflight.STORAGE_KEY, String(Date.now()));
+
+      LG.api.system
+        .getCasePreflightLatest({ silent: true })
+        .done(function (res) {
+          LG.preflight.notify(res);
+        })
+        .fail(function () {
+          // Non-blocking: nothing to show if the check is unavailable.
+        });
+    },
+
+    notify: function (res) {
+      var missing = countOf(res && res.missing_count);
+      var mismatched = countOf(res && res.mismatch_count);
+      if (missing + mismatched === 0) return;
+      if (typeof LG.toast !== 'function') return;
+      LG.toast(
+        'Case file check: ' + missing + ' missing file(s) and ' + mismatched +
+          ' hash mismatch(es) need staff review. No files were changed.',
+        'warning',
+        'Records check'
+      );
+    }
+  };
+
+  function countOf(value) {
+    return Number.isInteger(value) && value > 0 ? value : 0;
+  }
+
+  function storageRead(key) {
+    try {
+      return window.sessionStorage.getItem(key);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function storageWrite(key, value) {
+    try {
+      window.sessionStorage.setItem(key, value);
+    } catch (e) {
+      /* storage unavailable (private mode): the check simply runs again */
+    }
+  }
 
   // Auto-run when DOM ready
   $(document).ready(function () {

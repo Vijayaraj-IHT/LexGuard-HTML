@@ -68,6 +68,11 @@
         }
       } catch (e) {}
 
+      // Background calls (options.silent) must never redirect or toast on their own.
+      if (options.silent) {
+        return;
+      }
+
       if (xhr.status === 401) {
         // If unauthenticated and on a protected page, redirect
         const currentPath = window.location.pathname.toLowerCase();
@@ -450,6 +455,37 @@
           method: 'POST',
           data: formData,
           isFormData: true
+        });
+      }
+    },
+
+    /**
+     * Case-file preflight (system integrity checks).
+     * Only getCasePreflightLatest is called automatically (by LG.preflight.init, read-only).
+     * runCasePreflight is never called automatically, and quarantineMismatch is false unless a
+     * staff member explicitly asks for it.
+     */
+    system: {
+      getCasePreflightLatest: function (options) {
+        return apiRequest($.extend({ url: '/system/case-preflight/latest', method: 'GET' }, options || {}));
+      },
+
+      runCasePreflight: function (mode, trigger, quarantineMismatch) {
+        return apiRequest({
+          url: '/system/case-preflight/runs',
+          method: 'POST',
+          data: {
+            mode: mode,
+            trigger: trigger,
+            quarantine_mismatch: quarantineMismatch === true
+          }
+        });
+      },
+
+      getCasePreflightRun: function (runId) {
+        return apiRequest({
+          url: '/system/case-preflight/runs/' + encodeURIComponent(runId),
+          method: 'GET'
         });
       }
     }
