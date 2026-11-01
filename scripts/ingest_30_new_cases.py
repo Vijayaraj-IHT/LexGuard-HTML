@@ -18,7 +18,14 @@ from app.core.database import SessionLocal
 from app.models.case import Case
 from app.models.user import User
 from app.models.audit_log import AuditLog
-from app.services.crypto_service import compute_sha256, compute_audit_log_hash, GENESIS_HASH
+from app.services.crypto_service import (
+    compute_sha256,
+    GENESIS_HASH,
+    compute_h_meta,
+    compute_h_text,
+    compute_judicial_seal,
+)
+from app.services.audit_service import build_audit_entry
 from app.services.embedding_service import embedding_service
 
 SRC_DIR = Path(r"E:\SEM 5 PROJECT\LexGuard-HTML\backend\storage\cases")
@@ -524,11 +531,12 @@ def main():
             embedding = None
 
         # Calculate Judicial Seal Phi_case
-        now_iso = datetime.now(timezone.utc).isoformat()
-        meta_str = f"{case_no}|{court}|{judge}|{disposition}|{year}"
-        h_meta = hashlib.sha256(meta_str.encode("utf-8")).hexdigest()
-        h_text = hashlib.sha256(full_text.encode("utf-8")).hexdigest()
-        phi_case = hashlib.sha256(f"{h_doc}|{h_meta}|{h_text}|{now_iso}".encode("utf-8")).hexdigest()
+        # Same frozen formula as admin approval (crypto_service.compute_judicial_seal), using the
+        # same instant that is written to approved_at, so the seal can be re-checked later.
+        approved_at = datetime.now(timezone.utc)
+        h_meta = compute_h_meta(case_no, court, judge, disposition, year)
+        h_text = compute_h_text(full_text)
+        phi_case = compute_judicial_seal(h_doc, h_meta, h_text, approved_at.isoformat())
 
         # Check existing by file_hash or case_no
         cur.execute("SELECT id FROM cases WHERE file_hash = %s OR case_no = %s", (h_doc, case_no))
@@ -542,14 +550,14 @@ def main():
                     year = %s, act_tags = %s, section_tags = %s, keyword_tags = %s,
                     disposition = %s, outcome = %s, summary = %s, ratio_decidendi = %s,
                     full_text = %s, page_count = %s, file_path = %s, file_hash = %s,
-                    redacted_file_hash = %s, status = 'published', approved_at = NOW(),
+                    redacted_file_hash = %s, status = 'published', approved_at = %s,
                     embedding = %s, updated_at = NOW()
                 WHERE id = %s
             """, (
                 case_no, title, court, judge, parties, year,
                 Json(act_tags), Json(section_tags), Json(keyword_tags),
                 disposition, disposition, summary, ratio, full_text, page_count,
-                str(lexguard_pdf_path), h_doc, phi_case,
+                str(lexguard_pdf_path), h_doc, phi_case, approved_at,
                 Json(embedding) if embedding else None,
                 case_id
             ))
@@ -572,7 +580,7 @@ def main():
                     %s, %s, %s, %s,
                     %s, %s, %s, 'published',
                     'verified_authentic', 'binding', true,
-                    %s, %s, NOW(), %s,
+                    %s, %s, %s, %s,
                     NOW(), NOW()
                 )
             """, (
@@ -580,26 +588,30 @@ def main():
                 Json(act_tags), Json(section_tags), Json(keyword_tags), disposition, disposition,
                 summary, ratio, full_text, page_count,
                 str(lexguard_pdf_path), h_doc, phi_case,
-                staff_id, staff_id, Json(embedding) if embedding else None
+                staff_id, staff_id, approved_at, Json(embedding) if embedding else None
             ))
             ingested_count += 1
             action = "INGEST"
 
-        # Append to cryptographic Audit Ledger
-        audit_payload = f"ACTION:CASE_{action}|CASE_ID:{case_id}|CASE_NO:{case_no}|H_DOC:{h_doc}|PHI:{phi_case}|USER:{staff_id}"
-        new_audit_hash = hashlib.sha256(f"{prev_audit_hash}|{audit_payload}|{now_iso}".encode("utf-8")).hexdigest()
-        
+        # Append to the audit ledger through the shared builder (canonical formula, UTC time).
+        entry = build_audit_entry(
+            prev_audit_hash,
+            action=f"CASE_{action}",
+            user_id=staff_id,
+            case_id=case_id,
+            details=f"Authentic court judgment {case_no} verified and sealed (Phi={phi_case[:10]}..)",
+            timestamp=approved_at,
+        )
         cur.execute("""
             INSERT INTO audit_logs (
-                id, case_id, user_id, action, details,
-                previous_log_hash, current_hash, timestamp
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
+                id, case_id, user_id, action, details, timestamp,
+                previous_log_hash, current_hash
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (
-            str(uuid.uuid4()), case_id, staff_id, f"CASE_{action}",
-            f"Authentic court judgment {case_no} verified and sealed (Phi={phi_case[:10]}..)",
-            prev_audit_hash, new_audit_hash
+            str(uuid.uuid4()), case_id, entry["user_id"], entry["action"], entry["details"], entry["timestamp"],
+            entry["previous_log_hash"], entry["current_hash"],
         ))
-        prev_audit_hash = new_audit_hash
+        prev_audit_hash = entry["current_hash"]
 
         print(f"[{ingested_count + updated_count:02d}] {action} -> {case_no}")
         print(f"     Title: {title[:60]}")

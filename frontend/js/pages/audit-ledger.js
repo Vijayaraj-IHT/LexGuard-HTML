@@ -170,9 +170,9 @@ $(document).ready(function () {
         $chainCard.css('border-color', '#10b981');
         $chainIcon.attr('class', 'p-2 rounded bg-success bg-opacity-10 border border-success border-opacity-25')
           .html('<i class="bi bi-shield-fill-check text-success fs-3"></i>');
-        $chainTitle.html('<span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>Cryptographic Merkle Chain: 100% Verified &amp; Untampered</span>');
+        $chainTitle.html('<span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>Audit hash chain: full chain verified</span>');
         $chainSubtitle.text(`All ${res.total_records} sequence blocks cryptographically validated against SHA-256 parent digests.`);
-        LG.toast('Merkle hash chain is 100% valid and verified.', 'success');
+        LG.toast('Audit hash chain: full chain verified.', 'success');
       } else {
         $chainCard.css('border-color', '#f59e0b');
         $chainIcon.attr('class', 'p-2 rounded bg-warning bg-opacity-10 border border-warning border-opacity-25')

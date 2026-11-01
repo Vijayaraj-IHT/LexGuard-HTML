@@ -318,6 +318,11 @@ $(document).ready(function () {
     executeDocKeywordSearch();
   });
 
+  // Replaces the former inline onclick on the certificate print button.
+  $('#cert-print-btn').on('click', function () {
+    window.print();
+  });
+
   $('#doc-keyword-clear-btn').on('click', function () {
     $('#doc-keyword-input').val('');
     $('#doc-keyword-results-panel').addClass('d-none');
@@ -796,6 +801,35 @@ $(document).ready(function () {
       })
       .fail(function () {
         LG.toast('Case is already in your bookmarks or error occurred.', 'info');
+      });
+  });
+
+  /**
+   * Digital Seal Certificate: integrity is checked when the sheet opens. The badge is
+   * never shown as verified unless the server confirmed it for this request.
+   */
+  $(document).on('show.bs.modal', '#digitalSealCertificateModal', function () {
+    const $badge = $('#cert-integrity-badge');
+    const $hash = $('#cert-sha256-hash');
+    $badge.removeClass().addClass('badge bg-secondary px-3 py-1 font-mono fs-7')
+      .html('<i class="bi bi-hourglass-split me-1"></i>CHECKING...');
+
+    LG.api.cases.verifyIntegrity(caseId)
+      .done(function (res) {
+        if (res.is_valid) {
+          $badge.removeClass().addClass('badge bg-success px-3 py-1 font-mono fs-7')
+            .html('<i class="bi bi-check-circle-fill me-1"></i>VERIFIED UNALTERED RECORD');
+        } else {
+          $badge.removeClass().addClass('badge bg-danger px-3 py-1 font-mono fs-7')
+            .html('<i class="bi bi-x-octagon-fill me-1"></i>INTEGRITY VIOLATION');
+        }
+        $hash.text(res.expected_hash || '—');
+        $('#cert-generated-timestamp').text('Checked: ' + new Date().toLocaleString());
+      })
+      .fail(function (xhr) {
+        const reason = xhr && xhr.status === 401 ? 'sign in required' : 'check unavailable';
+        $badge.removeClass().addClass('badge bg-secondary px-3 py-1 font-mono fs-7')
+          .html('<i class="bi bi-question-circle me-1"></i>INTEGRITY NOT CHECKED (' + reason + ')');
       });
   });
 });

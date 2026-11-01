@@ -148,121 +148,51 @@ $(document).ready(function () {
   /**
    * Render list of search result cards.
    */
+  /**
+   * Render the result list. Markup lives in LG.components.caseCard so the same
+   * card can be reused by bookmarks and the comparison tray.
+   */
   function renderResults(results) {
-    const html = results.map(function (item) {
-      const scorePct = Math.round((item.relevance_score || 0) * 100);
-      const courtBadge = LG.utils.courtBadgeClass(item.court);
-      const citationText = `${item.title}, (${item.year}) ${item.court}`;
+    if (!results || results.length === 0) {
+      $resultsContainer.html('');
+      return;
+    }
 
-      // Snippets
-      let snippetHtml = '';
-      if (item.matched_snippets && item.matched_snippets.length > 0) {
-        snippetHtml = `
-          <div class="case-snippet">
-            ${item.matched_snippets.map(s => `<p class="mb-1">${s}</p>`).join('')}
-          </div>
-        `;
-      } else if (item.summary) {
-        snippetHtml = `<div class="case-snippet text-secondary">${LG.utils.escapeHtml(item.summary.substring(0, 240))}...</div>`;
-      }
+    var card = LG.components && LG.components.caseCard;
+    var html = results
+      .map(function (item) {
+        return card ? card.render(item) : '';
+      })
+      .join('');
 
-      // Tags (Acts & Sections)
-      let tagsHtml = '';
-      const acts = item.act_tags || [];
-      const sections = item.section_tags || [];
-      const allTags = acts.concat(sections).slice(0, 6);
-      if (allTags.length > 0) {
-        tagsHtml = `
-          <div class="d-flex flex-wrap gap-1 mb-3">
-            ${allTags.map(t => `<span class="badge bg-light text-danger border border-danger border-opacity-25">${LG.utils.escapeHtml(t)}</span>`).join('')}
-          </div>
-        `;
-      }
+    $resultsContainer.attr('aria-live', 'polite').html(html);
 
-      return `
-        <div class="lg-case-card">
-          <div class="d-flex align-items-start justify-content-between gap-3 mb-2">
-            <div>
-              <a href="case-viewer.html?id=${encodeURIComponent(item.id)}" class="case-title">
-                ${LG.utils.escapeHtml(item.title)}
-              </a>
-              <div class="d-flex flex-wrap align-items-center gap-2 mt-1">
-                                <span class="${courtBadge}">${LG.utils.escapeHtml(item.court)}</span>
-                ${item.case_type ? `<span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">${LG.utils.escapeHtml(item.case_type)}</span>` : ''}
-                <span class="badge bg-secondary">${item.year}</span>
-                ${item.outcome ? `<span class="badge badge-gold">${LG.utils.escapeHtml(item.outcome)}</span>` : ''}
-                ${item.precedential_status ? `<span class="badge bg-success bg-opacity-15 text-success border border-success border-opacity-30" style="font-size: 0.72rem;"><i class="bi bi-shield-check me-1"></i>${LG.utils.escapeHtml(item.precedential_status)}</span>` : ''}
-                ${item.cited_by_count > 0 ? `<span class="badge bg-warning bg-opacity-15 text-warning border border-warning border-opacity-30" style="font-size: 0.72rem;"><i class="bi bi-diagram-3 me-1"></i>Cited in ${item.cited_by_count}</span>` : ''}
-                ${item.official_citation ? `<span class="badge bg-dark text-warning border border-secondary border-opacity-25 font-mono" style="font-size: 0.7rem;">${LG.utils.escapeHtml(item.official_citation)}</span>` : ''}
-                ${item.cnr_number ? `<span class="badge bg-dark text-light font-mono border border-secondary border-opacity-25" style="font-size: 0.7rem;"><i class="bi bi-upc-scan me-1"></i>${LG.utils.escapeHtml(item.cnr_number)}</span>` : ''}
-                ${item.judge ? `<span class="small text-secondary"><i class="bi bi-person-fill me-1"></i>${LG.utils.escapeHtml(item.judge)}</span>` : ''}
-              </div>
-            </div>
-
-            <!-- Relevance Score Badge -->
-            <div class="text-end">
-              <span class="badge ${scorePct >= 70 ? 'bg-success' : 'bg-primary'} fs-7 px-2 py-1" title="RRF Match Confidence">
-                <i class="bi bi-graph-up-arrow me-1"></i>${scorePct}% Match
-              </span>
-            </div>
-          </div>
-
-          ${snippetHtml}
-          ${tagsHtml}
-
-          <!-- Card Actions Bar -->
-          <div class="d-flex align-items-center justify-content-between pt-2 border-top border-secondary border-opacity-15 flex-wrap gap-2">
-            <div class="d-flex align-items-center gap-2">
-              <a href="case-viewer.html?id=${encodeURIComponent(item.id)}" class="btn btn-sm btn-gold">
-                <i class="bi bi-book-half me-1"></i>Read Judgment
-              </a>
-              <a href="case-compare.html?case1=${encodeURIComponent(item.id)}" class="btn btn-sm btn-judicial-outline">
-                <i class="bi bi-columns-gap me-1"></i>Compare
-              </a>
-            </div>
-
-            <div class="d-flex align-items-center gap-2">
-              <button type="button" class="btn btn-sm btn-judicial-outline copy-citation-btn" data-citation="${LG.utils.escapeHtml(citationText)}" title="Copy Standard Citation">
-                <i class="bi bi-quote me-1"></i>Copy Citation
-              </button>
-              <button type="button" class="btn btn-sm btn-judicial-outline bookmark-btn" data-id="${encodeURIComponent(item.id)}" title="Save to Research Bookmarks">
-                <i class="bi bi-bookmark text-danger"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    $resultsContainer.html(html);
-
-    // Attach Action Handlers
-    $('.copy-citation-btn').on('click', function () {
-      const citation = $(this).data('citation');
-      LG.utils.copyToClipboard(citation, 'Citation copied: ' + citation);
-    });
-
-    $('.bookmark-btn').on('click', function () {
-      if (!LG.session.isAuthenticated()) {
-        LG.toast('Please sign in to save research bookmarks.', 'warning');
-        return;
-      }
-      const caseId = $(this).data('id');
-      const $btn = $(this);
-      LG.api.bookmarks.add(caseId, 'Saved from Hybrid Search')
-        .done(function () {
-          LG.toast('Case saved to bookmarks!', 'success');
-          $btn.html('<i class="bi bi-bookmark-fill text-warning"></i>');
-        })
-        .fail(function () {
-          LG.toast('Case is already bookmarked or error occurred.', 'info');
-        });
-    });
+    // Delegated handlers: one binding for the whole list, not one per card.
+    $resultsContainer
+      .off('.casecard')
+      .on('click.casecard', '.js-copy-citation', function () {
+        var citation = $(this).attr('data-citation') || '';
+        if (citation) LG.utils.copyToClipboard(citation, 'Citation copied');
+      })
+      .on('click.casecard', '.js-bookmark', function () {
+        if (!LG.session.isAuthenticated()) {
+          LG.toast('Please sign in to save research bookmarks.', 'warning');
+          return;
+        }
+        var caseId = $(this).attr('data-id');
+        var $btn = $(this);
+        LG.api.bookmarks
+          .add(caseId, 'Saved from Hybrid Search')
+          .done(function () {
+            LG.toast('Case saved to bookmarks!', 'success');
+            $btn.attr('aria-pressed', 'true').html('<i class="bi bi-bookmark-fill text-warning"></i>');
+          })
+          .fail(function () {
+            LG.toast('Case is already bookmarked or error occurred.', 'info');
+          });
+      });
   }
 
-  /**
-   * Render Pagination links.
-   */
   function renderPagination(total, page) {
     const totalPages = Math.ceil(total / pageSize);
     if (totalPages <= 1) {

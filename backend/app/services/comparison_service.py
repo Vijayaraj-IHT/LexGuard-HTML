@@ -1,5 +1,5 @@
 import re
-from typing import List, Set, Dict, Any
+from typing import List, Set
 from app.models.case import Case
 from app.schemas.comparison import (
     CaseComparisonRequest,

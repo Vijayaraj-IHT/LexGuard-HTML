@@ -2,7 +2,7 @@ import math
 import hashlib
 import logging
 from functools import lru_cache
-from typing import List, Optional
+from typing import List
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)

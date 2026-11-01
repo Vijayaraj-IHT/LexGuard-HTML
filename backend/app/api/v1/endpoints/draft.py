@@ -2,7 +2,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.core.security import require_role, get_current_user
+from app.core.security import require_role
 from app.models.user import User
 from app.models.case import Case
 from app.models.draft_session import DraftSession
@@ -15,7 +15,6 @@ from app.schemas.draft import (
     PrecedentCompareResponse,
 )
 from app.services.local_llm_service import local_llm_service
-from app.services.claude_service import claude_service
 from app.services.comparator import precedent_comparator
 from app.services.audit_service import log_audit_event
 from app.services.embedding_service import embedding_service

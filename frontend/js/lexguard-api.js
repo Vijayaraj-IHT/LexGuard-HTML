@@ -339,7 +339,10 @@
         return apiRequest({
           url: '/admin/approve/' + encodeURIComponent(caseId),
           method: 'POST',
-          data: notes ? { notes: notes } : {}
+          data: {
+            status: 'published',
+            review_note: (typeof notes === 'string' ? notes : (notes && notes.review_note) ? notes.review_note : 'Approved via Administrative Review')
+          }
         });
       },
 

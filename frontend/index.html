@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light" data-bs-theme="light">
 <head>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://code.jquery.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' http://127.0.0.1:8000; worker-src 'self' blob: https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'self'; form-action 'self'">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -342,45 +343,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
   <script src="js/lexguard-core.js"></script>
   <script src="js/lexguard-auth.js"></script>
-    <script>
-    $(document).ready(function () {
-      // Dynamic live metrics from repository stats
-      const apiBase = (window.LexGuard && window.LexGuard.API_BASE_URL) || window.API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
-      $.ajax({
-        url: apiBase + '/cases/stats',
-        type: 'GET',
-        xhrFields: { withCredentials: true },
-        success: function (data) {
-          if (data) {
-            if (data.courts_covered) {
-              $('#stat-courts-count').text(data.courts_covered + ' Courts');
-            }
-            if (data.total_cases) {
-              $('#stat-cases-count').text(data.total_cases + ' Verified');
-            }
-            if (data.total_audit_entries) {
-              $('#stat-audit-count').text(Number(data.total_audit_entries).toLocaleString() + ' Entries');
-            }
-            if (data.verified_cases) {
-              $('#stat-verified-count').text(data.verified_cases + ' Sealed');
-            }
-          }
-        },
-        error: function () {
-          // Graceful fallback
-        }
-      });
-
-      $('#hero-search-form').on('submit', function (e) {
-        e.preventDefault();
-        const q = $('#hero-search-input').val().trim();
-        if (q) {
-          window.location.href = 'search.html?q=' + encodeURIComponent(q);
-        } else {
-          window.location.href = 'search.html';
-        }
-      });
-    });
-  </script>
+    <script src="js/pages/index.js"></script>
 </body>
 </html>

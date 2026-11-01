@@ -1,20 +1,6 @@
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Any
 from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict
-
-
-class StatutoryTest(BaseModel):
-    test: str = Field(..., description="Short identifier for the legal test")
-    mandatory: bool = Field(default=True, description="Whether the requirement is mandatory")
-    condition: str = Field(..., description="Full text of the legal condition")
-    section_ref: Optional[str] = Field(default=None, description="Statutory citation")
-
-
-class PrecedentCited(BaseModel):
-    title: str
-    year: Optional[int] = None
-    citation: Optional[str] = None
-    court: Optional[str] = None
 
 
 class CaseBase(BaseModel):
@@ -55,33 +41,6 @@ class CaseBase(BaseModel):
     auto_extracted: bool = False
 
 
-
-class EnrichedCaseDetailResponse(BaseModel):
-    id: str
-    case_no: str
-    title: str
-    court: str
-    year: int
-    judge: Optional[str] = None
-    parties: Optional[str] = None
-    act_tags: List[str] = []
-    section_tags: List[str] = []
-    keyword_tags: List[str] = []
-    summary: Optional[str] = None
-    facts: Optional[str] = None
-    issues_framed: List[str] = []
-    ratio_decidendi: Optional[str] = None
-    statutory_tests: List[Dict[str, Any]] = []
-    disposition: Optional[str] = None
-    precedents_cited: List[Dict[str, Any]] = []
-    full_text: Optional[str] = None
-    page_count: Optional[int] = 1
-    file_hash: str
-    status: str
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 class CaseCreate(CaseBase):
     pass
 
@@ -101,7 +60,7 @@ class CaseResponse(CaseBase):
 
 
 class CaseDetailResponse(CaseResponse):
-    integrity_status: str = "verified"  # verified, tampered, pending_check
+    integrity_status: str = "not_checked"  # verified, tampered, file_missing, not_checked (set by /view at runtime)
 
 
 class CaseVerificationResponse(BaseModel):

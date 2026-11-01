@@ -324,13 +324,25 @@ async def upload_case_auto(
     )
     canonical_path = os.path.join(settings.STORAGE_DIR, canonical_filename)
     if canonical_path != safe_path and os.path.exists(safe_path):
+        # Keep the file and the DB row pointing at the same place. If either step fails,
+        # the file stays (or is moved back) at safe_path, which the row already references.
         try:
             os.replace(safe_path, canonical_path)
-            new_case.file_path = f"storage/cases/{canonical_filename}"
-            db.commit()
-            db.refresh(new_case)
-        except Exception:
-            pass
+        except OSError:
+            logger.warning("Could not rename uploaded file to %s; keeping %s", canonical_path, safe_path)
+        else:
+            try:
+                new_case.file_path = f"storage/cases/{canonical_filename}"
+                db.commit()
+                db.refresh(new_case)
+            except Exception:
+                db.rollback()
+                logger.exception("DB commit failed after rename; moving file back to %s", safe_path)
+                try:
+                    os.replace(canonical_path, safe_path)
+                except OSError:
+                    logger.error("Could not move %s back to %s; manual repair needed", canonical_path, safe_path)
+                db.refresh(new_case)
 
     version_entry = DocumentVersion(
         case_id=new_case.id,
@@ -520,6 +532,13 @@ def update_case_metadata(
             detail="Case record not found.",
         )
 
+    if case.status == "published":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Published records are sealed: metadata edits and re-extraction are blocked. "
+                   "Reject the record and resubmit it for review to change it.",
+        )
+
     update_dict = update_data.model_dump(exclude_unset=True)
     changed_fields = []
 
@@ -574,6 +593,13 @@ def re_extract_case(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Case record not found.",
         )
+    if case.status == "published":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Published records are sealed: metadata edits and re-extraction are blocked. "
+                   "Reject the record and resubmit it for review to change it.",
+        )
+
     doc_path = resolve_case_file_path(case.file_path)
     if not doc_path or not os.path.exists(doc_path):
         raise HTTPException(
@@ -785,6 +811,26 @@ def download_case(
     doc_path = resolve_case_file_path(case.file_path)
     if not doc_path or not os.path.exists(doc_path):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Physical document file missing on disk.")
+
+    # Verify the bytes BEFORE serving, so the X-Lexguard-Verified header below is true.
+    # (Previously the header was sent unconditionally.) Same policy as the stream endpoint.
+    from app.services.crypto_service import verify_sha256_stream
+    if not verify_sha256_stream(doc_path, case.file_hash):
+        case.status = "quarantined"
+        db.commit()
+        log_audit_event(
+            db=db,
+            action="INTEGRITY_VIOLATION",
+            user_id=current_user.id,
+            case_id=case.id,
+            details=f"SECURITY ALERT: SHA-256 mismatch detected during download of {case.case_no}. Case quarantined.",
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Document integrity check failed: SHA-256 mismatch. Download refused and case quarantined.",
+        )
 
     log_audit_event(
         db=db,

@@ -38,9 +38,10 @@ def test_case_metadata_patch_and_audit():
     """Verify court staff can edit case metadata and changes are audited."""
     headers = get_staff_token()
     db = SessionLocal()
-    case = db.query(Case).first()
+    # F7: published records are sealed (409). Edit an unpublished record instead.
+    case = db.query(Case).filter(Case.status != "published").first()
     db.close()
-    assert case is not None, "At least one case required for test"
+    assert case is not None, "At least one unpublished case required for test"
 
     patch_payload = {
         "disposition": "Bail Granted",
@@ -61,7 +62,14 @@ def test_composite_judicial_seal_on_approval():
     """Verify approval affixes the composite judicial seal Phi_case."""
     headers = get_staff_token()
     db = SessionLocal()
-    case = db.query(Case).first()
+    # F7 maker-checker: approve a pending record uploaded by someone other than the staff account.
+    from sqlalchemy import or_
+    from app.models.user import User as _User
+    staff = db.query(_User).filter(_User.email == "staff@lexguard.gov.in").first()
+    case = db.query(Case).filter(
+        Case.status != "published",
+        or_(Case.uploaded_by_id.is_(None), Case.uploaded_by_id != staff.id),
+    ).first()
     db.close()
     assert case is not None
 

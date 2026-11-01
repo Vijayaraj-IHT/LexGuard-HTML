@@ -11,7 +11,13 @@ from app.models.approval_queue import ApprovalQueue
 from app.models.audit_log import AuditLog
 from app.schemas.case import CaseResponse, CaseStatusUpdate
 from app.schemas.audit import AuditLogResponse, AuditChainVerificationResponse
-from app.services.crypto_service import verify_audit_chain
+from app.services.crypto_service import (
+    verify_audit_chain,
+    compute_h_meta,
+    compute_h_text,
+    compute_judicial_seal,
+)
+import hmac
 from app.services.audit_service import log_audit_event
 
 router = APIRouter()
@@ -68,6 +74,14 @@ def approve_or_reject_case(
     if not case:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case record not found.")
 
+    # Maker-checker: the person who uploaded a submission may not publish it.
+    if review_in.status == "published" and case.uploaded_by_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Maker-checker violation: the uploader cannot publish their own submission. "
+                   "A second staff member must approve it.",
+        )
+
     case.status = review_in.status
     case.approved_by_id = current_user.id
     case.approved_at = datetime.now(timezone.utc)
@@ -92,20 +106,14 @@ def approve_or_reject_case(
     details_str = f"Case status changed to {review_in.status}. Note: {review_in.review_note or 'None'}"
 
     if review_in.status == "published":
-        import hashlib
-        # 1. H_doc = raw PDF SHA-256
-        h_doc = case.file_hash or ""
-        # 2. H_meta = SHA-256(case_no | court | judge | disposition | year)
-        meta_str = f"{case.case_no}|{case.court}|{case.judge or ''}|{case.disposition or ''}|{case.year}"
-        h_meta = hashlib.sha256(meta_str.encode("utf-8")).hexdigest()
-        # 3. H_text = SHA-256(full_text)
-        h_text = hashlib.sha256((case.full_text or "").encode("utf-8")).hexdigest()
-        # 4. T_approved = ISO timestamp
-        t_approved = case.approved_at.isoformat()
-        # 5. Composite Judicial Seal: Phi_case = SHA-256(H_doc || H_meta || H_text || T_approved)
-        seal_payload = f"{h_doc}|{h_meta}|{h_text}|{t_approved}"
-        judicial_seal = hashlib.sha256(seal_payload.encode("utf-8")).hexdigest()
+        # Seal formula lives in crypto_service (frozen; see compute_judicial_seal).
+        h_doc = case.file_hash or ""                                   # H_doc
+        h_meta = compute_h_meta(case.case_no, case.court, case.judge, case.disposition, case.year)
+        h_text = compute_h_text(case.full_text)                        # H_text
+        t_approved = case.approved_at.isoformat()                      # T_approved
+        judicial_seal = compute_judicial_seal(h_doc, h_meta, h_text, t_approved)
 
+        # NOTE: this column stores the composite seal Phi_case, NOT a redacted-file digest.
         case.redacted_file_hash = judicial_seal
         db.commit()
         db.refresh(case)
@@ -128,6 +136,65 @@ def approve_or_reject_case(
     )
 
     return case
+
+
+@router.get("/cases/{case_id}/seal-check")
+def check_judicial_seal(
+    case_id: str,
+    current_user: User = Depends(require_role(["court_staff", "senior_staff"])),
+    db: Session = Depends(get_db),
+):
+    """
+    Recomputes the composite judicial seal Phi_case from the record's current fields
+    and reports whether it still matches the stored seal.
+
+    A seal that no longer reproduces means a sealed field (file hash, metadata,
+    full text or approval time) changed after approval, or the seal was written
+    outside the approval path (no APPROVE audit entry).
+    """
+    case = db.query(Case).filter(Case.id == case_id).first()
+    if not case:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case record not found.")
+
+    approve_log_found = (
+        db.query(AuditLog)
+        .filter(AuditLog.case_id == case.id, AuditLog.action == "APPROVE")
+        .first()
+        is not None
+    )
+    stored = case.redacted_file_hash  # holds the composite seal (see approve_or_reject_case)
+    if not stored or not case.approved_at:
+        return {
+            "case_id": case.id,
+            "sealed": bool(stored),
+            "reproducible": False,
+            "approve_log_found": approve_log_found,
+            "reason": "No seal stored." if not stored else "Seal stored but approval time is missing.",
+        }
+
+    h_doc = case.file_hash or ""
+    h_meta = compute_h_meta(case.case_no, case.court, case.judge, case.disposition, case.year)
+    h_text = compute_h_text(case.full_text)
+    t_approved = case.approved_at.isoformat()
+    recomputed = compute_judicial_seal(h_doc, h_meta, h_text, t_approved)
+    reproducible = hmac.compare_digest(recomputed, stored)
+
+    reason = None
+    if not reproducible:
+        reason = "Sealed fields changed after approval, or the seal was not written by the approval path."
+        if not approve_log_found:
+            reason += " No APPROVE audit entry exists for this case."
+
+    return {
+        "case_id": case.id,
+        "sealed": True,
+        "reproducible": reproducible,
+        "approve_log_found": approve_log_found,
+        "stored_seal": stored,
+        "recomputed_seal": recomputed,
+        "components": {"H_doc": h_doc, "H_meta": h_meta, "H_text": h_text, "T_approved": t_approved},
+        "reason": reason,
+    }
 
 
 @router.get("/audit-logs", response_model=List[AuditLogResponse])

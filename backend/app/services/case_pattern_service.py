@@ -1920,7 +1920,7 @@ def _choose_page_text(page) -> Tuple[str, bool]:
     if not blocks:
         return raw, False
     clipped = sum(1 for b in blocks if (b["bbox"][2] - b["bbox"][0]) < page.rect.width * 0.42)
-    suspicious = (clipped / len(blocks)) > 0.55 or not raw.strip()
+    suspicious = (clipped / len(blocks)) >= 0.15 or not raw.strip()
     if not suspicious:
         return raw, False
 
@@ -1928,8 +1928,8 @@ def _choose_page_text(page) -> Tuple[str, bool]:
     if not repaired.strip():
         return raw, False
     raw_score, rep_score = _text_quality_score(raw), _text_quality_score(repaired)
-    keeps_content = len(repaired.strip()) >= 0.6 * len(raw.strip())
-    if keeps_content and rep_score >= max(raw_score * 1.4, raw_score + 4):
+    keeps_content = len(repaired.strip()) >= 0.25 * len(raw.strip())
+    if keeps_content and rep_score >= raw_score:
         return repaired, True
     return raw, False
 

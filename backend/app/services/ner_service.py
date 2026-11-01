@@ -1,6 +1,6 @@
 import re
 import logging
-from typing import Dict, List, Any
+from typing import Dict, Any
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)

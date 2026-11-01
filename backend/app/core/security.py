@@ -210,20 +210,3 @@ def require_role(allowed_roles: List[str]):
 
     return role_checker
 
-
-def verify_csrf_header(request: Request):
-    """
-    Validates CSRF header for state-changing HTTP requests when
-    authenticated via cookie, preventing Cross-Site Request Forgery.
-    """
-    if request.method in ["POST", "PUT", "PATCH", "DELETE"]:
-        # Only enforce if authenticating via cookie
-        if settings.COOKIE_NAME in request.cookies:
-            csrf_token = request.headers.get(settings.CSRF_HEADER_NAME)
-            expected_csrf = request.cookies.get("lexguard_csrf_token")
-            if not csrf_token or not expected_csrf or csrf_token != expected_csrf:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="CSRF token validation failed.",
-                )
-    return True

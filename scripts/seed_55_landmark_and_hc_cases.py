@@ -22,6 +22,7 @@ from reportlab.lib import colors
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backend"))
 from app.core.database import SessionLocal
 from app.models.case import Case
+from app.services.audit_service import get_chain_head_hash, build_audit_entry
 from app.models.document_version import DocumentVersion
 from app.models.audit_log import AuditLog
 from app.models.user import User
@@ -836,15 +837,14 @@ def main():
             db.add(doc_ver)
 
             # Audit Log
-            audit = AuditLog(
-                id=str(uuid.uuid4()),
-                user_id=admin_id,
+            audit = AuditLog(**build_audit_entry(
+                get_chain_head_hash(db),
                 action="CASE_INGEST_VERIFIED",
+                user_id=admin_id,
                 case_id=cid,
                 details=f"Ingested landmark judicial precedent: {case_data['title']} ({case_data['official_citation']})",
-                current_hash=file_hash,
                 timestamp=datetime.datetime.now(datetime.timezone.utc),
-            )
+            ))
             db.add(audit)
             print(f"  [ADDED] {case_data['title'][:45]} -> {file_hash[:12]}")
 
