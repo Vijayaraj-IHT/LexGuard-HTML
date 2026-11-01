@@ -8,9 +8,30 @@
 
   window.LG = window.LG || {};
 
+  /**
+   * Resolve the API base URL.
+   *
+   * Order:
+   *   1. <meta name="lg-api-base" content="...">  — per-deployment override
+   *   2. window.LG_API_BASE                       — runtime override (tests, embeds)
+   *   3. legacy dev heuristic                     — static server on :8888 / file://
+   *   4. same origin /api/v1                      — served behind scripts/serve.py or a proxy
+   */
+  function resolveApiBase() {
+    var meta = document.querySelector && document.querySelector('meta[name="lg-api-base"]');
+    var candidate = (meta && meta.getAttribute('content')) || window.LG_API_BASE || '';
+    if (candidate) return String(candidate).replace(/\/+$/, '');
+
+    var isStaticDev =
+      window.location.protocol === 'file:' || window.location.port === '8888';
+    if (isStaticDev) return 'http://127.0.0.1:8000/api/v1';
+
+    return '/api/v1';
+  }
+
   // Core Configuration
   LG.config = {
-    API_BASE: 'http://127.0.0.1:8000/api/v1',
+    API_BASE: resolveApiBase(),
     SESSION_STORAGE_KEY: 'lg_session',
     CSRF_COOKIE_NAME: 'lexguard_csrf_token',
     APP_NAME: 'LexGuard',
