@@ -1,6 +1,7 @@
 /**
  * LexGuard — API Client Module (lexguard-api.js)
- * Full jQuery AJAX integration for all 9 API functional areas
+ * Full jQuery AJAX integration for the 8 API areas the UI actually calls.
+ * (Draft endpoints are called through LG.api.request in pages/draft-assistant.js.)
  * LexGuard Judicial Repository & Verification Platform
  */
 
@@ -128,37 +129,15 @@
           window.location.href = 'login.html';
         });
       },
-
-      me: function () {
-        return apiRequest({
-          url: '/auth/me',
-          method: 'GET'
-        });
-      }
     },
 
     /* -------------------------------------------------------------------------
        2. Case Repository & CIS Details (/cases)
        ------------------------------------------------------------------------- */
     cases: {
-      list: function (params) {
-        return apiRequest({
-          url: '/cases/',
-          method: 'GET',
-          data: params || {}
-        });
-      },
-
       get: function (caseId) {
         return apiRequest({
           url: '/cases/' + encodeURIComponent(caseId),
-          method: 'GET'
-        });
-      },
-
-      getView: function (caseId) {
-        return apiRequest({
-          url: '/cases/' + encodeURIComponent(caseId) + '/view',
           method: 'GET'
         });
       },
@@ -173,12 +152,6 @@
       getDownloadUrl: function (caseId) {
         const token = LG.session.token();
         return LG.config.API_BASE + '/cases/' + encodeURIComponent(caseId) + '/download' +
-          (token ? '?token=' + encodeURIComponent(token) : '');
-      },
-
-      getOfficialContentUrl: function (caseId) {
-        const token = LG.session.token();
-        return LG.config.API_BASE + '/cases/' + encodeURIComponent(caseId) + '/official-content' +
           (token ? '?token=' + encodeURIComponent(token) : '');
       },
 
@@ -200,20 +173,6 @@
       getStats: function () {
         return apiRequest({
           url: '/cases/stats',
-          method: 'GET'
-        });
-      },
-
-      getLandmarks: function () {
-        return apiRequest({
-          url: '/cases/landmarks',
-          method: 'GET'
-        });
-      },
-
-      getCitations: function (caseId) {
-        return apiRequest({
-          url: '/cases/' + encodeURIComponent(caseId) + '/citations',
           method: 'GET'
         });
       },
@@ -241,13 +200,6 @@
        4. Cryptographic Verification & Audit (/verification)
        ------------------------------------------------------------------------- */
     verification: {
-      lookupHash: function (sha256Hash) {
-        return apiRequest({
-          url: '/verification/lookup/' + encodeURIComponent(sha256Hash),
-          method: 'GET'
-        });
-      },
-
       lookup: function (sha256Hash) {
         return apiRequest({
           url: '/verification/lookup',
@@ -255,10 +207,6 @@
           data: { sha256_hash: sha256Hash }
         });
       },
-
-      getStreamUrl: function (caseId) {
-        return LG.config.API_BASE + '/verification/documents/' + encodeURIComponent(caseId) + '/stream';
-      }
     },
 
     /* -------------------------------------------------------------------------
@@ -272,64 +220,9 @@
           data: { case_id: caseId }
         });
       },
-
-      compare: function (caseId1, caseId2) {
-        return apiRequest({
-          url: '/comparison/compare',
-          method: 'POST',
-          data: {
-            case_id_1: caseId1,
-            case_id_2: caseId2
-          }
-        });
-      },
-
-      compareMulti: function (caseIds) {
-        return apiRequest({
-          url: '/comparison/compare-multi',
-          method: 'POST',
-          data: { case_ids: caseIds }
-        });
-      }
     },
-
     /* -------------------------------------------------------------------------
-       6. AI Draft Assistant (/draft)
-       ------------------------------------------------------------------------- */
-    draft: {
-      analyze: function (draftText, caseType, court) {
-        return apiRequest({
-          url: '/draft/analyze',
-          method: 'POST',
-          data: {
-            draft_text: draftText,
-            case_type: caseType || 'Writ Petition',
-            court: court || LG.config.COURT_MADRAS
-          }
-        });
-      },
-
-      getSessions: function () {
-        return apiRequest({
-          url: '/draft/sessions',
-          method: 'GET'
-        });
-      },
-
-      compareWithPrecedent: function (draftText, precedentCaseId) {
-        return apiRequest({
-          url: '/draft/compare-with-precedent',
-          method: 'POST',
-          data: {
-            draft_text: draftText,
-            precedent_case_id: precedentCaseId
-          }
-        });
-      }
-    },
-
-    /* -------------------------------------------------------------------------
-       7. Staff Administration & Merkle Audit Chain (/admin)
+       6. Staff Administration & Merkle Audit Chain (/admin)
        ------------------------------------------------------------------------- */
     admin: {
       getQueue: function (statusFilter) {
@@ -378,7 +271,7 @@
     },
 
     /* -------------------------------------------------------------------------
-       8. Saved Bookmarks (/bookmarks)
+       7. Saved Bookmarks (/bookmarks)
        ------------------------------------------------------------------------- */
     bookmarks: {
       list: function (binder) {
@@ -437,7 +330,7 @@
     },
 
     /* -------------------------------------------------------------------------
-       9. Case Upload & Auto Ingestion Engine (/cases/upload)
+       8. Case Upload & Auto Ingestion Engine (/cases/upload)
        ------------------------------------------------------------------------- */
     upload: {
       uploadCase: function (formData) {

@@ -2,7 +2,6 @@ import os
 import re
 import hashlib
 import json
-from pathlib import Path
 from collections import defaultdict
 import pdfplumber
 

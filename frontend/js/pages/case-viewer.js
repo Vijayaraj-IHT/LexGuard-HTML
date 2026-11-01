@@ -55,7 +55,6 @@ $(document).ready(function () {
 
   // PDF Viewer Elements
   const $pdfLoading = $('#pdf-loading');
-  const $pdfCanvas = $('#pdf-canvas');
   const $pdfFallbackText = $('#pdf-fallback-text');
   const $pdfCurrentPage = $('#pdf-current-page');
   const $pdfTotalPages = $('#pdf-total-pages');

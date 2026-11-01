@@ -37,6 +37,14 @@ class Settings(BaseSettings):
     # File Storage
     STORAGE_DIR: str = "./storage/cases"
 
+    # Case-file preflight (PostgreSQL advisory-locked corpus verification)
+    # The lock id must be identical in every process that may run a preflight.
+    PREFLIGHT_ADVISORY_LOCK_ID: int = 728311
+    PREFLIGHT_DEFAULT_BATCH_SIZE: int = 500
+    PREFLIGHT_ALLOW_NON_POSTGRES: bool = False
+    PREFLIGHT_THROTTLE_SECONDS: int = 60
+    PREFLIGHT_MAX_SAMPLES: int = 25
+
     # Hugging Face Open-Source Model Stack
     EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
     LEGAL_NER_MODEL_NAME: str = "law-ai/InLegalBERT"

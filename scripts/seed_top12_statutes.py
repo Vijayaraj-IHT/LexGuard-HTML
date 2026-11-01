@@ -2,8 +2,6 @@
 Seed the Top 12 Fundamental Indian Codified Statutes into PostgreSQL.
 Provides authentic bare act legislative text and judicial commentary for Acts Explorer.
 """
-import sys
-import os
 import psycopg2
 
 DB_URI = "postgresql://lexguard:lexguard123@localhost:5432/lexguard"

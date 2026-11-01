@@ -1,4 +1,3 @@
-import sys
 from sqlalchemy import text
 from app.core.database import engine
 

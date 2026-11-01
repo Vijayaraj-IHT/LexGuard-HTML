@@ -7,13 +7,10 @@ Validates:
 4. Composite Judicial Seal Phi_case computation upon approval in POST /admin/approve/{id}.
 """
 
-import os
-import pytest
 from fastapi.testclient import TestClient
 from app.main import app
 from app.core.database import SessionLocal
 from app.models.case import Case
-from app.models.user import User
 
 client = TestClient(app)
 

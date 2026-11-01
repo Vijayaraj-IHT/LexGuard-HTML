@@ -12,7 +12,6 @@ Full verification test suite for all 7 PostgreSQL tables in Lexguard:
 import os
 import sys
 import uuid
-import datetime
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__) + "/.."))
 
@@ -24,7 +23,7 @@ from app.models.audit_log import AuditLog
 from app.models.bookmark import Bookmark
 from app.models.draft_session import DraftSession
 from app.models.approval_queue import ApprovalQueue
-from app.services.crypto_service import compute_sha256, verify_audit_chain
+from app.services.crypto_service import compute_sha256
 from app.services.audit_service import build_audit_entry, get_chain_head_hash
 
 

@@ -1,8 +1,6 @@
-import os
 import sys
 import json
 import uuid
-import hashlib
 import shutil
 from pathlib import Path
 from datetime import datetime, timezone
@@ -13,13 +11,7 @@ from psycopg2.extras import Json
 BASE_DIR = Path(r"E:\SEM 5 PROJECT\Lexguard\backend")
 sys.path.insert(0, str(BASE_DIR))
 
-from app.core.config import settings
-from app.core.database import SessionLocal
-from app.models.case import Case
-from app.models.user import User
-from app.models.audit_log import AuditLog
 from app.services.crypto_service import (
-    compute_sha256,
     GENESIS_HASH,
     compute_h_meta,
     compute_h_text,

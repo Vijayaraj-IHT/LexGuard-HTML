@@ -12,7 +12,7 @@ import pytest
 from pydantic import ValidationError
 from app.core.config import Settings
 from app.core.security import require_role
-from app.schemas.case import CaseDetailResponse, CaseResponse
+from app.schemas.case import CaseDetailResponse
 from app.services.extraction_service import ExtractionService
 
 
