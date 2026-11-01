@@ -3,14 +3,6 @@
    Courtroom Red & White Theme · LexGuard Platform
    ============================================================================== */
 
-/* Layout Shell */
-.lg-layout {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background-color: var(--bs-body-bg);
-}
-
 /* Fixed Top Navbar — Crisp White with Court Red Accents */
 .lg-navbar {
   position: fixed;
@@ -201,17 +193,6 @@
   color: #991b1b;
 }
 
-.lg-sidebar-badge {
-  margin-left: auto;
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 0.2rem 0.5rem;
-  border-radius: 999px;
-  background-color: rgba(185, 28, 28, 0.1);
-  color: #991b1b;
-  border: 1px solid rgba(185, 28, 28, 0.2);
-}
-
 /* Main Content Area */
 .lg-main {
   margin-left: var(--lg-sidebar-w);
@@ -284,7 +265,6 @@
 }
 
 /* Verification Status Badges */
-.badge-status-published,
 .badge-status-verified {
   background-color: rgba(5, 150, 105, 0.1);
   color: #047857;

@@ -156,13 +156,6 @@
         });
       },
 
-      getView: function (caseId) {
-        return apiRequest({
-          url: '/cases/' + encodeURIComponent(caseId) + '/view',
-          method: 'GET'
-        });
-      },
-
       verifyIntegrity: function (caseId) {
         return apiRequest({
           url: '/cases/' + encodeURIComponent(caseId) + '/verify-integrity',
@@ -173,12 +166,6 @@
       getDownloadUrl: function (caseId) {
         const token = LG.session.token();
         return LG.config.API_BASE + '/cases/' + encodeURIComponent(caseId) + '/download' +
-          (token ? '?token=' + encodeURIComponent(token) : '');
-      },
-
-      getOfficialContentUrl: function (caseId) {
-        const token = LG.session.token();
-        return LG.config.API_BASE + '/cases/' + encodeURIComponent(caseId) + '/official-content' +
           (token ? '?token=' + encodeURIComponent(token) : '');
       },
 
@@ -200,20 +187,6 @@
       getStats: function () {
         return apiRequest({
           url: '/cases/stats',
-          method: 'GET'
-        });
-      },
-
-      getLandmarks: function () {
-        return apiRequest({
-          url: '/cases/landmarks',
-          method: 'GET'
-        });
-      },
-
-      getCitations: function (caseId) {
-        return apiRequest({
-          url: '/cases/' + encodeURIComponent(caseId) + '/citations',
           method: 'GET'
         });
       },
@@ -241,23 +214,12 @@
        4. Cryptographic Verification & Audit (/verification)
        ------------------------------------------------------------------------- */
     verification: {
-      lookupHash: function (sha256Hash) {
-        return apiRequest({
-          url: '/verification/lookup/' + encodeURIComponent(sha256Hash),
-          method: 'GET'
-        });
-      },
-
       lookup: function (sha256Hash) {
         return apiRequest({
           url: '/verification/lookup',
           method: 'POST',
           data: { sha256_hash: sha256Hash }
         });
-      },
-
-      getStreamUrl: function (caseId) {
-        return LG.config.API_BASE + '/verification/documents/' + encodeURIComponent(caseId) + '/stream';
       }
     },
 

@@ -41,18 +41,9 @@
   --bs-info: #0284c7;
   --bs-info-rgb: 2, 132, 199;
 
-  /* Custom LexGuard Judicial Tokens */
-  --lg-court-red: #991b1b;
-  --lg-court-red-dark: #7f1d1d;
+  /* Custom LexGuard Judicial Tokens — only tokens with var() consumers are kept */
   --lg-court-red-light: #b91c1c;
-  --lg-court-red-subtle: #fef2f2;
-  --lg-court-red-border: rgba(153, 27, 27, 0.2);
   --lg-court-red-glow: rgba(185, 28, 28, 0.18);
-
-  --lg-gold: #d97706;
-  --lg-gold-hover: #b45309;
-  --lg-gold-subtle: rgba(217, 119, 6, 0.1);
-  --lg-gold-border: rgba(217, 119, 6, 0.3);
 
   --lg-sidebar-w: 260px;
   --lg-navbar-h: 66px;
@@ -87,15 +78,13 @@ body::before {
 }
 
 /* Judicial Serif Headings */
-.font-serif,
-.lg-serif {
+.font-serif {
   font-family: var(--lg-font-serif) !important;
   color: #0f172a;
 }
 
 /* Code & Digest Monospace */
-.font-mono,
-.lg-mono {
+.font-mono {
   font-family: var(--lg-font-mono) !important;
   letter-spacing: -0.02em;
 }
@@ -148,8 +137,7 @@ body::before {
 /* ==============================================================================
    2. Buttons: Judicial Court Red & Pristine Outlines
    ============================================================================== */
-.btn-gold,
-.btn-court-red {
+.btn-gold {
   background: linear-gradient(135deg, #991b1b 0%, #b91c1c 100%) !important;
   color: #ffffff !important;
   font-weight: 600;
@@ -158,9 +146,7 @@ body::before {
   transition: all 0.2s ease;
 }
 .btn-gold:hover,
-.btn-gold:focus,
-.btn-court-red:hover,
-.btn-court-red:focus {
+.btn-gold:focus {
   background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%) !important;
   color: #ffffff !important;
   border-color: #4c0519 !important;
