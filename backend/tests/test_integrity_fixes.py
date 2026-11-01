@@ -745,3 +745,43 @@ def test_h9_link_check_rejects_a_forward_or_self_link():
     db.commit()
     assert check_audit_entry(db, child)["link_ok"] is False
     db.close()
+
+
+def test_h10_published_is_frozen_until_explicitly_quarantined():
+    """
+    Spec 2, second clause: a published record cannot be mutated *without explicit
+    quarantine status*.
+
+    The positive half matters as much as the 409: without a quarantine step that
+    reopens editing, "reject and resubmit" is the only recovery path, and a record
+    found to be bad after publication could never be corrected in place.
+    """
+    db = SessionLocal()
+    uploader = _user(db, f"h10_{os.urandom(3).hex()}@t.in", "senior_staff")
+    reviewer = _user(db, f"h10r_{os.urandom(3).hex()}@t.in", "senior_staff")
+    case_id = _publish(db, uploader, reviewer, body=b"%PDF quarantine flow " * 40)
+    db.close()
+
+    _as(reviewer)
+
+    # 1. Published -> frozen.
+    blocked = client.patch(f"/api/v1/cases/{case_id}", json={"judge": "Edited While Published"})
+    assert blocked.status_code == 409, blocked.text
+    assert "sealed" in blocked.text.lower()
+
+    # 2. Explicit quarantine (the only sanctioned unlock).
+    q = client.post(f"/api/v1/admin/approve/{case_id}", json={"status": "quarantined",
+                                                             "review_note": "integrity review"})
+    assert q.status_code == 200, q.text
+    assert q.json()["status"] == "quarantined"
+
+    # 3. Quarantined -> mutable again, and the edit is recorded.
+    allowed = client.patch(f"/api/v1/cases/{case_id}", json={"judge": "Corrected After Quarantine"})
+    assert allowed.status_code == 200, allowed.text
+    assert allowed.json()["judge"] == "Corrected After Quarantine"
+
+    db = SessionLocal()
+    assert db.query(AuditLog).filter(
+        AuditLog.case_id == case_id, AuditLog.action == "UPDATE_METADATA"
+    ).count() == 1, "the post-quarantine edit must be in the audit trail"
+    db.close()

@@ -489,3 +489,22 @@ is imported first — documented in the file header). A leftover `quarantined` r
 the approval test above order-dependent on the *next* run. `tests/test_integrity_fixes.py`
 now resets the rows it created at module teardown (`_cleanup_shared_db`); no assertion
 was relaxed. Two consecutive full-suite runs are now identical.
+
+## DB-5. Frozen-forever is not a control, it is a dead end
+
+**Proposer.** `PATCH /cases/{id}` blocks any published record with `409`.
+
+**Skeptic.** The spec says "cannot be mutated *without explicit quarantine status*".
+Blocking unconditionally satisfies the first half and quietly drops the second:
+a record found bad **after** publication then has no in-place correction path, and
+the only advice the handler gives is "reject and resubmit", which re-uploads bytes.
+
+**Judge (verdict: ACCEPT, verified).** Keep the `409` and prove the escape hatch
+exists. `POST /admin/approve/{id}` already accepts `status: quarantined`
+(`CaseStatusUpdate` allows it), and `PATCH` gates on `status == "published"` only,
+so the sanctioned flow is: quarantine → edit → re-verify → re-publish.
+
+**Decision.** `test_h10_published_is_frozen_until_explicitly_quarantined` walks the
+whole path in one test: published → `409`; approve with `quarantined` → `200`;
+`PATCH` → `200` with the changed field; and exactly one `UPDATE_METADATA` audit row
+for the post-quarantine edit. Total in this file: **29 tests**.
