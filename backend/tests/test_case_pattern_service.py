@@ -29,6 +29,9 @@ from app.services.case_pattern_service import (  # noqa: E402
     LayoutFingerprint,
     detect_case_pattern,
     profile_catalog,
+    extract_pdf_text,
+    _choose_page_text,
+    _has_double_drawn_runs,
 )
 
 CORPUS_DIR = os.path.join(os.path.dirname(__file__), "..", "seed_corpus", "pdfs")
@@ -730,13 +733,6 @@ def test_detects_registry_profile(expected_profile, text):
     assert detection.key_set_id in KEY_SETS
 
 
-@pytest.mark.parametrize("profile_id,court", [
-    ("BRIEF-CARD-PROBE", None),   # placeholder replaced below by explicit checks
-])
-def test_placeholder(profile_id, court):
-    assert True
-
-
 def test_brief_card_derives_the_sitting_court_from_the_caption():
     sci = CasePatternService.detect_from_text(REGISTRY_PIECES["BRIEF-CARD"])
     assert sci.court == "Supreme Court of India"
@@ -758,3 +754,258 @@ def test_every_profile_declares_a_resolvable_key_set():
         resolved = CasePatternService.key_set_for(profile["id"])
         assert resolved, f"{profile['id']} resolved to an empty key set"
         assert "identity" in resolved or profile["id"] == "NON-JUDGMENT"
+
+
+# ---------------------------------------------------------------------------
+# Geometric repair gating: no false positives on clean single-column pages
+# ---------------------------------------------------------------------------
+
+class _FakePage:
+    """Minimal PyMuPDF-page stand-in for offline geometry unit tests."""
+
+    def __init__(self, raw, words, blocks, width=600.0):
+        from types import SimpleNamespace
+        self.rect = SimpleNamespace(width=width)
+        self._raw = raw
+        self._words = words
+        self._blocks = blocks
+
+    def get_text(self, mode="text"):
+        if mode == "dict":
+            return {"blocks": self._blocks}
+        if mode == "words":
+            return self._words
+        return self._raw
+
+
+def _clean_words(lines):
+    words = []
+    for row, line in enumerate(lines):
+        x = 50.0
+        for token in line.split():
+            width = len(token) * 6.0
+            words.append((x, 10.0 + row * 20, x + width, 20.0 + row * 20, token))
+            x += width + 6.0
+    return words
+
+
+def _double_drawn_words():
+    words = []
+    for row, tokens in enumerate((["IN", "THE", "HIGH"], ["COURT", "OF", "JUDICATURE"])):
+        x = 50.0
+        y = 10.0 + row * 30
+        for token in tokens:
+            width = len(token) * 6.0
+            words.append((x, y, x + width, y + 10, token))
+            words.append((x + 1, y, x + width + 1, y + 10, token))
+            x += width + 12.0
+    return words
+
+
+def test_double_drawn_detector_requires_a_run_not_an_isolated_overlap():
+    assert _has_double_drawn_runs(_double_drawn_words()) is True
+    assert _has_double_drawn_runs(_clean_words(["A clean single column line."] * 4)) is False
+    # One overlapping row (a stamp/signature) is not a double-drawn text layer.
+    assert _has_double_drawn_runs(_double_drawn_words()[:6]) is False
+
+
+def test_choose_page_text_keeps_clean_single_column_verbatim_even_when_blocks_are_narrow():
+    lines = ["This is a clean single column judgment line with enough characters."] * 4
+    raw = "\n".join(lines)
+    words = _clean_words(lines)
+    blocks = [{"type": 0, "bbox": [50, 10 + i * 20, 150, 20 + i * 20]} for i in range(8)]
+    text, repaired = _choose_page_text(_FakePage(raw, words, blocks))
+    assert text == raw
+    assert repaired is False
+
+
+def test_choose_page_text_repairs_genuine_double_drawn_runs():
+    raw = "IN\nIN THE\nTHE HIGH\nHIGH COURT\nCOURT OF\nOF JUDICATURE"
+    words = _double_drawn_words()
+    blocks = [{"type": 0, "bbox": [50, 10 + i * 10, 120, 20 + i * 10]} for i in range(12)]
+    text, repaired = _choose_page_text(_FakePage(raw, words, blocks))
+    assert repaired is True
+    assert "IN THE HIGH" in text
+    assert "COURT OF JUDICATURE" in text
+
+
+def test_choose_page_text_repairs_double_drawn_runs_even_without_severe_clipping():
+    raw = "IN\nIN THE\nTHE HIGH\nHIGH COURT\nCOURT OF\nOF JUDICATURE"
+    words = _double_drawn_words()
+    # Every block is wide: clipped ratio is 0, so only the overlap gate can fire.
+    blocks = [{"type": 0, "bbox": [0, 10 + i * 10, 600, 20 + i * 10]} for i in range(12)]
+    text, repaired = _choose_page_text(_FakePage(raw, words, blocks))
+    assert repaired is True
+    assert "IN THE HIGH" in text
+
+
+def test_choose_page_text_severe_clipping_boundary_is_quarter_of_blocks():
+    raw = "IN\n\nTHE\n\nHIGH\n\nCOURT\n"
+    words = _clean_words(["IN THE HIGH COURT"])
+    narrow = {"type": 0, "bbox": [50, 10, 120, 20]}
+    wide = {"type": 0, "bbox": [0, 10, 600, 20]}
+
+    # 1 / 4 == 0.25: severe clipping gate opens and the sharded layer is repaired.
+    text, repaired = _choose_page_text(_FakePage(raw, words, [narrow, wide, wide, wide]))
+    assert repaired is True
+    assert text == "IN THE HIGH COURT"
+
+    # 1 / 5 < 0.25 and no overlapping runs: repair must not even be accepted.
+    text, repaired = _choose_page_text(_FakePage(raw, words, [narrow, wide, wide, wide, wide]))
+    assert repaired is False
+    assert text == raw
+
+
+@pytest.mark.skipif(not corpus_available, reason="seed corpus PDFs not present")
+@pytest.mark.parametrize("name", ["01_crl-a-md-1150-2026.pdf", "06_crl-op-26284-2026.pdf"])
+def test_corpus_clean_madras_judgments_remain_verbatim(name):
+    pymupdf = pytest.importorskip("pymupdf")
+    path = os.path.join(CORPUS_DIR, name)
+    text, layout, _meta = extract_pdf_text(path)
+    with pymupdf.open(path) as doc:
+        raw = "\n\n".join(page.get_text() for page in doc)
+    assert text == raw
+    assert layout.needs_geometric_repair is False
+    assert layout.repaired_page_ratio == 0.0
+
+
+def test_corpus_bombay_doc_double_drawn_caption_is_repaired():
+    path = os.path.join(os.path.dirname(__file__), "..", "..", "storage", "cases",
+                        "BHC_2026_WP_358_2026_doc_Ajay_IINN_TTHHEE_HH_4f12d564.pdf")
+    if not os.path.exists(path):
+        pytest.skip("Bombay double-drawn corpus PDF not present")
+    pymupdf = pytest.importorskip("pymupdf")
+    text, layout, meta = extract_pdf_text(path)
+    assert layout.repaired_page_ratio > 0.0
+    assert "IN THE HIGH COURT OF JUDICATURE AT BOMBAY" in meta["pages"][0]
+    with pymupdf.open(path) as doc:
+        raw_first = doc[0].get_text()
+    assert meta["pages"][0] != raw_first
+
+
+def test_corpus_supreme_court_caption_text_remains_verbatim():
+    path = os.path.join(os.path.dirname(__file__), "..", "..", "storage", "cases",
+                        "DHC_1973_Appeal_No_1118_of_2020_7e4f1ace.pdf")
+    if not os.path.exists(path):
+        pytest.skip("Supreme Court corpus PDF not present")
+    pymupdf = pytest.importorskip("pymupdf")
+    text, layout, _meta = extract_pdf_text(path)
+    with pymupdf.open(path) as doc:
+        raw = "\n\n".join(page.get_text() for page in doc)
+    detection = detect_case_pattern(text)
+    assert detection.court == "Supreme Court of India"
+    assert text == raw
+    assert layout.repaired_page_ratio == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Structured fact sheet: police stations, crime/FIR numbers, custody/arrest
+# ---------------------------------------------------------------------------
+
+def test_fact_sheet_captures_police_station_crime_and_custody_evidence():
+    text = (
+        "The petitioner was arrested on 01.09.2026 in Crime No. 560/2025 registered at "
+        "Mallanginar Police Station, Virudhunagar District and has been in judicial custody since then."
+    )
+    sheet = CasePatternService._fact_sheet(text)
+    assert sheet["police_stations"] == ["Mallanginar"]
+    assert "Crime No. 560/2025" in sheet["crime_numbers"]
+    assert sheet["arrest"] and "01.09.2026" in sheet["arrest"]
+    assert sheet["custody"] and "custody" in sheet["custody"]
+
+
+def test_fact_sheet_captures_prefix_police_station_and_fir_number():
+    text = (
+        "FIR No. 123/2025 was registered at P.S. Kotwali, District Patna. "
+        "The accused surrendered before the court on 02.01.2026 and was remanded to judicial custody."
+    )
+    sheet = CasePatternService._fact_sheet(text)
+    assert "Kotwali" in sheet["police_stations"]
+    assert "FIR No. 123/2025" in sheet["crime_numbers"]
+    assert sheet["arrest"] and "surrendered" in sheet["arrest"]
+    assert sheet["custody"] and "judicial custody" in sheet["custody"]
+
+
+def test_extract_case_facts_merges_caption_only_police_station():
+    detection = CasePatternService.detect_from_text(MADRAS_MB_CRIM_JURIS)
+    result = CasePatternService.extract_case_facts(MADRAS_MB_CRIM_JURIS, detection)
+    assert "Mallanginar" in result["fact_sheet"]["police_stations"]
+    assert result["fact_sheet"]["crime_numbers"]
+    assert result["fact_sheet"]["custody"]
+
+
+def test_fact_sheet_normalizes_arrest_and_custody_status():
+    text = (
+        "The petitioner was arrested on 01.09.2026 in Crime No. 560/2025 and was "
+        "remanded to judicial custody on 02.09.2026."
+    )
+    sheet = CasePatternService._fact_sheet(text)
+    assert sheet["arrest_status"] == "arrested"
+    assert sheet["custody_status"] == "judicial_custody"
+    assert sheet["arrest"] and sheet["custody"]
+
+
+def test_fact_sheet_does_not_turn_prospective_arrest_into_actual_arrest():
+    text = (
+        "The applicant was not arrested during investigation. The applicant fears that "
+        "he may be arrested in the event of arrest being sought by the police. He is not in custody."
+    )
+    sheet = CasePatternService._fact_sheet(text)
+    assert sheet["arrest_status"] == "not_arrested"
+    assert sheet["custody_status"] == "not_in_custody"
+
+
+def test_fact_sheet_uses_latest_explicit_custody_status():
+    text = (
+        "The accused was remanded to judicial custody on 01.09.2026. "
+        "He was later released on bail on 15.09.2026."
+    )
+    sheet = CasePatternService._fact_sheet(text)
+    assert sheet["custody_status"] == "released_on_bail"
+    assert "released on bail" in sheet["custody"]
+
+
+def test_fact_sheet_captures_textual_dates_cr_no_and_acronym_offences():
+    text = (
+        "On 9th October, 2026 the police registered Cr.No.52 of 2025 at P.S. Kotwali "
+        "for the offence under Section 302 IPC. The accused was arrested on OCTOBER 10, 2026."
+    )
+    sheet = CasePatternService._fact_sheet(text)
+    assert "9th October, 2026" in sheet["dates"]
+    assert "OCTOBER 10, 2026" in sheet["dates"]
+    assert any("Cr.No.52" in c for c in sheet["crime_numbers"])
+    assert any("Section 302 IPC" in o for o in sheet["offences"])
+    assert "Kotwali" in sheet["police_stations"]
+
+
+def test_candidate_regions_cover_all_four_fact_strategies():
+    seen = set()
+    for fixture in PIECES.values():
+        detection = CasePatternService.detect_from_text(fixture)
+        keyset = CasePatternService.key_set_for(detection.profile_id)
+        paragraphs = CasePatternService._paragraphs(fixture)
+        seen.update(c["strategy"] for c in CasePatternService._candidate_regions(fixture, keyset, paragraphs))
+    assert seen == {"explicit_heading", "anchored_span", "paragraph_scan", "post_caption_body"}
+
+
+def test_post_caption_body_fallback_works_without_a_prayer_heading():
+    caption = MADRAS_PS_CORAM.split("PRAYER:")[0]
+    text = caption + (
+        "For Petitioner(s):\nMr. A. Advocate\n\n"
+        "On 09.10.2025 the respondent police registered Crime No. 120 of 2025 at "
+        "Gummidipoondi Police Station and arrested the petitioner. He was remanded "
+        "to judicial custody and the final report was filed on 02.04.2026.\n"
+    )
+    detection = CasePatternService.detect_from_text(text)
+    keyset = CasePatternService.key_set_for(detection.profile_id)
+    paragraphs = CasePatternService._paragraphs(text)
+    strategies = {c["strategy"] for c in CasePatternService._candidate_regions(text, keyset, paragraphs)}
+    assert "post_caption_body" in strategies
+
+
+def test_police_station_fallback_is_caption_scoped_not_precedent_scoped():
+    text = MADRAS_MB_CRIM_JURIS + "\n" + ("x" * 6500) + "\nCited Precedent Police Station Pretoria\n"
+    detection = CasePatternService.detect_from_text(text)
+    result = CasePatternService.extract_case_facts(text, detection)
+    assert "Mallanginar" in result["fact_sheet"]["police_stations"]
+    assert "Pretoria" not in result["fact_sheet"]["police_stations"]

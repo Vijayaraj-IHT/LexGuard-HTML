@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import sys
 from collections import Counter, defaultdict
@@ -85,7 +86,12 @@ def main() -> int:
     parser.add_argument("--out", default="docs/pattern_analysis", help="output directory for JSON/Markdown")
     parser.add_argument("--no-recursive", action="store_true", help="do not descend into subdirectories")
     parser.add_argument("--quiet", action="store_true", help="suppress the per-file table")
+    parser.add_argument(
+        "--min-coverage", type=float, default=0.99,
+        help="minimum share of unique attempted documents that must match a specific profile (default: 0.99)")
     args = parser.parse_args()
+    if not math.isfinite(args.min_coverage) or not 0.0 <= args.min_coverage <= 1.0:
+        parser.error("--min-coverage must be a finite number between 0 and 1")
 
     svc = _load_service()
     files = collect_pdfs(args.dirs, recursive=not args.no_recursive)
@@ -175,13 +181,25 @@ def main() -> int:
         for key in record.get("keys_found", []):
             key_hit_counts[key] += 1
 
+    attempted = len(records) + len(failures)
+    generic_fallback = profile_counts.get("GENERIC-HC", 0)
+    classified = len(records) - generic_fallback
+    classification_coverage = (classified / attempted) if attempted else 0.0
+    coverage_target_met = classification_coverage >= args.min_coverage
+
     summary = {
         "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "directories": args.dirs,
         "pdfs_scanned": len(files),
         "unique_documents": len(records),
+        "unique_documents_attempted": attempted,
         "duplicates_skipped": len(duplicates),
         "failures": len(failures),
+        "classified_documents": classified,
+        "generic_fallback": generic_fallback,
+        "classification_coverage": round(classification_coverage, 4),
+        "min_coverage": args.min_coverage,
+        "coverage_target_met": coverage_target_met,
         "profiles": profile_summary,
         "profile_counts": dict(profile_counts),
         "facts_strategies": dict(strategy_counts),
@@ -213,9 +231,14 @@ def main() -> int:
     print("=" * 96)
     print(f"  duplicates skipped : {len(duplicates)}")
     print(f"  failures           : {len(failures)}")
+    print(f"  classification     : {classified}/{attempted} specific profiles "
+          f"({classification_coverage:.2%}; target {args.min_coverage:.2%})")
+    if failures:
+        print("  note               : unreadable/corrupt PDFs are recorded in summary.errors; "
+              "the sweep itself completed.")
     print(f"  JSON  -> {json_path}")
     print(f"  MD    -> {md_path}")
-    return 0 if not failures else 2
+    return 0 if coverage_target_met else 1
 
 
 def render_markdown(summary, records, svc) -> str:
@@ -231,10 +254,14 @@ def render_markdown(summary, records, svc) -> str:
     add("")
 
     unique = summary["unique_documents"]
+    attempted = summary.get("unique_documents_attempted", unique)
     generic = summary["profile_counts"].get("GENERIC-HC", 0)
+    classified = summary.get("classified_documents", unique - generic)
+    coverage = summary.get("classification_coverage", (classified / attempted) if attempted else 0.0)
     bodyless = summary["text_status"].get("insufficient_text", 0)
-    add(f"- Profile cover: **{unique - generic}/{unique}** documents matched a specific registry/format "
-        f"profile — generic fallback: **{generic}** ({(100 * generic / unique) if unique else 0:.1f} %)")
+    add(f"- Profile cover: **{classified}/{attempted}** unique attempted documents matched a specific "
+        f"registry/format profile — generic fallback: **{generic}**, unreadable failures: **{summary['failures']}** "
+        f"(coverage **{coverage:.2%}**, target {summary.get('min_coverage', 0.99):.2%})")
     add(f"- Cover-page-only PDFs (caption + CNR, no body): **{bodyless}**")
     add("")
 
