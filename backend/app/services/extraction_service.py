@@ -7,10 +7,13 @@ Extraction Passes:
 - Pass 1: Structural layout parsing via pdfplumber and high-precision legal regex.
   Extracts CIS metadata, CNR Bench mapping (TNCH01/HCMA vs TNMD01/HCMD), CORAM,
   litigants, verbatim prayer, counsel, dual dates, and standard disposition enum.
-- Pass 2: Statutory provisions and named entities via 450-token sliding window,
-  InLegalBERT NER, canonical section normalization, and dual IPC/BNS cross-referencing.
-- Pass 3: Ratio decidendi and executive summary synthesis via 4GB GPU Qwen prompt
-  (SCR/CTC Law Reporter catchwords + holding summary) with deterministic judicial fallback.
+- Pass 2: Statutory provisions and legal keywords via a deterministic 450-token
+  sliding window, canonical section normalization, and dual IPC/BNS cross-referencing.
+- Pass 3: Deterministic ratio decidendi and executive summary synthesis
+  (SCR/CTC Law Reporter catchwords + holding synopsis) from the extracted fields.
+
+The ingestion path is offline by contract: geometry + regex + PyMuPDF/pdfplumber
+only.  It must not call the AI microservice, Ollama, or download model weights.
 """
 
 import os
@@ -885,9 +888,10 @@ class ExtractionService:
         full_text: str,
     ) -> Tuple[Dict[str, Any], Dict[str, Dict[str, Any]]]:
         """
-        Pass 2: Legal entities, Acts, Sections, and Canonical Normalization.
-        Uses 450-token sliding window across full text, canonical section mapping,
-        and dual IPC/BNS cross-referencing.
+        Pass 2: Acts, Sections, legal keywords, and canonical normalization.
+        Uses a deterministic 450-token sliding window across full text, canonical
+        section mapping, and dual IPC/BNS cross-referencing.  No NER microservice
+        or model weights are consulted.
         """
         acts_found: Dict[str, int] = {}
         sections_found: Dict[str, int] = {}
@@ -957,18 +961,8 @@ class ExtractionService:
             if count > 0:
                 keywords_found[kw] = count
 
-        # 4. Neural InLegalBERT NER enrichment via AI Microservice
-        try:
-            from app.services.ai_api_service import ai_api_service
-            ner_res = ai_api_service.extract_ner(full_text[:3500], court_context=data.get("court"))
-            if ner_res.get("acts"):
-                for a in ner_res["acts"]:
-                    acts_found[a] = acts_found.get(a, 0) + 2
-            if ner_res.get("sections"):
-                for s in ner_res["sections"]:
-                    sections_found[s] = sections_found.get(s, 0) + 2
-        except Exception:
-            pass
+        # 4. Offline contract: statutory/keyword extraction above is regex-only.
+        #    Do not call the AI microservice or load NER weights during ingestion.
 
         # Sort by frequency
         sorted_acts = [a for a, _ in sorted(acts_found.items(), key=lambda x: x[1], reverse=True)[:6]]
@@ -987,9 +981,9 @@ class ExtractionService:
         data["cross_reference_tags"] = cross_reference_tags[:6]
         data["keyword_tags"] = sorted_keywords
 
-        confidence["act_tags"] = {"confidence": 0.95 if len(sorted_acts) > 0 else 0.45, "source": "pass2_ai_ner"}
-        confidence["section_tags"] = {"confidence": 0.92 if len(sorted_sections) > 0 else 0.40, "source": "pass2_ai_ner"}
-        confidence["keyword_tags"] = {"confidence": 0.90 if len(sorted_keywords) > 0 else 0.40, "source": "pass2_ai_ner"}
+        confidence["act_tags"] = {"confidence": 0.95 if len(sorted_acts) > 0 else 0.45, "source": "pass2_regex"}
+        confidence["section_tags"] = {"confidence": 0.92 if len(sorted_sections) > 0 else 0.40, "source": "pass2_regex"}
+        confidence["keyword_tags"] = {"confidence": 0.90 if len(sorted_keywords) > 0 else 0.40, "source": "pass2_regex"}
 
         return data, confidence
 
@@ -1001,9 +995,10 @@ class ExtractionService:
         full_text: str,
     ) -> Tuple[Dict[str, Any], Dict[str, Dict[str, Any]]]:
         """
-        Pass 3: Ratio Decidendi and Executive Summary synthesis.
-        Formats summary in Law Reporter style (SCR/CTC catchwords + holding synopsis)
-        and extracts 2-step ratio prompt (Issue, Reasoning, Holding, Decision Basis).
+        Pass 3: Deterministic ratio decidendi and executive summary synthesis.
+        Formats the summary in Law Reporter style (SCR/CTC catchwords + holding
+        synopsis) and builds the issue/reasoning/holding/decision-basis fields
+        from the extracted metadata.  No prompt, model, or network call is used.
         """
         prayer_text = data.get("prayer") or "relief sought in the petition"
         disposition_text = data.get("disposition") or data.get("outcome") or "Decided"
@@ -1057,49 +1052,10 @@ class ExtractionService:
             f"and High Court, and settled principles governing {pet_type_abbr.lower()} proceedings."
         )
 
-        # ─── 4. Neural Enhancement via Local LLM / Microservice ───────
-        try:
-            from app.services.local_llm_service import local_llm_service
-            llm_res = local_llm_service.summarize_judgment(full_text=full_text, metadata=data)
-            if llm_res and llm_res.get("ratio_decidendi"):
-                ratio_decidendi = llm_res["ratio_decidendi"]
-                if llm_res.get("summary"):
-                    full_summary = f"[{catchwords}]\n\n{llm_res['summary']}"
-                if llm_res.get("facts"):
-                    data["facts"] = llm_res["facts"]
-                if llm_res.get("issues_framed"):
-                    data["issues_framed"] = llm_res["issues_framed"]
-                confidence["ratio_decidendi"] = {"confidence": 0.92, "source": f"pass3_{llm_res.get('model_source', 'local_llm')}"}
-                confidence["summary"] = {"confidence": 0.90, "source": f"pass3_{llm_res.get('model_source', 'local_llm')}"}
-        except Exception as e:
-            logger.debug(f"Local LLM extraction pass-3 synthesis fallback: {e}")
-
-        try:
-            from app.services.ai_api_service import ai_api_service
-            health = ai_api_service.check_health()
-            if health.get("status") == "healthy":
-                ai_sum = ai_api_service.summarize(
-                    text=full_text,
-                    max_sentences=3,
-                    court=court_name,
-                    case_no=cno,
-                )
-                if ai_sum and len(ai_sum) > 30:
-                    full_summary = f"[{catchwords}]\n\n{ai_sum}"
-
-                ai_ratio = ai_api_service.extract_ratio(
-                    text=full_text,
-                    prayer=prayer_text,
-                    outcome=disposition_text,
-                    acts_cited=acts_list,
-                )
-                if ai_ratio.get("ratio_decidendi"):
-                    ratio_decidendi = ai_ratio["ratio_decidendi"]
-                    legal_issue = ai_ratio.get("legal_issue", legal_issue)
-                    court_reasoning = ai_ratio.get("court_reasoning", court_reasoning)
-                    decision_basis = ai_ratio.get("decision_basis", decision_basis)
-        except Exception:
-            pass
+        # ─── 4. Offline contract ───────────────────────────────────────
+        # Pass 3 is a deterministic template synthesis over Pass 1/1b/2 fields.
+        # It intentionally does not call Ollama, Hugging Face, or the AI
+        # microservice, so ingestion remains auditable and network-free.
 
         data["summary"] = full_summary
         data["ratio_decidendi"] = ratio_decidendi
@@ -1107,8 +1063,8 @@ class ExtractionService:
         data["court_reasoning"] = court_reasoning
         data["decision_basis"] = decision_basis
 
-        confidence["summary"] = {"confidence": 0.88, "source": "pass3_ai_summary"}
-        confidence["ratio_decidendi"] = {"confidence": 0.86, "source": "pass3_ai_ratio"}
+        confidence["summary"] = {"confidence": 0.88, "source": "pass3_deterministic"}
+        confidence["ratio_decidendi"] = {"confidence": 0.86, "source": "pass3_deterministic"}
 
         return data, confidence
 

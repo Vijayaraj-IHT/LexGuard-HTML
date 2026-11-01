@@ -11,17 +11,18 @@ document's own structure instead of one global bag of regexes.
 |---|---|
 | `backend/app/services/case_pattern_service.py` | Runtime engine: layout fingerprint → drafting profile → key set → section map → facts + fact sheet |
 | `scripts/analyse_case_file_patterns.py` | Corpus sweep: per-file detection, key coverage, facts result, JSON + Markdown report |
-| `docs/pattern_analysis/case_pattern_report.{json,md}` | Current sweep output (**595 unique documents**, 39 profiles, 1 unreadable file) |
-| `backend/tests/test_case_pattern_service.py` | 39 fixture/profile tests + registry-merge + corpus smoke tests |
+| `docs/pattern_analysis/case_pattern_report.{json,md}` | Sweep output (regenerate with the analyser). Latest verified `storage/cases` run: **596 PDFs scanned**, **595 readable unique documents**, 39 profiles, 1 unreadable file, **99.5 %** specific-profile coverage |
+| `backend/tests/test_case_pattern_service.py` | Fixture/profile tests, registry-merge, repair-gate, fact-sheet and corpus smoke tests |
 | `backend/app/services/extraction_service.py` | Pass 1b — applies the key set to harden identity fields and lift `facts` |
 
 ---
 
 ## 1. Why patterns, not one big regex
 
-The working corpus is now **756 PDFs → 596 unique documents** (160 re-downloads
-of the same orders, one corrupt file). They come from **20+ High Court registries
-plus the Supreme Court, NCLAT and one law-report digest**, and they are drafted to
+The current `storage/cases` sweep covers **596 PDFs → 595 readable unique
+documents** (one corrupt file is recorded as a failure; the separate seed corpus
+adds 29 registry fixtures). They come from **20+ High Court registries plus the
+Supreme Court, NCLAT and one law-report digest**, and they are drafted to
 **at least 28 distinguishable templates**. Every template writes the same field
 differently:
 
@@ -98,18 +99,21 @@ are guards. Counts are from the sweep in
 | `JHARKHAND-HC` | 3 | Jharkhand High Court | `HIGH COURT OF JHARKHAND AT RANCHI` + `2026:JHHC:…-DB` + `--- Opposite Party` | `coram_order` |
 | `DELHI-HC` | 2 | Delhi High Court | `IN THE HIGH COURT OF DELHI AT NEW DELHI` + `$~` reportability head + `Reserved on` / `Pronounced on` | `reserved_judgment` |
 | `GENERIC-HC` | 2 | High Court | fallback only — never competes for a document | `generic` |
-| `OFFICE-NOTES` | 2 | — | registry sheet `Office Notes, reports, orders or proceedings` + `Date or directions and COURT'S OR JUDGE'S ORDERS` + a bare `UKHC…`/`TRHC…` code | `order_sheet` |
+| `OFFICE-NOTES` | 1 | — | registry sheet `Office Notes, reports, orders or proceedings` + `Date or directions and COURT'S OR JUDGE'S ORDERS` + a bare `UKHC…`/`TRHC…` code | `order_sheet` |
 | `ALLAHABAD-CASELINE` | 1 | Allahabad High Court | pure docket `Court No. - 26`, `Case :- …`, `Applicant :-`, `Opposite Party :-` — the court name is **not printed** | `headed_facts` |
 | `KERALA-HC` | 1 | Kerala High Court | `HIGH COURT OF KERALA AT ERNAKULAM` + `THE HONOURABLE MR.JUSTICE …` + `NTH DAY OF <MONTH>, <year> / NTH <MALAYALAM MONTH>, <era>` | `reserved_judgment` |
 | `LAW-REPORT-REPRINT` | 1 | — | `<appellant> vs <respondent> on <date>` + `Equivalent citations:` — a digest reprint, not a live order | `headed_facts` |
 | `MADRAS-REVIEW-SLIP` | 1 | Madras High Court | `R.V.W. <n> of <year>` + `With` + `CAN <n> of <year>` | `order_sheet` |
 | `MADRAS-SHORT-ORDER` | 1 | Madras High Court | `WMP. No.<n> of <year> in W.P. No.<n> of <year>` + `Ordered.` | `order_sheet` |
 | `NON-JUDGMENT` | 1 | — | `Project Overview & Objectives` / `Tech Stack` / `System Architecture` headings — not a court document at all | `none` |
-| `UTTARAKHAND-HC` | 1 | Uttarakhand High Court | `HIGH COURT OF UTTARAKHAND AT NAINITAL` + `UKHC…` code + `Reserved on` / `Delivered on` | `reserved_judgment` |
+| `UTTARAKHAND-HC` | 2 | Uttarakhand High Court | `HIGH COURT OF UTTARAKHAND AT NAINITAL` + `UKHC…` code + `Reserved on` / `Delivered on` | `reserved_judgment` |
 
-**Coverage: 593/595 documents (99.7 %) matched a specific profile**; only 2 fall
-back to `GENERIC-HC`. Before this extension the fallback was 443/596 — the engine
-only knew Madras, Chhattisgarh, Patna and Punjab & Haryana.
+**Coverage: 593/596 unique attempted documents (99.5 %) matched a specific
+profile**; among the 595 readable documents this is 593/595 (99.7 %). Only 2
+readable documents fall back to `GENERIC-HC`, and the single corrupt PDF is
+reported separately instead of being force-classified. Before this extension the
+fallback was 443/596 — the engine only knew Madras, Chhattisgarh, Patna and
+Punjab & Haryana.
 
 Two guard profiles earn their place:
 
@@ -130,7 +134,7 @@ bail …`), registry office-notes sheets and Allahabad-style dockets deliberatel
 brief cards spanning the Supreme Court (159), Delhi (8), Madras (4), Bombay (2),
 Allahabad, Gujarat, Karnataka, Kerala and NCLAT.
 
-### Scoring and acceptance### Scoring and acceptance
+### Scoring and acceptance
 
 * Hard gate: every `required` signal must match.
 * `score = Σ required weights + Σ matched supporting weights − Σ matched negative weights`
@@ -153,10 +157,10 @@ ingestion auditable.
 
 | Hazard | Where | Effect | Handling |
 |---|---|---|---|
-| **Shifted duplicate draw** (every line drawn twice at a small offset, so the extractor emits `IN` / `IN THE` / `THE HIGH` / `HIGH COURT` …) | Bombay `.doc`/`.odt` exports | a 43-page order explodes into thousands of shard lines; captions and dates never sit on one line | `_dedupe_lines` merges *runs of three or more* lines whose first word repeats the previous line's last word; two-line coincidences (normal prose) are left alone, and nothing outside a run is touched |
+| **Shifted duplicate draw** (every line drawn twice at a small offset, so the extractor emits `IN` / `IN THE` / `THE HIGH` / `HIGH COURT` …) | Bombay `.doc`/`.odt` exports | a 43-page order explodes into thousands of shard lines; captions and dates never sit on one line | `_dedupe_lines` merges only genuine shard chains: a run of ≥4 lines whose first word repeats the previous line's last word, or a shorter run with a multi-word suffix/prefix overlap. Ordinary prose coincidences and nothing outside a run are left alone |
 | **Two-column judgment body** | Patna, older reported judgments | left and right columns interleave line by line, producing sentences that jump between unrelated clauses | `_columnar_page_text` rebuilds the page column-by-column, but only when `_detect_columnar` sees at least two tall blocks sharing a vertical band on opposite sides of the gutter |
 | **Cover-page-only PDFs** (caption + CNR, no body) | 32 documents (`SC_*` brief dockets, `MADRAS-DAILY-ORDER`, `MADRAS-SHORT-ORDER`) | zero facts and zero sections, which looks like an extraction bug | `analyse_pdf` now returns `text_status: "insufficient_text"` with `text_chars`, and the sweep lists them separately |
-| **Double-drawn text layer** (1–2 pt duplicate render, words split across clips) | Punjab & Haryana | `IN T + THE + HIGH … + AN + ND` | word-geometry repair: group by baseline, merge fragments by bbox overlap (duplicate draw) or character overlap (split word); kept only when line continuity improves ≥1.4× |
+| **Double-drawn text layer** (1–2 pt duplicate render, words split across clips) | Punjab & Haryana, Bombay `.doc` captions | `IN T + THE + HIGH … + AN + ND` | `_choose_page_text` is gated by severe clipping (`clipped/blocks ≥ 0.25`) **or** genuine overlapping word runs. Overlapping runs are accepted when continuity improves; severe clipping alone must also look like a sharded blank-line layer and improve ≥1.4×, so clean Madras/Supreme Court judgments and table-heavy pages stay verbatim |
 | **Monospace registry template** | Gujarat, Orissa, CGHC | different fonts/metrics | `layout:mono_font` signal |
 | **Legal-size page** (612×1008) | CGHC, Patna, P&H | — | `layout:legal_page` |
 | **JUDIS watermark** (`mhc.tn.gov.in/judis`) and registry footers | Madras, Allahabad, Delhi | pollutes body text and embeddings | `noise` keys strip them before parsing |
@@ -165,8 +169,31 @@ ingestion auditable.
 | **Address blocks inside party captions** | CGHC, Patna, Orissa | party extraction grabs `R/o Ward No. 02 …` | caption party extractor rejects address-shaped lines and cuts at `S/o · D/o · Aged · R/o · Rep by` |
 | **Filename prefixes lie** | `storage/cases/*` | `DHC_1973_Appeal…` is a Supreme Court brief card; many `BHC_*` files are Orissa/Gauhati/Allahabad orders | never key off the filename — all classification is text/geometry based |
 
-Text-quality states across the sweep: `good` 557, `repaired` 7, `ocr_required` 31
-(the flag exists for scans; no OCR stage is wired in).
+Text-quality states across the latest sweep: `good` 559, `repaired` 5,
+`ocr_required` 31 (the flag exists for scans; no OCR stage is wired in). The
+repair gate is intentionally strict: the previous 0.15 clipped-block threshold
+re-flowed hundreds of clean single-column pages; the current gate leaves Madras,
+Madurai and Supreme Court judgment text verbatim while still repairing the
+double-drawn Punjab & Haryana and Bombay `.doc` layers.
+
+### Geometric repair acceptance gates
+
+`_choose_page_text()` separates *suspicion* from *acceptance*:
+
+1. **Suspicion** — attempt repair only when `clipped / len(blocks) >= 0.25`, or
+   `_has_double_drawn_runs()` sees a genuine double-drawn layer (≥6 overlapping
+   neighbouring word pairs across ≥2 baselines, with near-coincident or
+   character-overlapping fragments), or the raw text layer is empty.
+2. **Acceptance** — keep the repaired text only when it preserves content
+   (≥25 % of raw characters) and either:
+   - the page is genuinely double-drawn and line continuity improves; or
+   - the page is severely clipped **and** looks like a sharded blank-line layer
+     (≥30 % blank lines, ≥50 % short fragments, low raw line score) **and**
+     continuity improves ≥1.4×.
+
+This is why a clean page with many narrow caption blocks or a table is not
+re-flowed, while `28_cwp-1744-2024-ph.pdf` and the Bombay `WP.358.2026.doc`
+caption are repaired.
 
 ---
 
@@ -223,8 +250,8 @@ Allahabad documents. Instead:
 | `statute_style.sections` | 397 |
 | `parties.petitioner` | 394 |
 | `parties.respondent` | 344 |
-| `facts.start` | 324 |
-| `dates.decision_date` | 318 |
+| `facts.start` | 325 |
+| `dates.decision_date` | 317 |
 | `operative.conclusion` | 293 |
 | `facts.end` | 292 |
 | `counsel.counsel_for` | 253 |
@@ -270,49 +297,58 @@ produces a bounded factual matrix plus a structured fact sheet.
    the first narrative paragraph after the last prayer unit.
 
 Each candidate is scored on **factuality** (dates, crime/CC numbers, place
-tokens, action verbs such as *arrested / seized / filed / remanded*) minus
-**argument markers** (*SCC, held that, it is settled, submissions, whether,
-prays*), with heavy penalties for caption furniture (`..Petitioner`,
-`For Petitioners:`). The winner is trimmed to a paragraph edge and capped at
-4 500 characters.
+tokens, police stations, action verbs such as *arrested / seized / filed /
+remanded*) minus **argument markers** (*SCC, held that, it is settled,
+submissions, whether, prays*), with heavy penalties for caption furniture
+(`..Petitioner`, `For Petitioners:`). The winner is trimmed to a paragraph edge
+and capped at 4 500 characters.
 
 ### Results on the sweep (595 unique documents)
 
 | Strategy | Documents |
 |---|---:|
-| `anchored_span` | 226 |
-| `paragraph_scan` | 203 |
+| `anchored_span` | 227 |
+| `paragraph_scan` | 202 |
 | `explicit_heading` | 130 |
 | `order_sheet` | 21 |
 | `reserved_judgment` | 10 |
 | `post_caption_body` | 5 |
 
 * **0 of 563 body-text documents return empty facts** (mean 1 938 chars, median
-  1 415, min 135, max 7 114). The remaining 32 are cover-page-only PDFs, now
+  1 421, min 135, max 7 114). The remaining 32 are cover-page-only PDFs, now
   labelled `insufficient_text` instead of silently producing nothing.
 * Brief cards (179) extract 636 chars on average — they have no factual narrative,
   only a headnote, so `headed_facts` correctly returns the summary section.
 
-Example fact sheets (dates / crime numbers / places / offences):
+Example fact sheets (dates / crime numbers / police stations / places / offences):
 
 * *CRL OP 26220/2026 (Madras)* — 9 dates, `Crime No.120 of 2025`, `C.C.No.597 of
   2026`, Tiruvallur, `Sections 8(c) read with 20(b)(ii)(C), 25 and 29(1) of the Act`,
   `in custody since then`.
+* *CRL OP(MD) 23127/2026 (Madurai)* — `Crime No.206 of 2026`,
+  `Mallanginar` police station (merged from the respondent caption even though it
+  sits outside the factual matrix), `Section 25(1B)(b) of Arms Act`,
+  `remanded to judicial custody`.
 * *WPS 5957/2023 (CGHC)* — 8 dates, `Section 34 of the Rights of Persons with
   Disabilities Act, 2016`.
 * *WP.358.2026 (Bombay)* — dates and `Directorate of Enforcement` recovered from a
   shift-repaired text layer that previously produced only shard lines.
 
-Fact-sheet fields: `dates`, `crime_numbers`, `places`, `offences`, `custody`,
-`arrest`, `amounts`. They are returned alongside the facts text and are the
-natural feed for the draft-assistant gap analysis and precedent search.
+Fact-sheet fields: `dates`, `crime_numbers`, `police_stations`, `places`,
+`offences`, `custody`, `arrest`, `amounts`. `crime_numbers` covers Crime / Cr /
+FIR / C.C. / R.C. / charge-sheet / final-report numbers; `police_stations`
+captures both `X Police Station` and `P.S. X` forms and rejects case-number /
+institution-shaped false positives. They are returned alongside the facts text
+and are the natural feed for the draft-assistant gap analysis and precedent
+search.
 
 ---
 
 ## 7. Using it
 
 ```bash
-# full-corpus sweep (storage/cases is the default) — ~4 minutes for 756 PDFs
+# full-corpus sweep (storage/cases is the default) — ~4–5 minutes for 596 PDFs
+# exits 0 when >=99% of unique attempted documents match a specific profile
 python scripts/analyse_case_file_patterns.py --out docs/pattern_analysis
 
 # one-off analysis of any folder of judgments
@@ -337,6 +373,12 @@ Uploads go through it automatically: `ExtractionService.extract_from_pdf` runs
 `layout_signals`, `text_quality`, `facts`, `fact_sheet`, `section_map` and
 `neutral_citation` to the extraction payload. Any failure inside the layer is
 logged and swallowed so ingestion cannot regress.
+
+**Offline contract.** The ingestion path is geometry + regex + PyMuPDF /
+pdfplumber only. Pass 2 (`pass2_regex`) and Pass 3 (`pass3_deterministic`) do not
+call the AI microservice, Ollama, or Hugging Face, and they do not download model
+weights. The same PDF bytes produce the same extraction payload, which is
+pinned by `test_extraction_passes_are_offline_and_deterministic`.
 
 ### Adding a new template
 
@@ -377,4 +419,11 @@ logged and swallowed so ingestion cannot regress.
   `pattern_profile` / `layout_quality` column would let the review UI filter
   "needs OCR" and "unrecognised template" queues.
 * **One corrupt file.** `storage/cases/HC_2026_CRL_A_0A6C947A_2026_0a6c947a.pdf`
-  raises `FileDataError`; the sweep records it in `summary.errors` and continues.
+  raises `FileDataError`; the sweep records it in `summary.errors`, counts it in
+  the coverage denominator, and continues. The latest run still meets the 99 %
+  target (593/596 specific profiles), so the analyser exits 0 while surfacing the
+  unreadable file for triage.
+* **Police-station names are regex-shaped.** `X Police Station` / `P.S. X`
+  captures the common forms and rejects case-number/institution false positives,
+  but unusual station names embedded in long address blocks may still need a
+  registry-specific anchor.

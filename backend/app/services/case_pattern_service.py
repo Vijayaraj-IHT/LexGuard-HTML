@@ -1908,11 +1908,80 @@ def _text_quality_score(text: str) -> float:
     return sum(len(l) for l in lines) / len(lines)
 
 
+def _has_double_drawn_runs(words: Sequence[Sequence[Any]]) -> bool:
+    """
+    Detect a genuinely double-drawn text layer from word geometry.
+
+    A normal single-column page may contain many *narrow* blocks (centred
+    captions, party names, page clocks) without being broken.  The reliable
+    signal is instead a run of neighbouring words on the same baseline whose
+    bounding boxes overlap substantially: the same glyphs were painted twice
+    at a small offset, or a word was split across two clipping paths.
+
+    The gate is deliberately conservative: isolated overlaps (signatures,
+    stamps, table rules) are not enough.  We require several overlapping pairs
+    across at least two visual rows, with a meaningful share of near-coincident
+    or character-overlapping fragments.
+    """
+    if len(words) < 12:
+        return False
+    overlap_pairs = 0
+    overlap_rows = 0
+    strong_pairs = 0
+    for row in _line_rows(list(words)):
+        row_pairs = 0
+        for left, right in zip(row, row[1:]):
+            narrower = max(min(left[2] - left[0], right[2] - right[0]), 1e-6)
+            x_overlap = min(left[2], right[2]) - max(left[0], right[0])
+            ratio = x_overlap / narrower
+            if ratio < 0.35:
+                continue
+            row_pairs += 1
+            overlap_pairs += 1
+            ltext, rtext = left[4].lower(), right[4].lower()
+            if ratio >= 0.8 or ltext == rtext or _max_overlap_join(left[4], right[4])[1]:
+                strong_pairs += 1
+        if row_pairs:
+            overlap_rows += 1
+    return (
+        overlap_pairs >= 6
+        and overlap_rows >= 2
+        and strong_pairs >= 3
+        and overlap_pairs / max(len(words), 1) >= 0.02
+    )
+
+
+def _looks_like_sharded_raw(raw: str) -> bool:
+    """
+    True when a clipped-looking page is actually a shard/blank-line text layer,
+    not a clean page that merely contains a table or many narrow caption blocks.
+
+    Double-drawn P&H/Bombay exports fragment one visual line into many short
+    draws separated by blank lines.  Tables also create narrow blocks, but they
+    do not produce the same blank-line + short-fragment signature.
+    """
+    lines = raw.split("\n")
+    if not lines:
+        return False
+    nonempty = [line for line in lines if line.strip()]
+    if not nonempty:
+        return False
+    blank_ratio = sum(1 for line in lines if not line.strip()) / len(lines)
+    short_ratio = sum(1 for line in nonempty if len(line.strip()) < 25) / len(nonempty)
+    return blank_ratio >= 0.30 and short_ratio >= 0.50 and _text_quality_score(raw) <= 24.0
+
+
 def _choose_page_text(page) -> Tuple[str, bool]:
     """
-    Pick verbatim text or the geometrically repaired text, whichever reads
-    better.  Repair is only attempted for suspicious pages and is only kept when
-    it materially improves line continuity without losing content.
+    Pick verbatim text or the geometrically repaired text.
+
+    Repair is *suspicion-gated*: it is only attempted when a page has severe
+    clipping (``clipped / len(blocks) >= 0.25``) or genuine double-drawn
+    overlapping runs.  Suspicion alone is not acceptance.  A double-drawn layer
+    is kept when line continuity improves; a merely clipped-looking page must
+    also look like a sharded text layer and show a large continuity gain
+    (>= 1.4x).  Clean single-column judgments and table-heavy pages therefore
+    remain verbatim instead of being re-flowed by the repairer.
     """
     raw = page.get_text()
     page_dict = page.get_text("dict")
@@ -1920,8 +1989,9 @@ def _choose_page_text(page) -> Tuple[str, bool]:
     if not blocks:
         return raw, False
     clipped = sum(1 for b in blocks if (b["bbox"][2] - b["bbox"][0]) < page.rect.width * 0.42)
-    suspicious = (clipped / len(blocks)) >= 0.15 or not raw.strip()
-    if not suspicious:
+    severe_clipping = (clipped / len(blocks)) >= 0.25
+    double_drawn = _has_double_drawn_runs(page.get_text("words"))
+    if not (severe_clipping or double_drawn or not raw.strip()):
         return raw, False
 
     repaired = _repair_doubled_draw(page)
@@ -1929,7 +1999,14 @@ def _choose_page_text(page) -> Tuple[str, bool]:
         return raw, False
     raw_score, rep_score = _text_quality_score(raw), _text_quality_score(repaired)
     keeps_content = len(repaired.strip()) >= 0.25 * len(raw.strip())
-    if keeps_content and rep_score >= raw_score:
+    if not keeps_content:
+        return raw, False
+    if not raw.strip():
+        return repaired, True
+    if double_drawn and rep_score >= max(raw_score * 1.05, raw_score + 1.0):
+        return repaired, True
+    if (severe_clipping and _looks_like_sharded_raw(raw)
+            and rep_score >= max(raw_score * 1.4, raw_score + 8.0)):
         return repaired, True
     return raw, False
 
@@ -2013,12 +2090,29 @@ def _dedupe_lines(text: str) -> str:
             break
 
         if len(chain) >= 3:
-            merged = chain[0]
-            for piece in chain[1:]:
-                words = piece.split()
-                merged = f"{merged} {' '.join(words[1:])}".strip()
-            out.append(merged)
-            i = j
+            # A single repeated word across three ordinary prose lines is not a
+            # shifted duplicate draw.  Accept either a longer shard chain (the
+            # Bombay ``IN / IN THE / THE HIGH / HIGH COURT ...`` caption) or a
+            # multi-word suffix/prefix overlap between neighbours.
+            overlaps: List[int] = []
+            for left, right in zip(chain, chain[1:]):
+                lw = [w.strip(".,;:").lower() for w in left.split()]
+                rw = [w.strip(".,;:").lower() for w in right.split()]
+                k = 0
+                while k < min(len(lw), len(rw)) and lw[-k - 1] == rw[k]:
+                    k += 1
+                overlaps.append(k)
+            genuine_shard_chain = len(chain) >= 4 or max(overlaps, default=0) >= 2
+            if genuine_shard_chain:
+                merged = chain[0]
+                for piece in chain[1:]:
+                    words = piece.split()
+                    merged = f"{merged} {' '.join(words[1:])}".strip()
+                out.append(merged)
+                i = j
+            else:
+                out.append(current)
+                i += 1
         else:
             out.append(current)
             i += 1
@@ -2785,11 +2879,14 @@ class CasePatternService:
         3. **Rolling paragraph-run candidates** — for templates that print no
            section headings at all (most Madras orders), every plausible run of
            contiguous narrative paragraphs is proposed.
+        4. **Post-caption body candidate** — for reserved judgments with no
+           ``JUDGMENT`` heading, the first factual paragraph after the last
+           prayer unit is proposed as the body start.
 
         Every candidate is scored on factuality (dates, crime numbers, places,
-        action verbs) minus legal-argument markers, then trimmed to a paragraph
-        edge.  The winner plus its provenance is returned alongside a compact
-        fact sheet.
+        police stations, action verbs) minus legal-argument markers, then
+        trimmed to a paragraph edge.  The winner plus its provenance is returned
+        alongside a compact fact sheet.
         """
         sections = sections or cls.map_sections(text, detection)
         keyset = cls.key_set_for(detection.profile_id)
@@ -2823,6 +2920,15 @@ class CasePatternService:
         facts_text = re.sub(r"[ \t]+", " ", best_region).strip()
         facts_text = re.sub(r"\n{3,}", "\n\n", facts_text)
         fact_sheet = cls._fact_sheet(facts_text)
+        # Police stations are often printed only in the respondent caption
+        # ("Inspector of Police, X Police Station"), outside the factual matrix.
+        # Merge caption/body station names so the sheet is not silently empty.
+        station_seen = {s.casefold() for s in fact_sheet["police_stations"]}
+        for station in cls._police_stations(re.sub(r"\s+", " ", text)):
+            if station.casefold() not in station_seen:
+                station_seen.add(station.casefold())
+                fact_sheet["police_stations"].append(station)
+        fact_sheet["police_stations"] = fact_sheet["police_stations"][:8]
 
         confidence = 0.45
         if best["anchored"]:
@@ -2833,6 +2939,8 @@ class CasePatternService:
             confidence += 0.06
         if fact_sheet["crime_numbers"] or fact_sheet["offences"]:
             confidence += 0.06
+        if fact_sheet.get("police_stations"):
+            confidence += 0.03
         if 400 <= len(facts_text) <= cls.FACT_CAP:
             confidence += 0.05
         # a clear margin over the runner-up means the choice is stable
@@ -2857,8 +2965,8 @@ class CasePatternService:
         }
 
     _CRIME_FULL_RE = re.compile(
-        r"\b(?:(?:Crime|F\.?I\.?R|FIR)\s*No\.?|C\.?C\.?\s*No\.?|"
-        r"R\.?C\.?\s*No\.?|Charge\s+Sheet\s+No\.?)\s*[\d\.\/]+(?:\s*(?:of|/)\s*\d{2,4})?",
+        r"\b(?:(?:Crime|Cr|F\.?I\.?R|FIR|C\.?C\.?|R\.?C\.?|Charge\s+Sheet|Final\s+Report)"
+        r"\s*No\.?)\s*[:\-]?\s*[\d\.\/]+(?:\s*(?:of|/)\s*\d{2,4})?",
         re.IGNORECASE,
     )
     _OFFENCE_RE = re.compile(
@@ -2872,34 +2980,101 @@ class CasePatternService:
         r"\b(?:District|Taluk|Tehsil|Village|Police\s+Station|P\.S\.)\s+(?:of\s+)?([A-Z][A-Za-z\.]{2,20})"
         r"|\b([A-Z][A-Za-z\.]{2,20})\s+(?:District|Taluk|Tehsil|Village)\b"
     )
+    _PLACE_STOPWORDS = {
+        "additional", "district", "sessions", "special", "judicial", "magistrate",
+        "court", "principal", "senior", "junior", "civil", "criminal", "chief",
+        "metropolitan", "sub", "assistant", "deputy", "learned", "trial",
+    }
+    #: Police-station names appear both before and after the designator:
+    #: ``Mallanginar Police Station`` / ``Police Station Majalgaon`` / ``P.S. Kotwali``.
+    _PS_NAME = r"[A-Z][A-Za-z0-9.&'\-]{1,30}(?:\s+[A-Z][A-Za-z0-9.&'\-]{1,30}){0,4}"
+    _EVIDENCE_TAIL = r"(?:[^.\n]|\.(?![ \n]|$)){0,90}"
+    _POLICE_STATION_SUFFIX_RE = re.compile(
+        rf"\b({_PS_NAME})\s+(?:[Pp]olice\s+[Ss]tation|P\.?\s*S\.?)\b"
+    )
+    _POLICE_STATION_PREFIX_RE = re.compile(
+        rf"\b(?:[Pp]olice\s+[Ss]tation|P\.?\s*S\.?)\s*[-:.]?\s*(?:of\s+)?({_PS_NAME})"
+        r"(?=\s*(?:[,;.)]|\n|$|\b(?:District|Taluk|Tehsil|Village|Post|P\.O\.|Case|No|Crime|FIR|"
+        r"C\.C|R\.C|Charge|and|for|under|on|in|registered|was|were|has|have|had)\b))"
+    )
+    _POLICE_STATION_STOPWORDS = {
+        "the", "a", "an", "of", "at", "from", "to", "and", "or", "respondent",
+        "petitioner", "accused", "complainant", "state", "inspector", "sub",
+        "case", "crime", "fir", "no", "cc", "rc", "charge", "final", "report",
+        "police", "station",
+    }
+    _POLICE_STATION_REJECT_RE = re.compile(
+        r"\b(?:college|engineering|school|hospital|court|limited|ltd|private|university)\b",
+        re.IGNORECASE,
+    )
     _AMOUNT_RE = re.compile(r"(?:Rs\.?|₹)\s?\d[\d,]*(?:\.\d+)?(?:\s*(?:lakh|crore))?(?:\s*/\-)?", re.IGNORECASE)
+    _CUSTODY_RE = re.compile(
+        rf"(?:\b(?:in|into|under|remanded\s+to|sent\s+to|taken\s+into)\s+"
+        rf"(?:judicial\s+|police\s+|illegal\s+|wrongful\s+)?custody(?:\s+(?:since|for|from|on|under){_EVIDENCE_TAIL})?"
+        rf"|\b(?:judicial|police)\s+custody(?:\s+(?:since|for|from|on){_EVIDENCE_TAIL})?"
+        rf"|\bcustody\s+(?:since|for){_EVIDENCE_TAIL}"
+        rf"|\bunder\s+detention(?:\s+since)?{_EVIDENCE_TAIL})",
+        re.IGNORECASE,
+    )
+    _ARREST_RE = re.compile(
+        rf"(?:\b(?:was\s+|were\s+|has\s+been\s+|had\s+been\s+|been\s+)?"
+        rf"(?:arrested|apprehended|detained|taken\s+into\s+custody)"
+        rf"(?:\s+(?:on|at|in|from|by|under){_EVIDENCE_TAIL})?"
+        rf"|\bsurrendered\s+(?:before|on|at){_EVIDENCE_TAIL}"
+        rf"|\b(?:not|never)\s+arrested{_EVIDENCE_TAIL})",
+        re.IGNORECASE,
+    )
+
+    @classmethod
+    def _police_stations(cls, facts_text: str) -> List[str]:
+        """Deterministic police-station name capture (prefix and suffix forms)."""
+        stations: List[str] = []
+        seen: set[str] = set()
+        for pattern in (cls._POLICE_STATION_SUFFIX_RE, cls._POLICE_STATION_PREFIX_RE):
+            for match in pattern.finditer(facts_text):
+                name = re.sub(r"\s+", " ", match.group(1)).strip(" .,;:-")
+                name = re.sub(r"(?i)^(?:the|at|from|of|to)\s+", "", name).strip()
+                if not name or len(name) < 3:
+                    continue
+                first = name.split()[0].lower().strip(".,;:-")
+                if first in cls._POLICE_STATION_STOPWORDS:
+                    continue
+                if cls._POLICE_STATION_REJECT_RE.search(name):
+                    continue
+                key = name.casefold()
+                if key not in seen:
+                    seen.add(key)
+                    stations.append(name)
+        return stations[:8]
 
     @classmethod
     def _fact_sheet(cls, facts_text: str) -> Dict[str, Any]:
-        """Structured slice of the factual matrix: dates, crime numbers, places,
-        offences, custody/arrest statements and monetary amounts."""
+        """Structured slice of the factual matrix: dates, crime/FIR numbers,
+        police stations, places, offences, custody/arrest evidence and amounts."""
         if not facts_text:
-            return {"dates": [], "crime_numbers": [], "places": [], "offences": [],
-                    "custody": None, "arrest": None, "amounts": []}
-        dates = list(dict.fromkeys(cls._DATE_RE.findall(facts_text)))[:12]
+            return {"dates": [], "crime_numbers": [], "police_stations": [],
+                    "places": [], "offences": [], "custody": None,
+                    "arrest": None, "amounts": []}
+        flat = re.sub(r"\s+", " ", facts_text).strip()
+        dates = list(dict.fromkeys(cls._DATE_RE.findall(flat)))[:12]
         crime_numbers = list(dict.fromkeys(
-            re.sub(r"\s+", " ", m.group(0)).strip() for m in cls._CRIME_FULL_RE.finditer(facts_text)))[:8]
+            re.sub(r"\s+", " ", m.group(0)).strip() for m in cls._CRIME_FULL_RE.finditer(flat)))[:8]
+        police_stations = cls._police_stations(flat)
         places: List[str] = []
-        for m in cls._PLACE_NAME_RE.finditer(facts_text):
+        for m in cls._PLACE_NAME_RE.finditer(flat):
             name = (m.group(1) or m.group(2) or "").strip(" .,")
-            if name and name not in places:
+            if name and name not in places and name.lower() not in cls._PLACE_STOPWORDS:
                 places.append(name)
         offences = list(dict.fromkeys(
-            re.sub(r"\s+", " ", m.group(0)).strip() for m in cls._OFFENCE_RE.finditer(facts_text)))[:8]
-        custody = re.search(r"(?:in\s+custody\s+since|custody\s+for|under\s+detention\s+since|"
-                            r"remanded\s+to\s+judicial\s+custody\s+on)[^.]{0,90}", facts_text, re.I)
-        arrest = re.search(r"(?:arrested\s+on|surrendered\s+(?:before|on)|apprehended\s+on)[^.]{0,90}",
-                           facts_text, re.I)
+            re.sub(r"\s+", " ", m.group(0)).strip() for m in cls._OFFENCE_RE.finditer(flat)))[:8]
+        custody = cls._CUSTODY_RE.search(flat)
+        arrest = cls._ARREST_RE.search(flat)
         amounts = list(dict.fromkeys(
-            re.sub(r"\s+", " ", m.group(0)).strip() for m in cls._AMOUNT_RE.finditer(facts_text)))[:5]
+            re.sub(r"\s+", " ", m.group(0)).strip() for m in cls._AMOUNT_RE.finditer(flat)))[:5]
         return {
             "dates": dates,
             "crime_numbers": crime_numbers,
+            "police_stations": police_stations,
             "places": places[:10],
             "offences": offences,
             "custody": re.sub(r"\s+", " ", custody.group(0)).strip() if custody else None,
