@@ -924,7 +924,6 @@ class ExtractionService:
                 nums = re.findall(r"[0-9]+[A-Za-z]?(?:-[A-Za-z0-9]+)?(?:\([0-9A-Za-z]+\))*", nums_raw)
 
                 for n in nums:
-                    full_sec_tag = f"{prefix} {n} of {act_raw}"
                     short_sec_tag = f"{prefix} {n} {act_raw}"
                     sections_found[short_sec_tag] = sections_found.get(short_sec_tag, 0) + 1
                     acts_found[act_raw] = acts_found.get(act_raw, 0) + 1

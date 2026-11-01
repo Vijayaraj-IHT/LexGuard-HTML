@@ -3,10 +3,6 @@ LexGuard Text Sanitizer and Indian Judicial PDF Extraction Service.
 Extracts clean, normalized text, CNRs, coram, dates, and statutory references from court judgments.
 """
 import re
-import os
-from typing import Dict, Any, List, Optional
-from datetime import datetime
-import pdfplumber
 
 
 class TextSanitizerService:

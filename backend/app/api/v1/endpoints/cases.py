@@ -1080,7 +1080,6 @@ def _build_external_references(case: Case) -> list:
 
     refs = []
     title = case.title or ""
-    case_no = case.case_no or ""
     year = case.year or ""
     court = (case.court or "").strip()
     official_citation = case.official_citation or ""
@@ -1134,7 +1133,6 @@ def _build_external_references(case: Case) -> list:
     # ── 4. Supreme Court of India – Judgments Portal ───────────────────
     court_upper = court.upper()
     if "SUPREME" in court_upper:
-        sci_query = case_no if case_no else title
         refs.append({
             "name": "SCI Judgments Portal",
             "description": "Supreme Court of India official judgment information system",

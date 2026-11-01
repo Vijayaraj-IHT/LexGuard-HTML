@@ -51,10 +51,10 @@ from __future__ import annotations
 import logging
 import os
 import re
-from collections import Counter, defaultdict
+from collections import Counter
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 logger = logging.getLogger(__name__)
 

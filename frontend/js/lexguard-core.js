@@ -156,16 +156,6 @@
     },
 
     /**
-     * Format a score float (0-1) to percentage string.
-     */
-    formatScore: function (score) {
-      if (score === null || score === undefined) return '0%';
-      const num = parseFloat(score);
-      if (isNaN(num)) return '0%';
-      return Math.round(num > 1 ? num : num * 100) + '%';
-    },
-
-    /**
      * Returns appropriate CSS badge class for a court name.
      */
     courtBadgeClass: function (court) {
