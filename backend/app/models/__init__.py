@@ -6,6 +6,7 @@ from app.models.audit_log import AuditLog
 from app.models.bookmark import Bookmark
 from app.models.draft_session import DraftSession
 from app.models.approval_queue import ApprovalQueue
+from app.models.preflight import CasePreflightRun
 
 __all__ = [
     "Base",
@@ -16,4 +17,5 @@ __all__ = [
     "Bookmark",
     "DraftSession",
     "ApprovalQueue",
+    "CasePreflightRun",
 ]

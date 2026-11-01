@@ -1,5 +1,16 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, cases, search, draft, admin, bookmarks, verification, comparison, statutes
+from app.api.v1.endpoints import (
+    auth,
+    cases,
+    search,
+    draft,
+    admin,
+    bookmarks,
+    verification,
+    comparison,
+    statutes,
+    system,
+)
 
 api_router = APIRouter()
 
@@ -13,3 +24,4 @@ api_router.include_router(search.router, prefix="/search", tags=["Legal Search &
 api_router.include_router(draft.router, prefix="/draft", tags=["AI Draft Assistant"])
 api_router.include_router(admin.router, prefix="/admin", tags=["Court Staff Administration & Audit"])
 api_router.include_router(bookmarks.router, prefix="/bookmarks", tags=["Bookmarks"])
+api_router.include_router(system.router, prefix="/system", tags=["System & Database Preflight"])
