@@ -123,13 +123,18 @@ cd backend
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-**Terminal 2 (HTML5 Frontend on port 8888):**
+**Terminal 2 (frontend + API proxy on port 8080):**
 ```bash
-cd frontend
-python -m http.server 8888
+python scripts/serve.py          # serves frontend/ and proxies /api/* to :8000
 ```
 
-Open your browser to: **`http://127.0.0.1:8888/index.html`**
+Open your browser to: **`http://127.0.0.1:8080/`**
+
+`serve.py` is stdlib-only, gzips text assets, sets cache headers and forwards `/api/*`
+to the backend, so the browser talks to a single origin — no CORS, no hard-coded
+`http://127.0.0.1:8000` in the frontend. Plain static hosting still works
+(`cd frontend && python -m http.server 8888`); the frontend detects port 8888 and
+falls back to the legacy backend URL. See [`docs/SERVING.md`](docs/SERVING.md).
 
 ---
 
