@@ -87,15 +87,13 @@ body::before {
 }
 
 /* Judicial Serif Headings */
-.font-serif,
-.lg-serif {
+.font-serif {
   font-family: var(--lg-font-serif) !important;
   color: #0f172a;
 }
 
 /* Code & Digest Monospace */
-.font-mono,
-.lg-mono {
+.font-mono {
   font-family: var(--lg-font-mono) !important;
   letter-spacing: -0.02em;
 }
@@ -148,8 +146,7 @@ body::before {
 /* ==============================================================================
    2. Buttons: Judicial Court Red & Pristine Outlines
    ============================================================================== */
-.btn-gold,
-.btn-court-red {
+.btn-gold {
   background: linear-gradient(135deg, #991b1b 0%, #b91c1c 100%) !important;
   color: #ffffff !important;
   font-weight: 600;
@@ -158,9 +155,7 @@ body::before {
   transition: all 0.2s ease;
 }
 .btn-gold:hover,
-.btn-gold:focus,
-.btn-court-red:hover,
-.btn-court-red:focus {
+.btn-gold:focus {
   background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%) !important;
   color: #ffffff !important;
   border-color: #4c0519 !important;

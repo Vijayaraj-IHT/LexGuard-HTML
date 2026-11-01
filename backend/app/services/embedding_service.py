@@ -57,20 +57,6 @@ class EmbeddingService:
         # Fallback: Deterministic normalized 384-dim pseudo-vector via token hashing
         return self._deterministic_fallback_vector(text)
 
-    def batch_generate_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """
-        Generates embeddings for a batch of text segments.
-        """
-        model = self._load_model()
-        if model is not None:
-            try:
-                embeddings = model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
-                return [[float(x) for x in emb.tolist()] for emb in embeddings]
-            except Exception as e:
-                logger.error(f"Batch embedding error: {e}")
-
-        return [self.generate_embedding(t) for t in texts]
-
     @lru_cache(maxsize=512)
     def encode_text_cached(self, text: str) -> tuple:
         """Cached single-text embedding returning tuple for immutability and O(1) repeated query lookups."""

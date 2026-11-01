@@ -125,7 +125,6 @@ class PrecedentComparatorService:
         suggestions = []
         omitted_tests = [item["test"] for item in statutory_audit if item["status"] == "omitted"]
         sections_str = ", ".join(case.section_tags) if case.section_tags else "the relevant statute"
-        acts_str = ", ".join(case.act_tags) if case.act_tags else "law"
 
         # 1. Ground Clause
         suggestions.append({
