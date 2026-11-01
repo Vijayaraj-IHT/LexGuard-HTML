@@ -8,7 +8,17 @@ load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 from app.core.config import settings
 from app.core.database import engine, Base, SessionLocal
-from app.models import User, Case, DocumentVersion, AuditLog, Bookmark, DraftSession, ApprovalQueue
+# These model imports are side-effect imports: importing them registers every
+# table on Base.metadata before create_all() runs below, so they must stay.
+from app.models import (  # noqa: F401
+    User,
+    Case,
+    DocumentVersion,
+    AuditLog,
+    Bookmark,
+    DraftSession,
+    ApprovalQueue,
+)
 from app.core.security import get_password_hash
 from sqlalchemy import text
 

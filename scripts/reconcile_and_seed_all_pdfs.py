@@ -11,7 +11,6 @@ This script ensures 100% of cases in LexGuard have:
 
 import os
 import re
-import sys
 import json
 import uuid
 import shutil
@@ -28,11 +27,10 @@ from reportlab.platypus import (
     Table,
     TableStyle,
     HRFlowable,
-    KeepTogether,
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT, TA_RIGHT
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
 from reportlab.pdfgen import canvas
 
 DB_URL = "postgresql://lexguard:lexguard123@localhost:5432/lexguard"

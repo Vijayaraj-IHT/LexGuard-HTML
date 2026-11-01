@@ -43,6 +43,6 @@ python -m compileall -q backend    # only the known bookmarks.py:247 f-string er
 
 ## 3. Still open
 
-Code deletions from `DEAD_CODE_REPORT.md` §11 step 3 (`text_sanitizer.extract_metadata_from_pdf`, `security.verify_csrf_header`, unused schemas, `LG.*` members, unused CSS) — `main` has done part of this; the rest needs test runs and belongs in its own commit.
+~~Code deletions from `DEAD_CODE_REPORT.md` §11 step 3 … belongs in its own commit.~~ **Done 2026-11-01** in a follow-up commit driven by `docs/DEAD_CODE_SCAN.md`: 11 superseded UI patchers (2,312 lines), 6 dead CSS selectors, 13 unused `LG.api` wrappers, 2 dead JS handles and unused imports/locals in 33 Python files. `text_sanitizer.extract_metadata_from_pdf` and `security.verify_csrf_header` were already gone; unused schemas were kept (they back live response models). Suite went from 274 to 275 passing with the same 3 pre-existing failures.
 
 `Git` history still holds every removed blob, so `.git` does not shrink. Reclaiming it requires a deliberate `git filter-repo` pass, which invalidates existing clones.

@@ -9,7 +9,6 @@ and updates cited_by_count and precedential_status across the database.
 import os
 import sys
 import re
-import json
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backend"))
 from app.core.database import SessionLocal

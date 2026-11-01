@@ -1,4 +1,3 @@
-import os
 import sys
 import json
 import hashlib
@@ -10,7 +9,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from app.core.database import SessionLocal, engine
+from app.core.database import SessionLocal
 from app.models.case import Case
 from app.models.user import User
 from app.services.embedding_service import embedding_service

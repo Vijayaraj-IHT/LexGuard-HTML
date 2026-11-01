@@ -23,9 +23,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from app.services.case_pattern_service import (  # noqa: E402
     CasePatternService,
     KEY_SETS,
-    PROFILES as _PROFILES,
-    _merge_key_sets,
     PROFILES,
+    _merge_key_sets,
     LayoutFingerprint,
     detect_case_pattern,
     profile_catalog,
@@ -754,7 +753,7 @@ def test_office_notes_derive_the_court_from_the_registry_code():
 
 
 def test_every_profile_declares_a_resolvable_key_set():
-    for profile in _PROFILES:
+    for profile in PROFILES:
         resolved = CasePatternService.key_set_for(profile["id"])
         assert resolved, f"{profile['id']} resolved to an empty key set"
         assert "identity" in resolved or profile["id"] == "NON-JUDGMENT"

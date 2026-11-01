@@ -16,7 +16,6 @@ import re
 import shutil
 import hashlib
 import sqlite3
-import json
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -159,7 +158,7 @@ def extract_metadata_from_pdf(filepath):
             meta["court"] = "High Court of Delhi"
         elif "SUPREME COURT" in raw_text.upper():
             meta["court"] = "Supreme Court of India"
-    except Exception as e:
+    except Exception:
         pass
 
     return meta

@@ -24,23 +24,20 @@ Features:
    - Saves comprehensive metadata manifest at `backend/storage/extracted_metadata/manifest_1000.json`
 """
 
-import os
 import sys
 import json
 import uuid
-import shutil
 import hashlib
 import argparse
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 
 # Setup environment & import paths
 BASE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE_DIR))
 
-from app.core.config import settings
-from app.core.database import SessionLocal, engine
+from app.core.database import SessionLocal
 from app.models.case import Case
 from app.models.user import User
 from app.models.audit_log import AuditLog
@@ -107,7 +104,7 @@ def process_single_pdf(pdf_path: Path, db, uploader_id: str, auto_approve: bool 
     embedding_text = f"{title}. {summary}. {' '.join(section_tags)} {' '.join(keyword_tags)}"
     try:
         emb = embedding_service.generate_embedding(embedding_text)
-    except Exception as e:
+    except Exception:
         emb = None
 
     now_utc = datetime.now(timezone.utc)

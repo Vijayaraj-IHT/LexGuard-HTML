@@ -24,7 +24,7 @@ import logging
 import re
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional
 
 from sqlalchemy import func, inspect, text
 from sqlalchemy.engine import Engine
@@ -92,7 +92,6 @@ def ensure_case_indexes(bind: Engine) -> List[str]:
     if not inspector.has_table("cases"):
         return created
     existing = {ix.get("name") for ix in inspector.get_indexes("cases")}
-    dialect = bind.dialect.name
     with bind.begin() as conn:
         for name, column in CASE_INDEXES.items():
             if name in existing:
@@ -349,7 +348,6 @@ def run_case_preflight(
     samples: Dict[str, List[str]] = {"missing": [], "mismatch": [], "invalid_metadata": [], "duplicate_hash": []}
     reasons_seen: Dict[str, int] = {}
     max_samples = int(getattr(settings, "PREFLIGHT_MAX_SAMPLES", MAX_SAMPLES_DEFAULT))
-    reopened: List[str] = []
     quarantined: List[str] = []
 
     try:

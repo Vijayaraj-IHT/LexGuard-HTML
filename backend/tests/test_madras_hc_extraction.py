@@ -11,8 +11,6 @@ import pytest
 from app.services.extraction_service import (
     ExtractionService,
     VALID_DISPOSITIONS,
-    PETITION_TYPE_LOOKUP,
-    STATUTORY_CROSS_REFERENCES,
 )
 
 

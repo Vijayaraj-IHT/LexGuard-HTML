@@ -8,7 +8,7 @@ from pathlib import Path
 # Add backend directory to path
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
-from app.core.database import SessionLocal, engine, Base
+from app.core.database import SessionLocal
 from app.models.case import Case
 from app.models.user import User
 from app.models.document_version import DocumentVersion

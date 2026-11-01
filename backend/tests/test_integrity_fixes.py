@@ -433,7 +433,6 @@ def test_g4_rate_limiter_memory_is_bounded_and_limit_still_applies():
 def test_g5_upload_auto_rename_failure_keeps_file_and_row_consistent(monkeypatch):
     import app.api.v1.endpoints.cases as cases_mod
     from app.core.config import resolve_case_pdf_path
-    from app.models.user import User as _U
 
     db = SessionLocal()
     staff = _user(db, f"g5_{os.urandom(3).hex()}@t.in", "senior_staff")

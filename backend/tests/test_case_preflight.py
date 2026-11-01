@@ -36,7 +36,6 @@ from app.core.security import get_current_user  # noqa: E402
 from app.models.case import Case  # noqa: E402
 from app.models.preflight import CasePreflightRun  # noqa: E402
 from app.models.user import User  # noqa: E402
-from app.services.crypto_service import compute_sha256  # noqa: E402
 import importlib.util  # noqa: E402
 
 engine = create_engine(f"sqlite:///{_TEST_DB}", connect_args={"check_same_thread": False})

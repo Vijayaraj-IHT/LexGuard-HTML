@@ -1,4 +1,3 @@
-import os
 import pptx
 from pptx.util import Inches, Pt
 from pptx.enum.shapes import MSO_SHAPE

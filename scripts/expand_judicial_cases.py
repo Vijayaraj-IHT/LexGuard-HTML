@@ -143,7 +143,7 @@ def create_pdf_file(filepath, content, case):
         c.drawString(50, 30, f"LexGuard Judicial Repository Verification Seal · Case {case['case_no']}")
         c.save()
         return True
-    except Exception as e:
+    except Exception:
         # Fallback to pure text-based PDF
         header = b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R/Resources<<>>/Contents 4 0 R>>endobj\n"
         escaped_text = content.replace("(", "\\(").replace(")", "\\)").encode("latin1", "replace")

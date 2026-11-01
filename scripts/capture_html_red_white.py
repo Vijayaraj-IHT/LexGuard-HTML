@@ -1,7 +1,6 @@
 import os
 import shutil
 import subprocess
-import time
 import requests
 
 ARTIFACT_SCREENSHOTS = r"C:\Users\Vijay Raj\.gemini\antigravity\brain\bf49bd7f-191f-466f-8220-3857aab9ae1c\screenshots"

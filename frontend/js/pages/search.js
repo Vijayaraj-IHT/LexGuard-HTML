@@ -15,7 +15,6 @@ $(document).ready(function () {
 
   const $form = $('#search-form');
   const $input = $('#search-query-input');
-  const $submitBtn = $('#search-submit-btn');
   const $loading = $('#search-loading');
   const $resultsContainer = $('#results-container');
   const $resultsCount = $('#results-count');

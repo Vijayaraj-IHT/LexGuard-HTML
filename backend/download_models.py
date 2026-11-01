@@ -13,7 +13,7 @@ from pathlib import Path
 
 # Enable high-speed Rust-based hf_transfer if installed
 try:
-    import hf_transfer
+    import hf_transfer  # noqa: F401  (probe only: availability check, never called)
     os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
     TURBO_ACTIVE = True
 except ImportError:

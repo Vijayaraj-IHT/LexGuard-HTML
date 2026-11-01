@@ -1,7 +1,6 @@
 import pytest
 from app.models.case import Case
 from app.services.comparator import PrecedentComparatorService, precedent_comparator
-from app.schemas.draft import PrecedentCompareRequest
 
 
 @pytest.fixture
