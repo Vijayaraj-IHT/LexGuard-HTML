@@ -9,10 +9,44 @@ from app.services.crypto_service import compute_audit_log_hash, GENESIS_HASH
 _audit_lock = threading.Lock()
 
 
+# AuditLog.id is a UUID string, so it carries NO insertion order. Timestamp is the
+# only chronological ordering the ledger has; the id is used purely so that two rows
+# sharing a timestamp still order identically on every read (a tie was previously
+# resolved arbitrarily, which could make the chain look broken). Because the UUID
+# tiebreak is arbitrary, it must never be used to decide which row came first —
+# see check_audit_entry, which compares full-precision timestamps instead.
+LEDGER_ORDER_DESC = (AuditLog.timestamp.desc(), AuditLog.id.desc())
+LEDGER_ORDER_ASC = (AuditLog.timestamp.asc(), AuditLog.id.asc())
+
+
+def latest_ledger_entry(db: Session, for_update: bool = False) -> Optional[AuditLog]:
+    """The newest row by wall-clock timestamp, tie-broken deterministically by id."""
+    query = db.query(AuditLog).order_by(*LEDGER_ORDER_DESC)
+    if for_update and db.bind is not None and db.bind.dialect.name == "postgresql":
+        query = query.with_for_update()
+    return query.first()
+
+
 def get_chain_head_hash(db: Session) -> str:
     """Returns the current_hash of the newest audit entry, or the genesis hash if the ledger is empty."""
-    last_entry = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).first()
+    last_entry = latest_ledger_entry(db)
     return last_entry.current_hash if last_entry else GENESIS_HASH
+
+
+def ledger_entries(db: Session) -> list:
+    """Every audit row in chain order (timestamp asc, id asc tiebreak)."""
+    return db.query(AuditLog).order_by(*LEDGER_ORDER_ASC).all()
+
+
+def verify_ledger(db: Session) -> Dict[str, Any]:
+    """
+    Verifies the whole stored chain in append order.
+
+    Use this (not a partial window) whenever a caller claims "the audit trail is
+    intact" for a record; partial verification only proves the sampled rows.
+    """
+    from app.services.crypto_service import verify_audit_chain
+    return verify_audit_chain(ledger_entries(db))
 
 
 def build_audit_entry(
@@ -82,12 +116,9 @@ def log_audit_event(
     with _audit_lock:
         # Retrieve the last record in the audit ledger with row lock if supported
         try:
-            if db.bind and db.bind.dialect.name == "postgresql":
-                last_entry = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).with_for_update().first()
-            else:
-                last_entry = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).first()
+            last_entry = latest_ledger_entry(db, for_update=True)
         except Exception:
-            last_entry = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).first()
+            last_entry = db.query(AuditLog).order_by(*LEDGER_ORDER_DESC).first()
 
         previous_hash = last_entry.current_hash if last_entry else GENESIS_HASH
         entry = build_audit_entry(
@@ -105,6 +136,22 @@ def log_audit_event(
         db.commit()
         db.refresh(log_entry)
         return log_entry
+
+
+def _as_utc(timestamp) -> Optional[datetime]:
+    """
+    A comparable UTC datetime at FULL precision.
+
+    Deliberately not ``normalize_timestamp``: that truncates to whole seconds for
+    hashing, and second-truncated values cannot order two rows written in the same
+    second (the UUID tiebreak is arbitrary, not chronological). Naive values are
+    UTC by convention, matching the writer.
+    """
+    if timestamp is None:
+        return None
+    if timestamp.tzinfo is None:
+        return timestamp.replace(tzinfo=timezone.utc)
+    return timestamp.astimezone(timezone.utc)
 
 
 def check_audit_entry(db: Session, entry: AuditLog) -> Dict[str, bool]:
@@ -127,8 +174,27 @@ def check_audit_entry(db: Session, entry: AuditLog) -> Dict[str, bool]:
         details=entry.details,
     )
     recomputed_ok = recomputed == entry.current_hash
+
+    # Link check: the parent must exist, must not be this row, and must not sit in
+    # the future. "exists somewhere" alone would accept a link pointing forward or
+    # at itself, which is what a spliced or replayed row looks like.
     prev = entry.previous_log_hash or GENESIS_HASH
-    link_ok = prev == GENESIS_HASH or (
-        db.query(AuditLog.id).filter(AuditLog.current_hash == prev).first() is not None
-    )
+    if prev == GENESIS_HASH:
+        link_ok = True
+    else:
+        parent = (
+            db.query(AuditLog.id, AuditLog.timestamp)
+            .filter(AuditLog.current_hash == prev)
+            .order_by(*LEDGER_ORDER_ASC)
+            .first()
+        )
+        if parent is None:
+            link_ok = False
+        else:
+            link_ok = parent[0] != entry.id
+            parent_ts, entry_ts = _as_utc(parent[1]), _as_utc(entry.timestamp)
+            if link_ok and parent_ts is not None and entry_ts is not None:
+                # Parent may share the child's timestamp (same-instant writes); it
+                # may never sit strictly in the future.
+                link_ok = parent_ts <= entry_ts
     return {"recomputed_ok": recomputed_ok, "link_ok": link_ok}

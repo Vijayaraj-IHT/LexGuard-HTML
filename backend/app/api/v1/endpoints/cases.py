@@ -739,7 +739,32 @@ def view_case_document(
     return response_data
 
 
-@router.get("/{case_id}/verify-integrity", response_model=CaseVerificationResponse)
+class CaseIntegrityReport(CaseVerificationResponse):
+    """
+    Extended integrity report: the file check plus the composite seal Phi_case
+    and the audit-link status of the record's entries.
+
+    Defined here (not in schemas/case.py) so the digital-seal surface can grow
+    without touching the shared response schema; all original fields are kept.
+    """
+
+    integrity_status: str = "not_checked"
+    file_present: bool = False
+    bytes_verified: bool = False
+    composite_seal: Optional[str] = None          # stored Phi_case
+    recomputed_seal: Optional[str] = None         # Phi_case from current fields
+    seal_present: bool = False
+    seal_reproducible: bool = False
+    approve_log_found: bool = False
+    sealed_components: Optional[dict] = None
+    audit_entries_checked: int = 0
+    audit_link_ok: bool = False                   # every sampled row links to its parent
+    audit_hashes_ok: bool = False                 # every sampled row re-hashes correctly
+    audit_trail: List[dict] = []
+    audit_scope: str = "latest entries for this record (local check)"
+
+
+@router.get("/{case_id}/verify-integrity", response_model=CaseIntegrityReport)
 def verify_case_integrity(
     case_id: str,
     request: Request,
@@ -747,41 +772,147 @@ def verify_case_integrity(
     db: Session = Depends(get_db),
 ):
     """
-    Dedicated cryptographic check that recalculates SHA-256
-    hash directly from the stored file and returns tamper status badge.
+    Dedicated cryptographic check of one record:
+
+    1. re-reads the stored file and recomputes its SHA-256 (fresh bytes, no cache);
+    2. recomputes the composite judicial seal Phi_case from the sealed fields and
+       reports whether it still reproduces the stored seal;
+    3. verifies the hash-link status of this record's audit entries.
+
+    The three results are reported separately so a client can never present a
+    file-level pass as a seal-level pass (or vice versa).
     """
     case = db.query(Case).filter(Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case record not found.")
 
     doc_path = resolve_case_file_path(case.file_path)
-    if not doc_path or not os.path.exists(doc_path):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Physical document file missing on disk.")
+    file_present = bool(doc_path) and os.path.exists(doc_path)
 
-    with open(doc_path, "rb") as f:
-        bytes_data = f.read()
+    computed_hash = ""
+    is_valid = False
+    bytes_verified = False
+    if file_present:
+        # Fresh read, no digest cache: a same-size tamper with a restored mtime is caught.
+        from app.services.crypto_service import read_verified_bytes
+        _, computed_hash, is_valid = read_verified_bytes(doc_path, case.file_hash)
+        bytes_verified = bool(is_valid)
 
-    computed_hash = compute_sha256(bytes_data)
-    is_valid = (computed_hash.lower() == case.file_hash.lower())
     badge = "VERIFIED_UNTAMPERED" if is_valid else "INTEGRITY_VIOLATION"
+    integrity_status = (
+        "FILE_VERIFIED" if is_valid
+        else ("FILE_MISSING" if not file_present else "FILE_HASH_MISMATCH")
+    )
+
+    # ---- composite judicial seal Phi_case ----------------------------------
+    from app.services.crypto_service import (
+        compute_h_meta, compute_h_text, compute_judicial_seal, seal_reproduced,
+    )
+    h_meta = compute_h_meta(case.case_no, case.court, case.judge, case.disposition, case.year)
+    h_text = compute_h_text(case.full_text)
+    stored_seal = case.redacted_file_hash          # holds Phi_case (see admin approve)
+    recomputed_seal = None
+    seal_ok = False
+    if stored_seal and case.approved_at:
+        try:
+            recomputed_seal = compute_judicial_seal(
+                case.file_hash or "", h_meta, h_text, case.approved_at.isoformat()
+            )
+            seal_ok = seal_reproduced(stored_seal, case.file_hash or "", h_meta, h_text,
+                                      case.approved_at.isoformat())
+        except Exception:  # pragma: no cover - defensive; never fail the whole check
+            logger.exception("Seal recomputation failed for case %s", case.id)
+
+    if seal_ok and is_valid:
+        integrity_status = "SEAL_VERIFIED"
+    elif stored_seal and not seal_ok and integrity_status == "FILE_VERIFIED":
+        integrity_status = "SEAL_MISMATCH"
+
+    approve_log_found = (
+        db.query(AuditLog.id)
+        .filter(AuditLog.case_id == case.id, AuditLog.action == "APPROVE")
+        .first()
+        is not None
+    )
+
+    # ---- audit link status for this record ----------------------------------
+    from app.services.audit_service import check_audit_entry, LEDGER_ORDER_DESC
+    recent = (
+        db.query(AuditLog)
+        .filter(AuditLog.case_id == case.id)
+        .order_by(*LEDGER_ORDER_DESC)
+        .limit(10)
+        .all()
+    )
+    audit_trail = []
+    for entry in recent:
+        checks = check_audit_entry(db, entry)
+        audit_trail.append({
+            "id": entry.id,
+            "action": entry.action,
+            "timestamp": entry.timestamp.isoformat() if entry.timestamp else None,
+            "current_hash": entry.current_hash,
+            "previous_hash": entry.previous_log_hash,
+            "recomputed_ok": checks["recomputed_ok"],
+            "link_ok": checks["link_ok"],
+        })
+    audit_link_ok = bool(audit_trail) and all(e["link_ok"] for e in audit_trail)
+    audit_hashes_ok = bool(audit_trail) and all(e["recomputed_ok"] for e in audit_trail)
 
     log_audit_event(
         db=db,
         action="VERIFY_INTEGRITY",
         user_id=current_user.id,
         case_id=case.id,
-        details=f"Cryptographic check result: {badge}",
+        details=(
+            f"Cryptographic check result: {badge} (status={integrity_status}). "
+            f"seal_present={bool(stored_seal)} seal_reproducible={seal_ok} "
+            f"audit_checked={len(audit_trail)} link_ok={audit_link_ok}"
+        ),
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
 
-    return CaseVerificationResponse(
+    # A failed file check on an accessed record is a tamper event, not just a read.
+    if file_present and not is_valid:
+        log_audit_event(
+            db=db,
+            action="INTEGRITY_VIOLATION",
+            user_id=current_user.id,
+            case_id=case.id,
+            details=(
+                f"SECURITY ALERT: SHA-256 mismatch during integrity check of {case.case_no}. "
+                f"registered={case.file_hash} computed={computed_hash}."
+            ),
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+        )
+
+    return CaseIntegrityReport(
         case_id=case.id,
         expected_hash=case.file_hash,
         computed_hash=computed_hash,
         is_valid=is_valid,
         status_badge=badge,
         verified_at=datetime.now(timezone.utc),
+        integrity_status=integrity_status,
+        file_present=file_present,
+        bytes_verified=bytes_verified,
+        composite_seal=stored_seal,
+        recomputed_seal=recomputed_seal,
+        seal_present=bool(stored_seal),
+        seal_reproducible=seal_ok,
+        approve_log_found=approve_log_found,
+        sealed_components={
+            "H_doc": case.file_hash or "",
+            "H_meta": h_meta,
+            "H_text": h_text,
+            "T_approved": case.approved_at.isoformat() if case.approved_at else None,
+        },
+        audit_entries_checked=len(audit_trail),
+        audit_link_ok=audit_link_ok,
+        audit_hashes_ok=audit_hashes_ok,
+        audit_trail=audit_trail,
     )
 
 
@@ -796,8 +927,6 @@ def download_case(
     """
     Serves the authentic stored document file with cryptographic verification headers.
     """
-    from fastapi.responses import FileResponse
-
     case = db.query(Case).filter(Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case record not found.")
@@ -812,10 +941,26 @@ def download_case(
     if not doc_path or not os.path.exists(doc_path):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Physical document file missing on disk.")
 
-    # Verify the bytes BEFORE serving, so the X-Lexguard-Verified header below is true.
-    # (Previously the header was sent unconditionally.) Same policy as the stream endpoint.
-    from app.services.crypto_service import verify_sha256_stream
-    if not verify_sha256_stream(doc_path, case.file_hash):
+    # Read the file ONCE and verify exactly those bytes, then serve those same bytes.
+    # Verifying a path and handing the path to FileResponse leaves a TOCTOU window:
+    # a file swapped between the check and the response would be streamed while
+    # carrying "X-Lexguard-Verified: true". Same policy as the stream endpoint.
+    from app.services.crypto_service import read_verified_bytes
+    try:
+        content, computed_hash, bytes_ok = read_verified_bytes(doc_path, case.file_hash)
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Physical document file missing on disk.",
+        )
+    except OSError as exc:
+        logger.error("Could not read document for case %s: %s", case.id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Physical document file could not be read from storage.",
+        )
+
+    if not bytes_ok:
         case.status = "quarantined"
         db.commit()
         log_audit_event(
@@ -823,7 +968,10 @@ def download_case(
             action="INTEGRITY_VIOLATION",
             user_id=current_user.id,
             case_id=case.id,
-            details=f"SECURITY ALERT: SHA-256 mismatch detected during download of {case.case_no}. Case quarantined.",
+            details=(
+                f"SECURITY ALERT: SHA-256 mismatch detected during download of {case.case_no}. "
+                f"registered={case.file_hash} computed={computed_hash}. Case quarantined."
+            ),
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent"),
         )
@@ -849,13 +997,15 @@ def download_case(
     else:
         media_type = "application/pdf"
 
-    return FileResponse(
-        path=doc_path,
-        filename=filename,
+    from fastapi import Response
+    return Response(
+        content=content,
         media_type=media_type,
         headers={
-            "X-Lexguard-SHA256": case.file_hash,
+            "X-Lexguard-SHA256": computed_hash,
             "X-Lexguard-Verified": "true",
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(content)),
         },
     )
 

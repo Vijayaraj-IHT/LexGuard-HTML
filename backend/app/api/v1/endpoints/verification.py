@@ -3,7 +3,6 @@ import re
 import hashlib
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Request
-from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from app.core.config import resolve_case_pdf_path
 from app.core.database import get_db
@@ -12,8 +11,7 @@ from app.models.user import User
 from app.models.case import Case
 from app.models.audit_log import AuditLog
 from app.schemas.verification import HashLookupResponse, HashLookupRequest, MatchedCaseSummary
-from app.services.crypto_service import verify_sha256_stream
-from app.services.audit_service import log_audit_event, check_audit_entry
+from app.services.audit_service import log_audit_event, check_audit_entry, LEDGER_ORDER_DESC
 from app.core.rate_limit import rate_limit
 
 router = APIRouter()
@@ -71,7 +69,7 @@ def _execute_hash_lookup(hash_str: str, request: Request, db: Session, current_u
     recent_entries = (
         db.query(AuditLog)
         .filter(AuditLog.case_id == matched_case.id)
-        .order_by(AuditLog.timestamp.desc())
+        .order_by(*LEDGER_ORDER_DESC)
         .limit(10)
         .all()
     )
@@ -228,8 +226,19 @@ def stream_verified_document(
             detail="Underlying document file is currently unavailable in repository storage."
         )
 
-    # Verify bytes on disk via 64 KB chunked stream before serving
-    if not verify_sha256_stream(resolved_path, expected_hash):
+    # Read once, verify those exact bytes, and serve those exact bytes: handing the
+    # path to FileResponse after the check would allow a file swapped in between to
+    # be streamed with the verified header intact.
+    from app.services.crypto_service import read_verified_bytes
+    try:
+        content, computed_hash, bytes_ok = read_verified_bytes(resolved_path, expected_hash)
+    except OSError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Underlying document file is currently unavailable in repository storage."
+        )
+
+    if not bytes_ok:
         # Quarantine corrupted file
         case.status = "quarantined"
         db.commit()
@@ -238,7 +247,10 @@ def stream_verified_document(
             action="INTEGRITY_VIOLATION",
             user_id=current_user.id if current_user else None,
             case_id=case.id,
-            details=f"SECURITY ALERT: SHA-256 mismatch detected while streaming document for {case.case_no}!",
+            details=(
+                f"SECURITY ALERT: SHA-256 mismatch detected while streaming document for {case.case_no}! "
+                f"registered={expected_hash} computed={computed_hash}."
+            ),
             ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent"),
         )
@@ -259,14 +271,16 @@ def stream_verified_document(
     )
 
     clean_filename = os.path.basename(resolved_path)
-    return FileResponse(
-        path=resolved_path,
+    from fastapi import Response
+    return Response(
+        content=content,
         media_type="application/pdf",
-        filename=clean_filename,
         headers={
-            "ETag": f'"{expected_hash}"',
+            "ETag": f'"{computed_hash}"',
             "Cache-Control": "private, max-age=3600",
-            "X-Lexguard-SHA256": expected_hash,
+            "X-Lexguard-SHA256": computed_hash,
             "X-Lexguard-Verified": "true",
+            "Content-Disposition": f'attachment; filename="{clean_filename}"',
+            "Content-Length": str(len(content)),
         },
     )
