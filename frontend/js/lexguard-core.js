@@ -228,4 +228,21 @@
     }
   };
 
+  /**
+   * Brand logo fallback. Brand images have class "brand-logo-img" inside a
+   * ".brand-emblem" wrapper. If the logo file fails to load, the wrapper gets
+   * "is-fallback" and shows the built-in shield icon instead.
+   * 'error' events on <img> do not bubble, so this uses a capture listener on
+   * the document. That keeps the markup free of inline onerror handlers (CSP).
+   */
+  if (window.document && window.document.addEventListener) {
+    window.document.addEventListener('error', function (event) {
+      var target = event.target;
+      if (target && target.classList && target.classList.contains('brand-logo-img')) {
+        var wrap = target.closest ? target.closest('.brand-emblem') : null;
+        if (wrap) wrap.classList.add('is-fallback');
+      }
+    }, true);
+  }
+
 })(window);
