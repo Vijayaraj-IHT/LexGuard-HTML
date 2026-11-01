@@ -411,7 +411,9 @@ The pattern suite pins the 0.25 clipping boundary, overlap-only repair,
 Madras / Supreme Court verbatim preservation, Bombay / Punjab & Haryana repair,
 all four fact-candidate tiers, caption-scoped police stations and normalized
 arrest / custody statuses. The latest full sweep completed without uncaught
-exceptions at **593/596 = 99.50 %** specific-profile coverage.
+exceptions at **593/596 = 99.50 %** specific-profile coverage. A full-corpus
+rerun under a Python audit hook that rejects DNS, socket and HTTP events also
+completed with **zero attempted network operations**.
 
 ### Adding a new template
 
