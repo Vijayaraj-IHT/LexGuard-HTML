@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import sys
 from collections import Counter, defaultdict
@@ -89,6 +90,8 @@ def main() -> int:
         "--min-coverage", type=float, default=0.99,
         help="minimum share of unique attempted documents that must match a specific profile (default: 0.99)")
     args = parser.parse_args()
+    if not math.isfinite(args.min_coverage) or not 0.0 <= args.min_coverage <= 1.0:
+        parser.error("--min-coverage must be a finite number between 0 and 1")
 
     svc = _load_service()
     files = collect_pdfs(args.dirs, recursive=not args.no_recursive)

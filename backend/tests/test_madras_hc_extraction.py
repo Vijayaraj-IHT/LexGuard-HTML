@@ -189,11 +189,22 @@ def test_extraction_passes_are_offline_and_deterministic(monkeypatch):
     if not os.path.exists(pdf_path):
         pytest.skip("Seed PDF not found on disk")
 
+    import socket
+    import urllib.request
+
     from app.services.ai_api_service import ai_api_service
     from app.services.local_llm_service import local_llm_service
 
     def forbid_network_or_model(*args, **kwargs):
         raise AssertionError("offline ingestion attempted a network/model call")
+
+    # Block the actual transport layer as well as the known service entrypoints,
+    # so a future accidental HTTP/DNS call cannot hide behind a fallback.
+    monkeypatch.setattr(socket.socket, "connect", forbid_network_or_model)
+    monkeypatch.setattr(socket.socket, "connect_ex", forbid_network_or_model)
+    monkeypatch.setattr(socket, "create_connection", forbid_network_or_model)
+    monkeypatch.setattr(socket, "getaddrinfo", forbid_network_or_model)
+    monkeypatch.setattr(urllib.request, "urlopen", forbid_network_or_model)
 
     for method in ("check_health", "extract_ner", "summarize", "extract_ratio"):
         monkeypatch.setattr(ai_api_service, method, forbid_network_or_model, raising=False)
@@ -211,6 +222,7 @@ def test_extraction_passes_are_offline_and_deterministic(monkeypatch):
         "ratio_decidendi", "overall_confidence",
     ]
     assert {k: first.get(k) for k in keys} == {k: second.get(k) for k in keys}
+    assert first == second, "the full extraction payload must be deterministic"
     assert first["confidence_scores"]["act_tags"]["source"] == "pass2_regex"
     assert first["confidence_scores"]["summary"]["source"] == "pass3_deterministic"
     assert first["fact_sheet"].get("police_stations") is not None

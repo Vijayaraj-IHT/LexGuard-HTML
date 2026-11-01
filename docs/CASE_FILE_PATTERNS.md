@@ -11,7 +11,7 @@ document's own structure instead of one global bag of regexes.
 |---|---|
 | `backend/app/services/case_pattern_service.py` | Runtime engine: layout fingerprint → drafting profile → key set → section map → facts + fact sheet |
 | `scripts/analyse_case_file_patterns.py` | Corpus sweep: per-file detection, key coverage, facts result, JSON + Markdown report |
-| `docs/pattern_analysis/case_pattern_report.{json,md}` | Sweep output (regenerate with the analyser). Latest verified `storage/cases` run: **596 PDFs scanned**, **595 readable unique documents**, 39 profiles, 1 unreadable file, **99.5 %** specific-profile coverage |
+| `case_pattern_report.{json,md}` | Sweep output written to `--out` (default `docs/pattern_analysis`). Latest verified `storage/cases` acceptance run: **596 PDFs scanned**, **595 readable unique documents**, 39 profiles, 1 unreadable file, **99.5 %** specific-profile coverage |
 | `backend/tests/test_case_pattern_service.py` | Fixture/profile tests, registry-merge, repair-gate, fact-sheet and corpus smoke tests |
 | `backend/app/services/extraction_service.py` | Pass 1b — applies the key set to harden identity fields and lift `facts` |
 
@@ -294,7 +294,10 @@ produces a bounded factual matrix plus a structured fact sheet.
    heading at all, every plausible run of contiguous narrative paragraphs is
    proposed.
 4. **Post-caption body** — for reserved judgments with no `JUDGMENT` heading:
-   the first narrative paragraph after the last prayer unit.
+   locate the caption end from prayer / counsel anchors (or a party designator)
+   inside the first 10 000 characters, then propose the first narrative
+   paragraphs after it. This recovers judgments that never print a `JUDGMENT`
+   heading and never use an explicit facts heading.
 
 Each candidate is scored on **factuality** (dates, crime/CC numbers, place
 tokens, police stations, action verbs such as *arrested / seized / filed /
@@ -307,14 +310,14 @@ and capped at 4 500 characters.
 
 | Strategy | Documents |
 |---|---:|
-| `anchored_span` | 227 |
-| `paragraph_scan` | 202 |
+| `anchored_span` | 228 |
+| `paragraph_scan` | 199 |
 | `explicit_heading` | 130 |
 | `order_sheet` | 21 |
 | `reserved_judgment` | 10 |
-| `post_caption_body` | 5 |
+| `post_caption_body` | 7 |
 
-* **0 of 563 body-text documents return empty facts** (mean 1 938 chars, median
+* **0 of 563 body-text documents return empty facts** (mean 1 948 chars, median
   1 421, min 135, max 7 114). The remaining 32 are cover-page-only PDFs, now
   labelled `insufficient_text` instead of silently producing nothing.
 * Brief cards (179) extract 636 chars on average — they have no factual narrative,
@@ -335,12 +338,26 @@ Example fact sheets (dates / crime numbers / police stations / places / offences
   shift-repaired text layer that previously produced only shard lines.
 
 Fact-sheet fields: `dates`, `crime_numbers`, `police_stations`, `places`,
-`offences`, `custody`, `arrest`, `amounts`. `crime_numbers` covers Crime / Cr /
-FIR / C.C. / R.C. / charge-sheet / final-report numbers; `police_stations`
-captures both `X Police Station` and `P.S. X` forms and rejects case-number /
-institution-shaped false positives. They are returned alongside the facts text
-and are the natural feed for the draft-assistant gap analysis and precedent
-search.
+`offences`, `custody`, `custody_status`, `arrest`, `arrest_status`, `amounts`.
+
+* `dates` accepts numeric dates plus textual idioms (`9th October, 2026`,
+  `OCTOBER 10, 2026`) and ignores years inside case numbers.
+* `crime_numbers` covers Crime / Cr. / FIR / C.C. / R.C. / charge-sheet /
+  final-report numbers (`No.`, `Number`, `#`).
+* `police_stations` captures `X Police Station` and `P.S. X` forms, rejects
+  case-number / institution-shaped false positives, and is merged from the
+  **first 6 000 characters only** so cited FIRs from other cases do not leak in.
+* `offences` accepts `Section(s)` / `Sec.` / `U/S` with IPC, BNS, BNSS, CrPC,
+  CPC, NDPS, POCSO, SC/ST and named Act / Code / Sanhita forms.
+* `custody` / `arrest` remain verbatim evidence (the last explicit cue);
+  `custody_status` normalises to `judicial_custody`, `police_custody`,
+  `released_on_bail`, `not_in_custody`, `in_custody` or `None`, and
+  `arrest_status` to `arrested`, `not_arrested`, `surrendered`, `apprehended`,
+  `detained` or `None`. Prospective wording (“shall surrender”, “may arrest”)
+  and bail arguments (“not in custody”) are not mistaken for completed events.
+
+They are returned alongside the facts text and are the natural feed for the
+draft-assistant gap analysis and precedent search.
 
 ---
 
@@ -348,7 +365,8 @@ search.
 
 ```bash
 # full-corpus sweep (storage/cases is the default) — ~4–5 minutes for 596 PDFs
-# exits 0 when >=99% of unique attempted documents match a specific profile
+# exits 0 when specific-profile coverage >= --min-coverage (default 0.99), else 1
+# coverage denominator includes unreadable PDFs; --min-coverage must be finite in [0, 1]
 python scripts/analyse_case_file_patterns.py --out docs/pattern_analysis
 
 # one-off analysis of any folder of judgments
@@ -378,7 +396,22 @@ logged and swallowed so ingestion cannot regress.
 pdfplumber only. Pass 2 (`pass2_regex`) and Pass 3 (`pass3_deterministic`) do not
 call the AI microservice, Ollama, or Hugging Face, and they do not download model
 weights. The same PDF bytes produce the same extraction payload, which is
-pinned by `test_extraction_passes_are_offline_and_deterministic`.
+pinned by `test_extraction_passes_are_offline_and_deterministic`; that test
+blocks socket connect / DNS / `urlopen` and asserts full-payload equality.
+
+### Acceptance checks
+
+```bash
+python -m pytest backend/tests/test_case_pattern_service.py -q     # 78 tests
+python -m pytest backend/tests/test_madras_hc_extraction.py -q     # 15 tests
+python scripts/analyse_case_file_patterns.py --out /tmp/patterns   # exit 0 at >=99%
+```
+
+The pattern suite pins the 0.25 clipping boundary, overlap-only repair,
+Madras / Supreme Court verbatim preservation, Bombay / Punjab & Haryana repair,
+all four fact-candidate tiers, caption-scoped police stations and normalized
+arrest / custody statuses. The latest full sweep completed without uncaught
+exceptions at **593/596 = 99.50 %** specific-profile coverage.
 
 ### Adding a new template
 

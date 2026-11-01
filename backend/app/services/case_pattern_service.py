@@ -2059,10 +2059,11 @@ def _dedupe_lines(text: str) -> str:
 
         IN / IN THE / THE HIGH / HIGH COURT / COURT OF / OF JUDICATURE / AT BOMBAY
 
-    Each line begins with the previous line's last word.  Only *runs of three or
-    more* such lines are merged (a two-line coincidence is normal prose), and
-    nothing outside a run is touched, so real content is never reordered or
-    dropped.  Duplicate tail words ("… AT BOMBAY" then "BOMBAY") are absorbed.
+    Each line begins with the previous line's last word.  A run is merged only
+    when it has at least four shards, or a shorter run has a multi-word
+    suffix/prefix overlap; a two- or three-line prose coincidence is left alone.
+    Nothing outside a genuine run is touched, so real content is not reordered
+    or dropped.  Duplicate tail words ("… AT BOMBAY" then "BOMBAY") are absorbed.
     """
     lines = text.split("\n")
     out: List[str] = []
@@ -2812,20 +2813,31 @@ class CasePatternService:
 
         # 4. post-caption body start — for reserved judgments that print no
         #    JUDGMENT heading (e.g. Madras order-in-original files): the body
-        #    begins at the first narrative paragraph after the last prayer unit.
-        prayer_anchors = [a for spec in (keyset.get("relief") or {}).values() for a in spec["anchors"]]
-        last_prayer = 0
-        for anchor in prayer_anchors:
-            for match in re.finditer(anchor, text, re.IGNORECASE | re.MULTILINE):
-                last_prayer = max(last_prayer, match.end())
-        if last_prayer:
-            for para in paragraphs:
-                if para["start"] <= last_prayer:
+        #    begins at the first narrative paragraph after the caption's last
+        #    prayer/counsel unit.  Search a caption window, not the whole body,
+        #    so an operative "prayer is allowed" near the end cannot suppress
+        #    the fallback.
+        caption_window = text[:10000]
+        caption_anchors = [a for spec in (keyset.get("relief") or {}).values() for a in spec["anchors"]]
+        caption_anchors += [a for spec in (keyset.get("counsel") or {}).values() for a in spec["anchors"]]
+        last_caption_anchor = 0
+        for anchor in caption_anchors:
+            for match in re.finditer(anchor, caption_window, re.IGNORECASE | re.MULTILINE):
+                last_caption_anchor = max(last_caption_anchor, match.end())
+        if not last_caption_anchor:
+            for match in re.finditer(
+                r"(?im)^\s*(?:\.{2,}|…|-{2,})\s*(?:Petitioners?|Respondents?|Applicants?|Appellants?)\b",
+                caption_window,
+            ):
+                last_caption_anchor = max(last_caption_anchor, match.end())
+        if last_caption_anchor:
+            for idx, para in enumerate(paragraphs):
+                if para["start"] <= last_caption_anchor:
                     continue
                 if cls._fact_score(para["text"])["score"] < 1.5:
                     continue
                 run_end = para["end"]
-                for nxt in paragraphs[para["ordinal"]:para["ordinal"] + 11]:
+                for nxt in paragraphs[idx + 1:idx + 12]:
                     if nxt["start"] - run_end > 600 or cls._COUNSEL_TURN_RE.search(nxt["text"]):
                         break
                     if nxt["end"] - para["start"] > cls.FACT_CAP:
@@ -2922,9 +2934,11 @@ class CasePatternService:
         fact_sheet = cls._fact_sheet(facts_text)
         # Police stations are often printed only in the respondent caption
         # ("Inspector of Police, X Police Station"), outside the factual matrix.
-        # Merge caption/body station names so the sheet is not silently empty.
+        # Restrict the fallback to the caption window: scanning the whole body
+        # would pull station names out of cited precedents into this case.
+        caption = re.sub(r"\s+", " ", text[:6000])
         station_seen = {s.casefold() for s in fact_sheet["police_stations"]}
-        for station in cls._police_stations(re.sub(r"\s+", " ", text)):
+        for station in cls._police_stations(caption):
             if station.casefold() not in station_seen:
                 station_seen.add(station.casefold())
                 fact_sheet["police_stations"].append(station)
@@ -2964,16 +2978,33 @@ class CasePatternService:
             "region_score": best_score,
         }
 
-    _CRIME_FULL_RE = re.compile(
-        r"\b(?:(?:Crime|Cr|F\.?I\.?R|FIR|C\.?C\.?|R\.?C\.?|Charge\s+Sheet|Final\s+Report)"
-        r"\s*No\.?)\s*[:\-]?\s*[\d\.\/]+(?:\s*(?:of|/)\s*\d{2,4})?",
+    #: Fact-sheet dates include the numeric registry idiom and the textual
+    #: idioms used in reserved judgments ("9th October, 2026", "OCTOBER 22, 2026").
+    _MONTH_NAME = (
+        r"(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|"
+        r"Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)"
+    )
+    _FACT_DATE_RE = re.compile(
+        rf"\b(?:\d{{1,2}}[./-]\d{{1,2}}[./-]\d{{4}}|"
+        rf"\d{{1,2}}(?:st|nd|rd|th)?\s+(?:day\s+of\s+)?{_MONTH_NAME}\.?,?\s+\d{{4}}|"
+        rf"{_MONTH_NAME}\.?\s+\d{{1,2}}(?:st|nd|rd|th)?,?\s+\d{{4}})\b",
         re.IGNORECASE,
     )
+    _CRIME_FULL_RE = re.compile(
+        r"\b(?:Crime|Cr\.?|F\.?I\.?R\.?|C\.?C\.?|R\.?C\.?|Charge\s+Sheet|Final\s+Report)"
+        r"\s*(?:(?:bearing|registered\s+as|vide)\s+)?(?:No\.?|Number|#)\s*[:\-]?\s*"
+        r"\d+(?:[./-]\d+)*(?:[A-Za-z]\d*)?(?:\s*(?:of|/)\s*\d{2,4})?",
+        re.IGNORECASE,
+    )
+    _OFFENCE_ACT = (
+        r"(?:I\.?P\.?C\.?|B\.?N\.?S\.?S\.?|B\.?N\.?S\.?|Cr\.?P\.?C\.?|C\.?P\.?C\.?|"
+        r"NDPS|POCSO|SC/ST|[A-Z][A-Za-z\.\s&()\-]{2,70}?(?:Act|Code|Sanhita|Adhiniyam|Rules)"
+        r"(?:\s*,?\s*\d{4})?)"
+    )
     _OFFENCE_RE = re.compile(
-        r"\b(?:Sections?|Secs?\.)\s+\d[\dA-Za-z\(\)\s,&]{0,60}?"
-        r"(?:read\s+with\s+[\dA-Za-z\(\)\s,&]{0,60})?"
-        r"(?:of\s+(?:the\s+)?[A-Z][A-Za-z\.\s,&()\-]{2,70}?"
-        r"(?:Act|Code|Sanhita|Adhiniyam|Rules)(?:\s*,?\s*\d{4})?|of\s+the\s+Act)",
+        rf"\b(?:Sections?|Secs?\.?|U/S)\s+\d[\dA-Za-z()\-]*"
+        rf"(?:\s*(?:,|and|&|/|read\s+with|r/w)\s*(?:Sections?|Secs?\.?)?\s*\d[\dA-Za-z()\-]*)*"
+        rf"\s+(?:of\s+(?:the\s+)?)?{_OFFENCE_ACT}",
         re.IGNORECASE,
     )
     _PLACE_NAME_RE = re.compile(
@@ -3007,9 +3038,13 @@ class CasePatternService:
         r"\b(?:college|engineering|school|hospital|court|limited|ltd|private|university)\b",
         re.IGNORECASE,
     )
-    _AMOUNT_RE = re.compile(r"(?:Rs\.?|₹)\s?\d[\d,]*(?:\.\d+)?(?:\s*(?:lakh|crore))?(?:\s*/\-)?", re.IGNORECASE)
+    _AMOUNT_RE = re.compile(r"(?<![A-Za-z])(?:Rs\.?|₹)\s?\d[\d,]*(?:\.\d+)?(?:\s*(?:lakh|crore))?(?:\s*/\-)?", re.IGNORECASE)
+    # Status cues are deliberately explicit: "may be arrested" / "in the event
+    # of arrest" are prospective bail arguments, not an arrest status.
     _CUSTODY_RE = re.compile(
-        rf"(?:\b(?:in|into|under|remanded\s+to|sent\s+to|taken\s+into)\s+"
+        rf"(?:\b(?:released|enlarged|liberated)\s+(?:on|upon)\s+bail{_EVIDENCE_TAIL}"
+        rf"|\b(?:not|never)\s+in\s+custody{_EVIDENCE_TAIL}"
+        rf"|\b(?:in|into|under|remanded\s+to|sent\s+to|taken\s+into)\s+"
         rf"(?:judicial\s+|police\s+|illegal\s+|wrongful\s+)?custody(?:\s+(?:since|for|from|on|under){_EVIDENCE_TAIL})?"
         rf"|\b(?:judicial|police)\s+custody(?:\s+(?:since|for|from|on){_EVIDENCE_TAIL})?"
         rf"|\bcustody\s+(?:since|for){_EVIDENCE_TAIL}"
@@ -3017,11 +3052,12 @@ class CasePatternService:
         re.IGNORECASE,
     )
     _ARREST_RE = re.compile(
-        rf"(?:\b(?:was\s+|were\s+|has\s+been\s+|had\s+been\s+|been\s+)?"
-        rf"(?:arrested|apprehended|detained|taken\s+into\s+custody)"
-        rf"(?:\s+(?:on|at|in|from|by|under){_EVIDENCE_TAIL})?"
+        rf"(?:\b(?:was|were|is|are)\s+(?:(?:not|never)\s+)?(?:arrested|apprehended|detained){_EVIDENCE_TAIL}"
+        rf"|\b(?:has|have|had)\s+(?:(?:not|never)\s+)?been\s+(?:arrested|apprehended|detained){_EVIDENCE_TAIL}"
+        rf"|\b(?:not|never)\s+arrested{_EVIDENCE_TAIL}"
+        rf"|\b(?:arrested|apprehended|detained)\s+(?:on|at|by|in\s+connection){_EVIDENCE_TAIL}"
         rf"|\bsurrendered\s+(?:before|on|at){_EVIDENCE_TAIL}"
-        rf"|\b(?:not|never)\s+arrested{_EVIDENCE_TAIL})",
+        rf"|\btaken\s+into\s+custody{_EVIDENCE_TAIL})",
         re.IGNORECASE,
     )
 
@@ -3047,16 +3083,59 @@ class CasePatternService:
                     stations.append(name)
         return stations[:8]
 
+    @staticmethod
+    def _last_evidence(pattern: re.Pattern, text: str) -> Optional[str]:
+        """Return the last explicit status cue (narratives are chronological)."""
+        matches = list(pattern.finditer(text))
+        if not matches:
+            return None
+        return re.sub(r"\s+", " ", matches[-1].group(0)).strip()
+
+    @staticmethod
+    def _custody_status(evidence: Optional[str]) -> Optional[str]:
+        if not evidence:
+            return None
+        low = evidence.lower()
+        if re.search(r"\b(?:not|never)\s+in\s+custody\b", low):
+            return "not_in_custody"
+        if re.search(r"\b(?:released|enlarged|liberated)\s+(?:on|upon)\s+bail\b", low):
+            return "released_on_bail"
+        if "judicial custody" in low:
+            return "judicial_custody"
+        if "police custody" in low:
+            return "police_custody"
+        return "in_custody"
+
+    @staticmethod
+    def _arrest_status(evidence: Optional[str]) -> Optional[str]:
+        if not evidence:
+            return None
+        low = evidence.lower()
+        if re.search(r"\b(?:not|never)\s+(?:been\s+)?arrested\b", low):
+            return "not_arrested"
+        if "surrendered" in low:
+            return "surrendered"
+        if "apprehended" in low:
+            return "apprehended"
+        if "detained" in low or "taken into custody" in low:
+            return "detained"
+        return "arrested"
+
     @classmethod
     def _fact_sheet(cls, facts_text: str) -> Dict[str, Any]:
         """Structured slice of the factual matrix: dates, crime/FIR numbers,
-        police stations, places, offences, custody/arrest evidence and amounts."""
+        police stations, places, offences, custody/arrest status + evidence,
+        and monetary amounts.  ``custody`` / ``arrest`` remain verbatim evidence
+        strings for compatibility; the ``*_status`` fields are the normalized
+        labels.  Unknown is represented by None, never by a guessed status."""
         if not facts_text:
             return {"dates": [], "crime_numbers": [], "police_stations": [],
                     "places": [], "offences": [], "custody": None,
-                    "arrest": None, "amounts": []}
+                    "custody_status": None, "arrest": None,
+                    "arrest_status": None, "amounts": []}
         flat = re.sub(r"\s+", " ", facts_text).strip()
-        dates = list(dict.fromkeys(cls._DATE_RE.findall(flat)))[:12]
+        dates = list(dict.fromkeys(
+            re.sub(r"\s+", " ", m.group(0)).strip() for m in cls._FACT_DATE_RE.finditer(flat)))[:12]
         crime_numbers = list(dict.fromkeys(
             re.sub(r"\s+", " ", m.group(0)).strip() for m in cls._CRIME_FULL_RE.finditer(flat)))[:8]
         police_stations = cls._police_stations(flat)
@@ -3067,8 +3146,8 @@ class CasePatternService:
                 places.append(name)
         offences = list(dict.fromkeys(
             re.sub(r"\s+", " ", m.group(0)).strip() for m in cls._OFFENCE_RE.finditer(flat)))[:8]
-        custody = cls._CUSTODY_RE.search(flat)
-        arrest = cls._ARREST_RE.search(flat)
+        custody = cls._last_evidence(cls._CUSTODY_RE, flat)
+        arrest = cls._last_evidence(cls._ARREST_RE, flat)
         amounts = list(dict.fromkeys(
             re.sub(r"\s+", " ", m.group(0)).strip() for m in cls._AMOUNT_RE.finditer(flat)))[:5]
         return {
@@ -3077,8 +3156,10 @@ class CasePatternService:
             "police_stations": police_stations,
             "places": places[:10],
             "offences": offences,
-            "custody": re.sub(r"\s+", " ", custody.group(0)).strip() if custody else None,
-            "arrest": re.sub(r"\s+", " ", arrest.group(0)).strip() if arrest else None,
+            "custody": custody,
+            "custody_status": cls._custody_status(custody),
+            "arrest": arrest,
+            "arrest_status": cls._arrest_status(arrest),
             "amounts": amounts,
         }
 
